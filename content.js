@@ -17,8 +17,8 @@ function initializeContentScript() {
       sendResponse({pageStructure: pageStructure, url: window.location.href});
     } else if (request.action === "removeAllStyles") {
       // 移除所有应用的样式
-      removeAllAppliedStyles();
-      sendResponse({success: true});
+      const success = removeAllAppliedStyles();
+      sendResponse({success: success});
     }
     return true; // 保持消息通道开放,以便异步响应
   });
@@ -73,19 +73,36 @@ function applyStyle(style, styleId) {
 
 // 移除所有应用的样式
 function removeAllAppliedStyles() {
-  // 只移除由扩展添加的样式元素
-  const styleElement = document.getElementById('beautifier-style');
-  if (styleElement) {
-    styleElement.remove();
-  }
+    try {
+        // 只移除由扩展添加的样式元素
+        const styleElement = document.getElementById('beautifier-style');
+        if (styleElement) {
+            styleElement.remove();
+        }
 
-  // 移除所有由扩展添加的类
-  document.body.classList.remove('beautifier-applied');
+        // 移除所有由扩展添加的类
+        document.body.classList.remove('beautifier-applied');
 
-  // 从 chrome.storage.local 中移除该网站的样式
-  chrome.storage.local.remove(window.location.hostname);
+        // 移除评分容器
+        const ratingContainer = document.getElementById('beautifier-rating');
+        if (ratingContainer) {
+            ratingContainer.remove();
+        }
 
-  console.log('所有应用的样式已被移除');
+        // 从 chrome.storage.local 中移除该网站的样式
+        chrome.storage.local.remove(window.location.hostname, function() {
+            if (chrome.runtime.lastError) {
+                console.error('移除存储的样式时出错:', chrome.runtime.lastError);
+                return;
+            }
+            console.log('所有应用的样式已被移除');
+        });
+
+        return true; // 表示成功移除样式
+    } catch (error) {
+        console.error('移除样式时出错:', error);
+        return false; // 表示移除样式失败
+    }
 }
 
 // 检查并应用样式

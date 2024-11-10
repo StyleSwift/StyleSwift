@@ -9,16 +9,14 @@
         "128": "images/icon5.png"
     },
     "permissions": [
-        "tabs",
         "activeTab",
-        "storage",
         "scripting",
-        "windows",
+        "storage",
+        "tabs",
         "system.display"
     ],
     "host_permissions": [
-        "<all_urls>",
-        "https://styleswift.zeabur.app/*"
+        "<all_urls>"
     ],
     "action": {
         "default_icon": {

@@ -237,28 +237,59 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 生成并应用样式的函数
 function generateAndApplyStyle(style, customDescription = '') {
-    // 查询当前活动标签页
-    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-        const activeTab = tabs[0];
-        // 向活动标签页发送ping消息,检查内容脚本是否已注入
-        chrome.tabs.sendMessage(activeTab.id, {action: "ping"}, function(response) {
-            if (chrome.runtime.lastError) {
-                // 如果出错,说明内容脚本未注入,尝试注入内容脚本
-                chrome.scripting.executeScript({
-                    target: { tabId: activeTab.id },
-                    files: ['content.js']
-                }, function() {
-                    if (chrome.runtime.lastError) {
-                        // 注入失败,输出错误信息
-                        console.error('无法注入内容脚本:', chrome.runtime.lastError.message);
-                    } else {
-                        // 注入成功,处理样式应用
-                        handleStyleApplication(activeTab.id, style, customDescription);
-                    }
+    // 获取扩展窗口的 ID
+    chrome.windows.getCurrent(currentWindow => {
+        // 查询所有标签页，找到不是扩展页面的活动标签页
+        chrome.tabs.query({}, function(tabs) {
+            // 过滤出不是扩展页面的标签页
+            const normalTabs = tabs.filter(tab => 
+                !tab.url.startsWith('chrome-extension://') && 
+                !tab.url.startsWith('chrome://')
+            );
+
+            // 找到最后激活的普通标签页
+            const targetTab = normalTabs.find(tab => tab.active) || normalTabs[0];
+
+            if (!targetTab) {
+                console.error('没有找到可应用样式的标签页');
+                return;
+            }
+
+            // 创建或获取加载指示器
+            let loadingIndicator = document.getElementById('loadingIndicator');
+            if (!loadingIndicator) {
+                loadingIndicator = document.createElement('div');
+                loadingIndicator.id = 'loadingIndicator';
+                loadingIndicator.innerHTML = `
+                    <p>正在生成样式，请稍候...</p>
+                    <div class="spinner"></div>
+                `;
+                document.querySelector('main').appendChild(loadingIndicator);
+            }
+            loadingIndicator.style.display = 'block';
+
+            // 禁用应用按钮
+            const applyButton = document.getElementById('applyStyle');
+            if (applyButton) {
+                applyButton.disabled = true;
+            }
+
+            try {
+                // 激活目标标签页
+                chrome.tabs.update(targetTab.id, { active: true }, () => {
+                    handleStyleApplication(targetTab.id, style, customDescription);
                 });
-            } else {
-                // 内容脚本已存在,直接处理样式应用
-                handleStyleApplication(activeTab.id, style, customDescription);
+            } catch (error) {
+                console.error('应用样式时出错:', error);
+            } finally {
+                // 隐藏加载提示
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = 'none';
+                }
+                // 重新启用应用按钮
+                if (applyButton) {
+                    applyButton.disabled = false;
+                }
             }
         });
     });
@@ -268,20 +299,50 @@ function generateAndApplyStyle(style, customDescription = '') {
 function handleStyleApplication(tabId, style, customDescription) {
     // 如果选择了自定义CSS
     if (style === 'custom-css') {
-        // 应用用户输入的自定义CSS
-        applyCustomCSS(tabId, customCSS.value);
+        const customCSS = document.getElementById('customCSS');
+        if (customCSS) {
+            applyCustomCSS(tabId, customCSS.value);
+        }
     } 
     // 如果选择了默认样式
     else if (style === 'default') {
         // 发送消息给内容脚本,移除所有已应用的样式
-        chrome.tabs.sendMessage(tabId, { action: "removeAllStyles" });
-        // 在本地存储中设置默认样式标志
-        chrome.storage.local.set({defaultStyle: true}, function() {
-            console.log('默认样式标志已设置');
-        });
-        // 从本地存储中移除当前页面保存的样式
-        chrome.storage.local.remove(tabs[0].url, function() {
-            console.log('保存的样式已移除');
+        chrome.tabs.sendMessage(tabId, { action: "removeAllStyles" }, function(response) {
+            if (chrome.runtime.lastError) {
+                console.error('移除样式时出错:', chrome.runtime.lastError);
+                alert('移除样式失败，请刷新页面后重试');
+                return;
+            }
+
+            if (!response || !response.success) {
+                console.error('移除样式失败');
+                alert('移除样式失败，请刷新页面后重试');
+                return;
+            }
+
+            // 在本地存储中设置默认样式标志
+            chrome.storage.local.set({defaultStyle: true}, function() {
+                if (chrome.runtime.lastError) {
+                    console.error('设置默认样式标志时出错:', chrome.runtime.lastError);
+                    return;
+                }
+                console.log('默认样式标志已设置');
+            });
+            
+            // 获取当前标签页的URL并移除其存储的样式
+            chrome.tabs.get(tabId, function(tab) {
+                if (chrome.runtime.lastError) {
+                    console.error('获取标签页信息失败:', chrome.runtime.lastError);
+                    return;
+                }
+                chrome.storage.local.remove(tab.url, function() {
+                    if (chrome.runtime.lastError) {
+                        console.error('移除存储的样式时出错:', chrome.runtime.lastError);
+                        return;
+                    }
+                    console.log('保存的样式已移除');
+                });
+            });
         });
     } 
     // 如果选择了其他预设样式
@@ -293,59 +354,117 @@ function handleStyleApplication(tabId, style, customDescription) {
 
 // 获取页面结构并生成样式的函数
 function getPageStructureAndGenerateStyle(tabId, style, customDescription) {
-    const styleId = generateUniqueStyleId();  // 生成唯一的 styleId
-    chrome.tabs.sendMessage(tabId, {action: "getPageStructure"}, function(response) {
-        if (chrome.runtime.lastError) {
-            console.error('获取页面结构时出错:', chrome.runtime.lastError.message);
-        } else if (response && response.pageStructure) {
+    const styleId = generateUniqueStyleId();
+    
+    // 获取或创建加载指示器
+    let loadingIndicator = document.getElementById('loadingIndicator');
+    if (!loadingIndicator) {
+        loadingIndicator = document.createElement('div');
+        loadingIndicator.id = 'loadingIndicator';
+        loadingIndicator.innerHTML = `
+            <p>正在生成样式，请稍候...</p>
+            <div class="spinner"></div>
+        `;
+        document.querySelector('main').appendChild(loadingIndicator);
+    }
+    loadingIndicator.style.display = 'block';
+    
+    try {
+        chrome.tabs.sendMessage(tabId, {
+            action: "getPageStructure"
+        }, function(response) {
+            if (chrome.runtime.lastError) {
+                // 如果内容脚本未注入，先注入内容脚本
+                chrome.scripting.executeScript({
+                    target: { tabId: tabId },
+                    files: ['content.js']
+                }, function() {
+                    if (chrome.runtime.lastError) {
+                        console.error('注入内容脚本失败:', chrome.runtime.lastError);
+                        alert('无法在此页面应用样式');
+                        if (loadingIndicator) {
+                            loadingIndicator.style.display = 'none';
+                        }
+                        return;
+                    }
+                    // 重试获取页面结构
+                    setTimeout(() => {
+                        chrome.tabs.sendMessage(tabId, {
+                            action: "getPageStructure"
+                        }, handlePageStructureResponse);
+                    }, 100);
+                });
+                return;
+            }
+            handlePageStructureResponse(response);
+        });
+    } catch (error) {
+        console.error('获取页面结构时出错:', error);
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'none';
+        }
+    }
+
+    function handlePageStructureResponse(response) {
+        if (!response || !response.pageStructure) {
+            console.error('获取页面结构失败');
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'none';
+            }
+            return;
+        }
+
+        try {
             chrome.runtime.sendMessage({
                 action: "generateAndApplyStyle",
                 pageStructure: JSON.stringify(response.pageStructure, null, 2),
                 style: style,
                 customDescription: customDescription,
                 url: response.url,
-                styleId: styleId  // 传递生成的 styleId
+                styleId: styleId
             }, function(response) {
                 if (chrome.runtime.lastError) {
-                    console.error('生成并应用样式时出错:', chrome.runtime.lastError.message);
-                } else {
-                    console.log('样式生成并应用成功');
-                    // 移除默认样式标志
-                    chrome.storage.local.remove('defaultStyle', function() {
-                        console.log('默认样式标志已移除');
-                    });
+                    console.error('生成样式失败:', chrome.runtime.lastError);
+                }
+                chrome.storage.local.remove('defaultStyle');
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = 'none';
                 }
             });
+        } catch (error) {
+            console.error('生成并应用样式时出错:', error);
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'none';
+            }
         }
-    });
+    }
 }
 
 // 应用自定义CSS的函数
 function applyCustomCSS(tabId, css) {
     const styleId = generateUniqueStyleId();
-    chrome.tabs.sendMessage(tabId, {
-        action: "applyStyle",
-        style: css,
-        styleId: styleId
-    }, function(response) {
-        if (chrome.runtime.lastError) {
-            console.error('应用自定义CSS时出错:', chrome.runtime.lastError.message);
-        } else {
-            console.log('自定义CSS应用成功');
-            chrome.storage.local.remove('defaultStyle', function() {
-                console.log('默认样式标志已移除');
-            });
-            saveCustomCSSToDatabase(css, styleId);
-        }
+    getActiveTab(function(tab) {
+        chrome.tabs.sendMessage(tab.id, {
+            action: "applyStyle",
+            style: css,
+            styleId: styleId
+        }, function(response) {
+            if (chrome.runtime.lastError) {
+                console.error('应用自定义CSS时出错:', chrome.runtime.lastError.message);
+            } else {
+                console.log('自定义CSS应用成功');
+                chrome.storage.local.remove('defaultStyle', function() {
+                    console.log('默认样式标志已移除');
+                });
+                saveCustomCSSToDatabase(css, styleId);
+            }
+        });
     });
 }
 
 // 保存自定义CSS到数据库的函数
 function saveCustomCSSToDatabase(css, styleId) {
-    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-        let currentTab = tabs[0];
-        let currentUrl = currentTab.url;
-
+    getActiveTab(function(tab) {
         fetch('http://127.0.0.1:5000/api/save_custom_css', {
             method: 'POST',
             headers: {
@@ -353,7 +472,7 @@ function saveCustomCSSToDatabase(css, styleId) {
             },
             body: JSON.stringify({ 
                 css: css,
-                url: currentUrl,
+                url: tab.url,
                 styleId: styleId
             }),
         })
@@ -368,7 +487,6 @@ function saveCustomCSSToDatabase(css, styleId) {
         })
         .catch((error) => {
             console.error('保存自定义CSS时出错:', error);
-            // 这里可以添加用户反馈，比如显示一个错误消息
             alert('保存自定义CSS失败，请稍后再试。');
         });
     });
@@ -408,5 +526,20 @@ function applyWidgetToAllSites(widgetType) {
         globalWidget: widgetType
     }, function() {
         console.log('全局挂件设置已保存');
+    });
+}
+
+function getActiveTab(callback) {
+    chrome.tabs.query({}, function(tabs) {
+        const normalTabs = tabs.filter(tab => 
+            !tab.url.startsWith('chrome-extension://') && 
+            !tab.url.startsWith('chrome://')
+        );
+        const targetTab = normalTabs.find(tab => tab.active) || normalTabs[0];
+        if (targetTab) {
+            callback(targetTab);
+        } else {
+            console.error('没有找到可用的标签页');
+        }
     });
 }
