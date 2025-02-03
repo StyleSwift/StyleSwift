@@ -162,7 +162,6 @@ function isExtensionContextValid() {
 
 // 监听来自扩展程序的消息
 function initializeContentScript() {
-    // 添加重试机制
     const maxRetries = 3;
     let retryCount = 0;
 
@@ -172,7 +171,6 @@ function initializeContentScript() {
             
             if (retryCount < maxRetries) {
                 retryCount++;
-                // 延迟 500ms 后重试
                 setTimeout(tryInitialize, 500);
                 return;
             } else {
@@ -236,18 +234,25 @@ function initializeContentScript() {
                 console.warn('Extension is being suspended');
             });
 
-            // 在初始化时检查并应用样式
+            // 确保在页面加载和DOM变化时检查并应用样式
             checkAndApplyStyle();
 
-            // 确保样式优先级
-            ensureStylePriority();
-
-            // 添加一个 MutationObserver 来监听 DOM 变化
+            // 监听DOM变化
             const observer = new MutationObserver(() => {
                 checkAndApplyStyle();
-                ensureStylePriority();
             });
-            observer.observe(document.body, { childList: true, subtree: true });
+            
+            observer.observe(document.body, { 
+                childList: true, 
+                subtree: true 
+            });
+
+            // 监听存储变化
+            chrome.storage.onChanged.addListener((changes, namespace) => {
+                if (namespace === 'local' && changes[window.location.hostname]) {
+                    checkAndApplyStyle();
+                }
+            });
 
             console.log('Content script initialized');
 
@@ -334,51 +339,36 @@ function removeAllAppliedStyles() {
 }
 
 // 检查并应用样式
-function checkAndApplyStyle() {
-    // 添加重试机制
-    const maxRetries = 3;
-    let retryCount = 0;
-
-    function tryCheck() {
-        if (!isExtensionContextValid()) {
-            console.warn('Extension context is invalid, attempt:', retryCount + 1);
-            
-            if (retryCount < maxRetries) {
-                retryCount++;
-                // 延迟 500ms 后重试
-                setTimeout(tryCheck, 500);
-                return;
+async function checkAndApplyStyle() {
+    try {
+        const hostname = window.location.hostname;
+        const data = await chrome.storage.local.get(hostname);
+        
+        if (data[hostname]) {
+            // 根据模式决定是否显示评分按钮
+            const mode = data[hostname].mode;
+            if (mode === 'site') {
+                applyStyle(data[hostname].style_code, data[hostname].style_id);
             } else {
-                console.error('Extension context validation failed after', maxRetries, 'attempts');
-                return;
-            }
-        }
-
-        try {
-            chrome.storage.local.get(['defaultStyle', window.location.hostname], function(data) {
-                if (chrome.runtime.lastError) {
-                    console.error('Storage error:', chrome.runtime.lastError);
-                    return;
+                // 细节模式下只应用样式,不显示评分按钮
+                const styleElement = document.createElement('style');
+                styleElement.id = 'beautifier-style';
+                styleElement.textContent = data[hostname].style_code;
+                styleElement.setAttribute('data-style-id', data[hostname].style_id);
+                styleElement.setAttribute('data-mode', 'element');
+                
+                const oldStyleElement = document.getElementById('beautifier-style');
+                if (oldStyleElement) {
+                    oldStyleElement.remove();
                 }
                 
-                if (data.defaultStyle) {
-                    removeAllAppliedStyles();
-                } else if (data[window.location.hostname]) {
-                    const { style_code, style_id } = data[window.location.hostname];
-                    applyStyle(style_code, style_id);
-                }
-            });
-        } catch (error) {
-            console.error('Error in checkAndApplyStyle:', error);
-            
-            // 如果是扩展上下文相关的错误，尝试重新初始化
-            if (error.message.includes('Extension context invalid')) {
-                initializeContentScript();
+                document.head.appendChild(styleElement);
             }
+            console.log('Applied stored style for:', hostname);
         }
+    } catch (error) {
+        console.error('Error checking and applying style:', error);
     }
-
-    tryCheck();
 }
 
 // 获取页面结构和关键CSS
@@ -1022,7 +1012,7 @@ function getRatingStyles() {
     `;
 }
 
-// 优化应用元素样式的函数
+// 修改应用元素样式的函数
 function applyElementStyle(style, elementPath) {
     try {
         // 获取目标元素
@@ -1030,6 +1020,9 @@ function applyElementStyle(style, elementPath) {
         if (!element) {
             throw new Error('找不到目标元素');
         }
+
+        // 获取当前网站的域名
+        const hostname = window.location.hostname;
 
         // 创建或更新样式元素
         let styleElement = document.getElementById(`beautifier-style-${elementPath.replace(/[^a-zA-Z0-9]/g, '_')}`);
@@ -1039,20 +1032,46 @@ function applyElementStyle(style, elementPath) {
             document.head.appendChild(styleElement);
         }
 
-        // 清理样式代码 - 移除重复的选择器
+        // 清理样式代码
         const cleanedStyle = style.replace(new RegExp(`${elementPath}\\s*{\\s*${elementPath}\\s*{`), `${elementPath} {`);
 
-        // 应用样式 - 确保样式规则格式正确
+        // 应用样式
         styleElement.textContent = cleanedStyle;
-
-        // 添加标记类
         element.classList.add('beautifier-styled');
-
-        // 确保样式生效
         styleElement.setAttribute('data-applied', 'true');
-        
-        // 强制触发重排以应用样式
-        element.style.display = element.style.display;
+        styleElement.setAttribute('data-mode', 'element'); // 标记为细节模式
+
+        // 保存到本地存储
+        chrome.storage.local.get(hostname, async (data) => {
+            let combinedStyle = cleanedStyle;
+            
+            // 如果已经存在站点样式,合并它们
+            if (data[hostname] && data[hostname].style_code) {
+                // 移除可能存在的旧元素样式
+                const existingStyle = data[hostname].style_code;
+                const cleanedExistingStyle = removeElementStyle(existingStyle, elementPath);
+                
+                // 合并样式
+                combinedStyle = `${cleanedExistingStyle}\n\n${cleanedStyle}`;
+            }
+            
+            // 更新本地存储
+            await chrome.storage.local.set({
+                [hostname]: {
+                    style_code: combinedStyle,
+                    style_id: data[hostname]?.style_id || `style_${Date.now()}`,
+                    mode: 'element' // 标记为细节模式
+                }
+            });
+            
+            console.log('Saved combined style for:', hostname);
+        });
+
+        // 移除可能存在的评分容器
+        const ratingContainer = document.getElementById('beautifier-rating');
+        if (ratingContainer) {
+            ratingContainer.remove();
+        }
 
         console.log('Applied element style:', {
             elementPath,
@@ -1067,4 +1086,11 @@ function applyElementStyle(style, elementPath) {
         return { success: false, error: error.message };
     }
 }
+
+// 辅助函数：移除元素样式
+function removeElementStyle(css, elementPath) {
+    const regex = new RegExp(`${elementPath}\\s*{[^}]*}`, 'g');
+    return css.replace(regex, '').replace(/\n\s*\n/g, '\n\n').trim();
+}
+
 

@@ -284,6 +284,11 @@ async function handleGenerateAndApplyElementStyle(request, sendResponse) {
             throw new Error('没有找到可应用样式的标签页');
         }
 
+        // 获取本地存储中的样式信息
+        const hostname = new URL(targetTab.url).hostname;
+        const storageData = await chrome.storage.local.get(hostname);
+        const existingStyle = storageData[hostname];
+
         // 确保内容脚本已注入
         const isInjected = await ensureContentScriptInjected(targetTab.id);
         if (!isInjected) {
@@ -297,7 +302,8 @@ async function handleGenerateAndApplyElementStyle(request, sendResponse) {
             body: JSON.stringify({
                 elementDetails: request.elementDetails,
                 description: request.description,
-                url: targetTab.url
+                url: targetTab.url,
+                existingStyle: existingStyle // 传递本地存储的样式信息
             })
         });
 
@@ -319,18 +325,6 @@ async function handleGenerateAndApplyElementStyle(request, sendResponse) {
             if (!applyResult || !applyResult.success) {
                 throw new Error('样式应用失败: ' + (applyResult?.error || '未知错误'));
             }
-
-            // 添加延迟检查
-            setTimeout(async () => {
-                const verifyResult = await chrome.tabs.sendMessage(targetTab.id, {
-                    action: "verifyElementStyle",
-                    elementPath: request.elementDetails.elementInfo.path
-                });
-                
-                if (!verifyResult?.success) {
-                    console.warn('样式可能未正确应用:', verifyResult?.error);
-                }
-            }, 500);
 
             sendResponse({ success: true });
         } else {

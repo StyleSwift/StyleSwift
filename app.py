@@ -164,136 +164,155 @@ def generate_ai_style():
     style = data.get('style')
     custom_description = data.get('customDescription')
     url = data.get('url')
-    style_id = data.get('styleId')  # 确保从请求中获取 styleId
+    style_id = data.get('styleId')
+    existing_style = data.get('existingStyle')  # 从请求中获取本地存储的样式信息
 
     if not style_id:
         return jsonify({"error": "styleId is required"}), 400
 
-    def generate_prompt(style, page_structure, custom_description=None):
-        base_prompt = f"""Analyze the following webpage structure and its critical CSS:
-
-        Webpage Structure and Critical CSS:
-        {page_structure}
-
-        Based on this structure and existing critical CSS, generate an improved CSS style that:
-        1. Builds upon the existing critical CSS, maintaining its core functionality
-        2. Enhances the overall visual appeal and user experience
-        3. Improves readability and accessibility
-        4. Ensures responsive design principles are applied
-        5. Optimizes performance by minimizing redundant styles
-
-        Focus on:
-        - Color scheme
-        - Typography
-        - Layout
-        - Visual hierarchy
-        - Interactions
-        - Consistency
-
-        Output only the complete CSS code, including the critical CSS. Do not include any explanations or comments outside the style tags."""
-
-        style_specific_prompts = {
-            "modern": "\n\nCreate a modern and sleek style with bold typography, vibrant colors, and smooth transitions.",
-            "retro": "\n\nDesign a retro style with vintage color palettes, classic fonts, and nostalgic design elements.",
-            "eyecare": "\n\nDevelop an eye-friendly style with soft, muted colors, larger font sizes, and high contrast.",
-            "cute": "\n\nCreate a cute and playful style with soft pastel colors, rounded corners, and fun typography.",
-            "custom": f"\n\nCreate a custom style based on the following description: {custom_description}"
-        }
-
-        prompt = base_prompt + style_specific_prompts.get(style, "\n\nCreate a balanced and professional style suitable for general use.")
-
-        return prompt
-
-    prompt = generate_prompt(style, page_structure, custom_description)
-
-    def generate_ai_style(method='api1'):
-        api_key = os.environ.get('DEEPSEEK_API_KEY', "sk-284923071d3f473a8c51dd51c0179f8a")
+    try:
+        # 生成提示
+        prompt = generate_prompt(style, page_structure, custom_description)
         
-        try:
-            if method == 'api1':
-                client = OpenAI(
-                    api_key=api_key,
-                    base_url="https://api.deepseek.com",
-                )
-                response = client.chat.completions.create(
-                    model="deepseek-chat",
-                    messages=[
-                        {"role": "system", "content": "You are a skilled web designer. Generate CSS code only, no explanations."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    stream=False,
-                )
-                
-                raw_content = response.choices[0].message.content
-                generated_style = extract_css_from_response(raw_content)
-                print(generated_style)
-            elif method == 'api2':
-                # 调用大模型渠道2方法
-                baseurl = "https://api.link-ai.tech/v1/chat/completions"
-                headers = {
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer Link_tYOZdFTnf0RDsOkryM5gk8lrUkwIBLZDFirsZko8XH"
-                }
-                body = {
-                    "app_code": "",
-                    "model": "claude-3-5-sonnet",
-                    "messages": [
-                        {"role": "system", "content": "You are a skilled web designer. Generate CSS code only, no explanations."},
-                        {"role": "user", "content": prompt}
-                    ]
-                }
-                res = requests.post(baseurl, json=body, headers=headers)
-                
-                if res.status_code == 200:
-                    raw_content = res.json().get("choices")[0]['message']['content']
-                    generated_style = extract_css_from_response(raw_content)
-                    print(generated_style)
-                else:
-                    error = res.json().get("error")
-                    print(f"请求异常, 错误码={res.status_code}, 错误类型={error.get('type')}, 错误信息={error.get('message')}")
-                    return jsonify({"message": "Failed to generate AI style", "error": str(error)}), 500
+        # 生成样式
+        generated_style = generate_ai_style_with_retry(prompt)
+        
+        if existing_style:
+            # 如果本地存储中有样式,使用现有的style_id
+            style_id = existing_style['style_id']
+            existing_css = existing_style['style_code']
             
+            # 合并新样式和现有样式
+            combined_style = merge_styles(existing_css, generated_style)
+            
+            # 更新或创建数据库记录
+            style_record = Style.query.filter_by(style_id=style_id).first()
+            if style_record:
+                style_record.style_code = combined_style
+                style_record.updated_at = datetime.utcnow()
+                style_record.description = f"Updated style for {url}"
             else:
-                return jsonify({"message": "Invalid method specified"}), 400
-
-            # 添加重试逻辑
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    new_style = Style(
-                        style_id=style_id,
-                        name="AI Generated",
-                        description=custom_description,
-                        style_url=url,
-                        style_code=generated_style,
-                        style_type=style
-                    )
-                    db.session.add(new_style)
-                    db.session.commit()
-                    break
-                except sqlalchemy.exc.OperationalError as e:
-                    if attempt == max_retries - 1:
-                        raise
-                    db.session.rollback()
-                    # 重新连接数据库
-                    db.session.remove()
-                    time.sleep(1)  # 等待1秒后重试
-
-            # 添加日志记录
-            app.logger.info(f"Generated site style for URL: {url}")
+                style_record = Style(
+                    style_id=style_id,
+                    name=f"Style for {url}",
+                    description=f"Combined style for {url}",
+                    style_url=url,
+                    style_code=combined_style,
+                    style_type=style,
+                    updated_at=datetime.utcnow()
+                )
+                db.session.add(style_record)
             
-            return jsonify({
-                "message": "AI style generated and saved successfully",
-                "style_code": generated_style,
-                "style_id": style_id
-            }), 200
+            app.logger.info(f"Updated existing style for URL: {url}")
+            final_style = combined_style
+            
+        else:
+            # 如果本地存储中没有样式,创建新记录
+            new_style = Style(
+                style_id=style_id,
+                name=f"Style for {url}",
+                description=custom_description or f"Generated style for {url}",
+                style_url=url,
+                style_code=generated_style,
+                style_type=style,
+                created_at=datetime.utcnow()
+            )
+            db.session.add(new_style)
+            app.logger.info(f"Created new style record for URL: {url}")
+            final_style = generated_style
 
-        except Exception as e:
-            db.session.rollback()
-            app.logger.error(f"Error in generate_ai_style: {str(e)}", exc_info=True)
-            return jsonify({"success": False, "error": str(e)}), 500
+        # 添加重试机制
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                db.session.commit()
+                break
+            except sqlalchemy.exc.OperationalError as e:
+                if attempt == max_retries - 1:
+                    raise
+                db.session.rollback()
+                db.session.remove()
+                time.sleep(1)
 
-    return generate_ai_style()
+        return jsonify({
+            "message": "AI style generated and saved successfully",
+            "style_code": final_style,
+            "style_id": style_id
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error in generate_ai_style: {str(e)}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+def merge_styles(existing_style, new_style):
+    """
+    合并两个CSS样式
+    
+    Args:
+        existing_style (str): 现有的CSS样式
+        new_style (str): 新生成的CSS样式
+    
+    Returns:
+        str: 合并后的CSS样式
+    """
+    try:
+        # 移除可能的重复选择器
+        existing_selectors = extract_selectors(existing_style)
+        new_style_lines = new_style.split('\n')
+        merged_lines = []
+        current_selector = None
+        
+        for line in new_style_lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            # 检查是否是选择器行
+            if '{' in line and '}' not in line:
+                current_selector = line.split('{')[0].strip()
+                if current_selector in existing_selectors:
+                    # 如果选择器已存在,跳过这个规则块
+                    while line and '}' not in line:
+                        line = next(new_style_lines, '').strip()
+                    continue
+                    
+            merged_lines.append(line)
+            
+        # 合并样式
+        merged_style = f"{existing_style.strip()}\n\n{'\n'.join(merged_lines)}"
+        
+        # 清理格式
+        merged_style = re.sub(r'\n\s*\n', '\n\n', merged_style)
+        merged_style = merged_style.strip()
+        
+        return merged_style
+        
+    except Exception as e:
+        app.logger.error(f"Error merging styles: {str(e)}")
+        # 如果合并失败,返回两个样式的简单拼接
+        return f"{existing_style.strip()}\n\n{new_style.strip()}"
+
+def extract_selectors(css_code):
+    """
+    从CSS代码中提取所有选择器
+    
+    Args:
+        css_code (str): CSS代码
+    
+    Returns:
+        set: 选择器集合
+    """
+    selectors = set()
+    # 使用正则表达式匹配选择器
+    pattern = r'([^{]+){[^}]*}'
+    matches = re.finditer(pattern, css_code)
+    
+    for match in matches:
+        selector = match.group(1).strip()
+        selectors.add(selector)
+        
+    return selectors
 
 # API路由：提交评分
 @app.route('/api/submit_rating', methods=['POST'])
@@ -365,29 +384,27 @@ def generate_element_style():
     element_details = data.get('elementDetails')
     description = data.get('description')
     url = data.get('url')
+    existing_style = data.get('existingStyle')  # 从请求中获取本地存储的样式信息
 
     if not all([element_details, description, url]):
         return jsonify({"success": False, "error": "Missing required data"}), 400
 
     try:
-        # 检查是否存在该站点的样式
-        existing_style = Style.query.filter_by(style_url=url).first()
-        
         # 生成提示
         prompt = generate_element_style_prompt(
             element_details,
             description,
-            existing_style.style_code if existing_style else None
+            existing_style['style_code'] if existing_style else None
         )
         
         # 生成样式
         generated_style = generate_ai_style_for_element(prompt)
+        element_selector = element_details['elementInfo']['path']
         
-        # 处理样式存储
         if existing_style:
-            # 如果存在站点样式,将新的元素样式合并到现有样式中
-            element_selector = element_details['elementInfo']['path']
-            existing_css = existing_style.style_code
+            # 如果本地存储中有样式,使用现有的style_id
+            style_id = existing_style['style_id']
+            existing_css = existing_style['style_code']
             
             # 移除该元素可能存在的旧样式
             existing_css = remove_element_style(existing_css, element_selector)
@@ -395,26 +412,42 @@ def generate_element_style():
             # 合并新样式
             combined_style = f"{existing_css}\n\n{element_selector} {{\n{generated_style}\n}}"
             
-            # 更新数据库
-            existing_style.style_code = combined_style
-            existing_style.updated_at = datetime.utcnow()
-            style_id = existing_style.style_id
+            # 更新或创建数据库记录
+            style = Style.query.filter_by(style_id=style_id).first()
+            if style:
+                style.style_code = combined_style
+                style.updated_at = datetime.utcnow()
+            else:
+                style = Style(
+                    style_id=style_id,
+                    name=f"Style for {url}",
+                    description=f"Combined style for {url}",
+                    style_url=url,
+                    style_code=combined_style,
+                    style_type='custom',
+                    updated_at=datetime.utcnow()
+                )
+                db.session.add(style)
+            
+            app.logger.info(f"Updated style for URL: {url} with new element style")
             
         else:
-            # 如果不存在站点样式,创建新的样式记录
+            # 如果本地存储中没有样式,创建新记录
             style_id = str(uuid.uuid4())
-            element_selector = element_details['elementInfo']['path']
             full_style = f"{element_selector} {{\n{generated_style}\n}}"
             
             new_style = Style(
                 style_id=style_id,
-                name=f"Site Style - {url}",
-                description=f"Combined style for {url}",
+                name=f"Style for {url}",
+                description=f"Style for {url} - {description}",
                 style_url=url,
                 style_code=full_style,
-                style_type='custom'
+                style_type='custom',
+                created_at=datetime.utcnow()
             )
             db.session.add(new_style)
+            
+            app.logger.info(f"Created new style record for URL: {url}")
         
         # 添加重试机制
         max_retries = 3
@@ -429,9 +462,6 @@ def generate_element_style():
                 db.session.remove()
                 time.sleep(1)
         
-        # 添加日志记录
-        app.logger.info(f"Generated element style for URL: {url}, Element: {element_details['elementInfo']['path']}")
-        
         return jsonify({
             "success": True,
             "style": generated_style,
@@ -443,6 +473,7 @@ def generate_element_style():
         app.logger.error(f"Error in generate_element_style: {str(e)}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
+# 生成用于元素样式的AI提示
 def generate_element_style_prompt(element_details, description, existing_style=None):
     """
     生成用于元素样式的AI提示
@@ -486,6 +517,7 @@ def generate_element_style_prompt(element_details, description, existing_style=N
     
     return base_prompt
 
+# 使用AI生成元素样式
 def generate_ai_style_for_element(prompt):
     """
     使用AI生成元素样式
@@ -559,6 +591,7 @@ def generate_ai_style_for_element(prompt):
         app.logger.error(f"Error generating element style: {str(e)}", exc_info=True)
         raise Exception(f"Failed to generate style: {str(e)}")
 
+#从CSS代码中移除指定元素的样式
 def remove_element_style(css_code, element_selector):
     """
     从CSS代码中移除指定元素的样式
