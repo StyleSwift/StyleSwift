@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" data-translate-key="metaDescription" content="StyleSwift - Witness the magic of AI transforming web pages. Join the waitlist for early access!" />
+  <title data-translate-key="pageTitle">StyleSwift | Experience AI Web Transformation</title>
+  
+  <!-- SEO Meta Tags (Keep updated ones) -->
+  <meta property="og:title" data-translate-key="ogTitle" content="StyleSwift | Experience AI Web Transformation" />
+  <meta property="og:title" content="StyleSwift | Experience AI Web Transformation" />
+  <meta property="og:description" data-translate-key="ogDescription" content="Drag the slider to see how {brandName} uses AI to instantly beautify any website. Join the waitlist!" />
+  <meta property="og:image" content="https://example.com/your-interactive-preview.jpg" /> <!-- Needs updated preview image -->
+  <meta property="og:url" content="https://example.com/your-landing-page-url" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" data-translate-key="twitterTitle" content="StyleSwift | Experience AI Web Transformation" />
+  <meta name="twitter:description" data-translate-key="twitterDescription" content="Drag the slider to see how {brandName} uses AI to instantly beautify any website. Join the waitlist!" />
+  <meta name="twitter:image" content="https://example.com/your-interactive-preview.jpg" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Consider adding a more expressive display font if desired -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            purple: { DEFAULT: '#8b5cf6', 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 400: '#a78bfa', 500: '#8b5cf6', 600: '#8E49E7', 700: '#7c3aed', 800: '#6d28d9', 900: '#5b21b6' },
+            orange: { DEFAULT: '#f97316', 400: '#f7ae51', 500: '#f97316' },
+            // Add more colors if needed for the new design
+            dark: '#1a1a1a', // Example dark background
+            light: '#fefefe', // Example light text/background
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            display: ['Syne', 'sans-serif'],
+          },
+          animation: {
+            'gradient-x':'gradient-x 10s ease infinite',
+          },
+          keyframes: {
+            'gradient-x': {
+              '0%, 100%': { 'background-position': '0% 50%' },
+              '50%': { 'background-position': '100% 50%' },
+            }
+          }
+        },
+      },
+    }
+  </script>
+
+  <style>
+    html {
+      scroll-behavior: smooth;
+    }
+    body {
+      background-color: #f5f3ff; /* Light purple bg */
+      color: #1a1a1a;
+    }
+
+    /* Interactive Hero Styles */
+    .interactive-hero {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9; /* Adjust aspect ratio as needed */
+      overflow: hidden;
+      border-radius: 1rem; /* Rounded corners */
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    .hero-before,
+    .hero-after {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      font-family: sans-serif; /* Generic font for example */
+    }
+
+    .hero-before {
+      background-image: url("{{ url_for('static', filename='pic/youzack/复古风/首页原样.png') }}"); /* Placeholder 'Before' Image */
+      z-index: 1;
+      /* Add styles to make it look 'dull' - e.g., grayscale? */
+      /* filter: grayscale(80%); */ 
+    }
+
+    .hero-after {
+      background-image: url("{{ url_for('static', filename='pic/youzack/复古风/首页美化后.png') }}"); /* Placeholder 'After' Image - make it look styled */
+      z-index: 2;
+      clip-path: inset(0 0 0 50%); /* Initially show 50% */
+    }
+
+    .hero-slider {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%; /* Initial position */
+      width: 4px;
+      background-color: rgba(255, 255, 255, 0.8);
+      cursor: ew-resize;
+      z-index: 3;
+      transform: translateX(-50%);
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      border-radius: 2px;
+    }
+    .hero-slider::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 30px;
+        height: 30px;
+        background-color: rgba(255, 255, 255, 0.9);
+        border-radius: 50%;
+        border: 2px solid #8b5cf6;
+        /* Add arrow icons inside later */
+    }
+
+    /* Basic section styling for visual flow */
+    .flow-section {
+      min-height: 80vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .flow-section h2 {
+        font-size: 3rem; /* Example */
+        font-weight: 700;
+        color: #333;
+    }
+     /* Add more specific styles per section */
+     
+    /* Scroll Animation for Flow Sections */
+    .animate-on-scroll {
+      opacity: 0;
+      transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+    }
+    .animate-on-scroll.slide-in-left {
+        transform: translateX(-40px);
+    }
+    .animate-on-scroll.slide-in-right {
+        transform: translateX(40px);
+    }
+    .animate-on-scroll.slide-in-bottom {
+        transform: translateY(40px);
+    }
+    
+    .animate-on-scroll.is-visible {
+      opacity: 1;
+      transform: translate(0, 0);
+    }
+
+    /* Animated Gradient Text */
+    .animated-gradient-text {
+        background: linear-gradient(to right, #8b5cf6, #f97316, #8b5cf6);
+        background-size: 200% auto;
+        color: #000;
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: gradient-x 4s linear infinite;
+    }
+
+  </style>
+</head>
+<body class="font-sans antialiased text-dark bg-purple-50 overflow-x-hidden">
+
+  <!-- Minimal Header -->
+  <header class="absolute top-0 left-0 right-0 z-50 py-6 px-4 md:px-8">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center">
+         <img src="{{ url_for('static', filename='pic/icon48.svg') }}" width="30" height="30" class="text-purple-600" data-translate-key="logoAlt" alt="StyleSwift Logo">
+          <span class="ml-2 text-xl font-bold animated-gradient-text -mb-[0.2rem]" data-translate-key="brandName">
+            StyleSwift
+          </span>
+      </div>
+      <div class="flex items-center space-x-4">
+        <a 
+          href="#waitlist"
+          class="bg-purple-600 text-white px-6 py-2 rounded-full font-medium transition-all duration-300 hover:bg-purple-700 hover:shadow-md text-sm"
+          data-translate-key="joinWaitlistBtnHeader"
+        >
+          Join Waitlist
+        </a>
+        <!-- Language Switcher -->
+        <div class="flex space-x-2 border-l border-purple-200 pl-4">
+          <button id="lang-en" class="text-sm font-medium text-purple-700 hover:text-purple-900 disabled:opacity-50 disabled:cursor-default" onclick="setLanguage('en')">EN</button>
+          <button id="lang-zh" class="text-sm font-medium text-purple-700 hover:text-purple-900 disabled:opacity-50 disabled:cursor-default" onclick="setLanguage('zh')">中文</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Section 1: Interactive Hero -->
+    <section class="min-h-screen flex flex-col items-center justify-center pt-24 pb-12 px-4 md:px-8 relative text-center">
+      <div class="absolute inset-0 bg-gradient-to-br from-purple-50 to-purple-100 opacity-50 z-0"></div>
+      
+      <div class="relative z-10 mb-8 max-w-4xl mx-auto">
+          <h1 class="text-4xl md:text-6xl font-bold mb-4 font-display">
+            <span data-translate-key="heroTitlePart1">See AI </span><span class="animated-gradient-text" data-translate-key="heroTitlePart2">Instantly</span><span data-translate-key="heroTitlePart3"> Restyle the Web</span>
+          </h1>
+          <p class="text-lg md:text-xl text-gray-700 mb-8 max-w-2xl mx-auto" data-translate-key="heroSubtitle">
+            Tired of cluttered designs? Drag the slider below to witness {brandName}'s AI magic transform a standard page into something beautiful and clean.
+          </p>
+      </div>
+
+      <div class="interactive-hero z-10 w-full max-w-5xl mx-auto">
+        <div class="hero-before">
+          <!-- Content inside 'before' div if needed, or just use background -->
+        </div>
+        <div class="hero-after">
+          <!-- Content inside 'after' div if needed -->
+        </div>
+        <div class="hero-slider" data-translate-key="heroSliderTitle" title="Drag to compare"></div>
+      </div>
+      
+      <a 
+        href="#waitlist"
+        class="mt-10 relative z-10 bg-gradient-to-r from-purple-600 to-orange-400 text-white px-10 py-4 rounded-full font-semibold text-lg transition-all duration-300 ease-out hover:shadow-xl transform hover:scale-105 hover:bg-gradient-to-l hover:from-purple-600 hover:to-orange-400"
+        data-translate-key="heroCta"
+      >
+        Join the Waitlist & Get Early Access
+      </a>
+    </section>
+
+    <!-- Section 2: Flow - Step 1 -->
+    <section class="flow-section bg-white">
+      <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row items-center gap-12">
+        <div class="md:w-3/5 animate-on-scroll slide-in-left">
+          <img src="{{ url_for('static', filename='pic/flow1.png') }}" data-translate-key="step1Alt" alt="Step 1: Activate StyleSwift with a click" class="rounded-lg w-full h-auto object-cover" loading="lazy" width="600" height="400">
+        </div>
+        <div class="md:w-2/5 text-left animate-on-scroll slide-in-right" style="transition-delay: 0.2s;">
+          <span class="text-purple-600 font-bold text-sm uppercase tracking-wider" data-translate-key="step1Label">Step 1</span>
+          <h3 class="font-display text-3xl font-bold mt-2 mb-4 text-gray-800" data-translate-key="step1Title">Activate with One Click</h3>
+          <p class="text-gray-600 text-lg leading-relaxed" data-translate-key="step1Desc">
+            Simply click the StyleSwift icon in your browser toolbar whenever you want to transform a page.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Flow - Step 2 -->
+    <section class="flow-section bg-purple-50">
+      <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row-reverse items-center gap-12">
+        <div class="md:w-3/5 animate-on-scroll slide-in-right">
+          <img src="{{ url_for('static', filename='pic/flow2.png') }}" data-translate-key="step2Alt" alt="Step 2: StyleSwift AI analyzes the page" class="rounded-lg w-full h-auto object-cover" loading="lazy" width="600" height="400">
+        </div>
+        <div class="md:w-2/5 text-left animate-on-scroll slide-in-left" style="transition-delay: 0.2s;">
+          <span class="text-purple-600 font-bold text-sm uppercase tracking-wider" data-translate-key="step2Label">Step 2</span>
+          <h3 class="font-display text-3xl font-bold mt-2 mb-4 text-gray-800" data-translate-key="step2Title">AI Understands & Adapts</h3>
+          <p class="text-gray-600 text-lg leading-relaxed" data-translate-key="step2Desc">
+             Our intelligent engine analyzes the page structure and content, ready to apply stunning styles or your custom preferences.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Flow - Step 3 -->
+     <section class="flow-section bg-white">
+       <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row items-center gap-12">
+         <div class="md:w-3/5 animate-on-scroll slide-in-left">
+          <img src="{{ url_for('static', filename='pic/flow3.png') }}" data-translate-key="step3Alt" alt="Step 3: Instantly beautified webpage result" class="rounded-lg w-full h-auto object-cover" loading="lazy" width="600" height="400">
+        </div>
+        <div class="md:w-2/5 text-left animate-on-scroll slide-in-right" style="transition-delay: 0.2s;">
+          <span class="text-purple-600 font-bold text-sm uppercase tracking-wider" data-translate-key="step3Label">Step 3</span>
+          <h3 class="font-display text-3xl font-bold mt-2 mb-4 text-gray-800" data-translate-key="step3Title">Enjoy Instant Beauty</h3>
+          <p class="text-gray-600 text-lg leading-relaxed" data-translate-key="step3Desc">
+            Watch the page transform instantly. Apply curated themes, fine-tune elements, or add helpful widgets.
+          </p>
+        </div>
+      </div>
+     </section>
+
+    <!-- Section 5: Waitlist - Final CTA -->
+    <section id="waitlist" class="py-20 md:py-32 bg-gradient-to-br from-purple-600 to-orange-500 text-white text-center">
+      <div class="container mx-auto px-4 md:px-6">
+         <h2 class="text-3xl md:text-5xl font-bold mb-6 font-display" data-translate-key="finalTitle">Ready for a Smarter Web?</h2>
+         <p class="text-lg md:text-xl text-purple-100 mb-10 max-w-2xl mx-auto" data-translate-key="finalSubtitle">
+           Be the first to experience AI-powered web customization. Join the {brandName} waitlist today.
+         </p>
+         <form id="finalWaitlistForm" class="max-w-lg mx-auto" onsubmit="handleWaitlistSubmit(event)" novalidate>
+           <div class="flex flex-col sm:flex-row gap-3 bg-white/20 p-2 rounded-full shadow-inner">
+              <input
+                type="email"
+                data-translate-key="finalPlaceholder"
+                placeholder="Enter your email address"
+                class="flex-1 px-6 py-3 rounded-full text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 placeholder-gray-500 disabled:bg-gray-200 text-base"
+                required
+              />
+              <button
+                type="submit"
+                data-translate-key="finalButton"
+                class="px-8 py-3 bg-white text-purple-600 rounded-full font-semibold transition-all duration-300 ease-out hover:bg-purple-100 hover:text-purple-700 disabled:opacity-70 disabled:cursor-not-allowed text-base"
+              >
+                Join Now
+              </button>
+            </div>
+         </form>
+         <div id="finalWaitlistSuccessMessage" class="mt-6 text-center text-green-300 font-medium hidden" data-translate-key="finalSuccess">Thank You! You are on the list.</div>
+         <p class="text-sm text-purple-200 mt-6" data-translate-key="finalNote">Free access during beta. No spam, promise.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Simplified Footer -->
+  <footer class="bg-purple-50 py-8">
+    <div class="container mx-auto px-4 md:px-6 text-center text-gray-600 text-sm">
+       <div class="mb-4">
+          <span class="font-bold text-purple-700" data-translate-key="brandNameFooter">StyleSwift</span> &nbsp;|&nbsp; <span data-translate-key="footerTagline">AI Web Beautifier</span>
+       </div>
+      <div class="space-x-4 mb-4">
+          <a href="#" class="hover:text-purple-600" data-translate-key="footerPrivacy">Privacy Policy</a>
+          <a href="#" class="hover:text-purple-600" data-translate-key="footerTerms">Terms</a>
+          <!-- Add social links if needed, keep minimal -->
+       </div>
+       <div>© <span id="currentYear"></span> <span data-translate-key="brandNameCopyright">StyleSwift</span>. <span data-translate-key="footerRights">All rights reserved.</span></div>
+    </div>
+  </footer>
+
+  <script>
+    // Interactive Hero Slider Logic
+    const slider = document.querySelector('.hero-slider');
+    const afterImage = document.querySelector('.hero-after');
+    const container = document.querySelector('.interactive-hero');
+    let isDragging = false;
+
+    function moveSlider(clientX) {
+        const rect = container.getBoundingClientRect();
+        let x = clientX - rect.left;
+        // Clamp position between 0 and container width
+        x = Math.max(0, Math.min(x, rect.width));
+        const percent = (x / rect.width) * 100;
+        slider.style.left = `${percent}%`;
+        afterImage.style.clipPath = `inset(0 0 0 ${percent}%)`;
+    }
+
+    if (slider && afterImage && container) {
+        slider.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            slider.style.cursor = 'ew-resize'; // Indicate dragging
+            container.style.cursor = 'ew-resize';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                slider.style.cursor = 'ew-resize';
+                container.style.cursor = 'default';
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            moveSlider(e.clientX);
+        });
+
+        // Touch events for mobile
+        slider.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            // Prevent page scroll while dragging slider
+            e.preventDefault(); 
+        }, { passive: false });
+
+        document.addEventListener('touchend', () => {
+            if (isDragging) {
+                isDragging = false;
+            }
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            moveSlider(e.touches[0].clientX);
+             e.preventDefault(); // Prevent page scroll
+        }, { passive: false });
+    }
+
+    // --- Language Switching Logic --- 
+    const translations = {
+      // English Translations
+      en: {
+        // Meta
+        pageTitle: 'StyleSwift | Experience AI Web Transformation',
+        metaDescription: 'StyleSwift - Witness the magic of AI transforming web pages. Join the waitlist for early access!',
+        ogTitle: 'StyleSwift | Experience AI Web Transformation',
+        ogDescription: 'Drag the slider to see how {brandName} uses AI to instantly beautify any website. Join the waitlist!',
+        twitterTitle: 'StyleSwift | Experience AI Web Transformation',
+        twitterDescription: 'Drag the slider to see how {brandName} uses AI to instantly beautify any website. Join the waitlist!',
+        logoAlt: 'StyleSwift Logo',
+        brandName: 'StyleSwift',
+        // Header
+        joinWaitlistBtnHeader: 'Join Waitlist',
+        // Hero
+        heroTitlePart1: 'See AI ',
+        heroTitlePart2: 'Instantly',
+        heroTitlePart3: ' Restyle the Web',
+        heroSubtitle: 'Tired of cluttered designs? Drag the slider below to witness {brandName}\'s AI magic transform a standard page into something beautiful and clean.',
+        heroSliderTitle: 'Drag to compare',
+        heroCta: 'Join the Waitlist & Get Early Access',
+        // Flow Step 1
+        step1Label: 'Step 1',
+        step1Title: 'Activate with One Click',
+        step1Desc: 'Simply click the StyleSwift icon in your browser toolbar whenever you want to transform a page.',
+        step1Alt: 'Step 1: Activate StyleSwift with a click',
+        // Flow Step 2
+        step2Label: 'Step 2',
+        step2Title: 'AI Understands & Adapts',
+        step2Desc: 'Our intelligent engine analyzes the page structure and content, ready to apply stunning styles or your custom preferences.',
+        step2Alt: 'Step 2: StyleSwift AI analyzes the page',
+        // Flow Step 3
+        step3Label: 'Step 3',
+        step3Title: 'Enjoy Instant Beauty',
+        step3Desc: 'Watch the page transform instantly. Apply curated themes, fine-tune elements, or add helpful widgets.',
+        step3Alt: 'Step 3: Instantly beautified webpage result',
+        // Final Waitlist
+        finalTitle: 'Ready for a Smarter Web?',
+        finalSubtitle: 'Be the first to experience AI-powered web customization. Join the {brandName} waitlist today.',
+        finalPlaceholder: 'Enter your email address',
+        finalButton: 'Join Now',
+        finalSuccess: 'Thank You! You are on the list.',
+        finalNote: 'Free access during beta. No spam, promise.',
+        // Footer
+        footerPrivacy: 'Privacy Policy',
+        footerTerms: 'Terms',
+        footerRights: 'All rights reserved.',
+        brandNameFooter: 'StyleSwift',
+        footerTagline: 'AI Web Beautifier',
+        brandNameCopyright: 'StyleSwift'
+      },
+      // Chinese Translations (简体中文)
+      zh: {
+        // Meta
+        pageTitle: '数字女娲 | 体验 AI 网页重塑',
+        metaDescription: '数字女娲 - 见证 AI 魔法重塑网页。加入候补名单，抢先体验！',
+        ogTitle: '数字女娲 | 体验 AI 网页重塑',
+        ogDescription: '拖动滑块，看{brandName}如何用 AI 即刻美化任何网站。加入候补名单！',
+        twitterTitle: '数字女娲 | 体验 AI 网页重塑',
+        twitterDescription: '拖动滑块，看{brandName}如何用 AI 即刻美化任何网站。加入候补名单！',
+        logoAlt: '数字女娲 Logo',
+        brandName: '数字女娲',
+        // Header
+        joinWaitlistBtnHeader: '加入候补',
+        // Hero
+        heroTitlePart1: '见证 AI ',
+        heroTitlePart2: '即刻',
+        heroTitlePart3: ' 重塑网页风格',
+        heroSubtitle: '厌倦了杂乱的设计？拖动下面的滑块，亲眼见证 {brandName} 的 AI 魔法如何将普通页面转变为美观简洁的杰作。',
+        heroSliderTitle: '拖动以对比',
+        heroCta: '加入候补名单 & 获取抢先体验',
+        // Flow Step 1
+        step1Label: '第一步',
+        step1Title: '一键激活',
+        step1Desc: '任何时候想要改造页面，只需点击浏览器工具栏中的 StyleSwift 图标。',
+        step1Alt: '第一步：点击激活 StyleSwift',
+        // Flow Step 2
+        step2Label: '第二步',
+        step2Title: 'AI 理解并适应',
+        step2Desc: '我们的智能引擎会分析页面结构和内容，准备应用精美样式或您的自定义偏好。',
+        step2Alt: '第二步：StyleSwift AI 分析页面',
+        // Flow Step 3
+        step3Label: '第三步',
+        step3Title: '即刻享受美化',
+        step3Desc: '看着页面瞬间转变。应用精选主题、微调元素或添加实用小部件。',
+        step3Alt: '第三步：即时美化的网页结果',
+        // Final Waitlist
+        finalTitle: '准备好迎接更智能的网络了吗？',
+        finalSubtitle: '率先体验 AI 驱动的网页定制。立即加入 {brandName} 候补名单。',
+        finalPlaceholder: '输入您的邮箱地址',
+        finalButton: '立即加入',
+        finalSuccess: '感谢您！您已成功加入名单。',
+        finalNote: 'Beta 期间免费使用。无垃圾邮件承诺。',
+        // Footer
+        footerPrivacy: '隐私政策',
+        footerTerms: '服务条款',
+        footerRights: '版权所有。',
+        brandNameFooter: '数字女娲',
+        footerTagline: 'AI Web Beautifier',
+        brandNameCopyright: '数字女娲'
+      }
+    };
+
+    let currentLanguage = 'en'; // Default language
+
+    function setLanguage(lang) {
+      if (!translations[lang]) {
+        console.warn(`Language "${lang}" not found in translations.`);
+        return;
+      }
+      currentLanguage = lang;
+      
+      document.querySelectorAll('[data-translate-key]').forEach(element => {
+        const key = element.getAttribute('data-translate-key');
+        const translation = translations[lang][key];
+        
+        if (translation !== undefined) {
+          if (element.tagName === 'IMG') {
+            element.alt = translation;
+          } else if (element.title && element.hasAttribute('data-translate-key')) {
+            element.title = translation;
+          } else if (element.tagName === 'META' && element.hasAttribute('data-translate-key')) {
+            element.content = translation.replace(/\{brandName\}/g, translations[lang]['brandName'] || 'StyleSwift');
+          } else if (element.tagName === 'INPUT' && element.placeholder) {
+            element.placeholder = translation;
+          } else {
+            if (translation.includes('{brandName}')) {
+                element.innerHTML = translation.replace(/\{brandName\}/g, translations[lang]['brandName'] || 'StyleSwift');
+            } else {
+                element.textContent = translation;
+            }
+          }
+        } else {
+          console.warn(`Translation key "${key}" not found for language "${lang}".`);
+        }
+      });
+
+      // Update button active state
+      document.getElementById('lang-en').disabled = (lang === 'en');
+      document.getElementById('lang-zh').disabled = (lang === 'zh');
+
+      // Optional: Store language preference
+      // localStorage.setItem('preferredLanguage', lang);
+
+      // Update document lang attribute
+      document.documentElement.lang = lang;
+    }
+
+    // Waitlist Form Submission (Updated for Backend Integration)
+    async function handleWaitlistSubmit(event) {
+      console.log('handleWaitlistSubmit called for form:', event.target.id);
+      event.preventDefault();
+      const form = event.target;
+      const emailInput = form.querySelector('input[type="email"]');
+      const submitButton = form.querySelector('button[type="submit"]');
+      const successMessageDivId = form.id.replace('Form', 'SuccessMessage');
+      const errorMessageDivId = form.id.replace('Form', 'ErrorMessage'); // Need to ensure this div exists in HTML
+      const successMessageDiv = document.getElementById(successMessageDivId);
+      const errorMessageDiv = document.getElementById(errorMessageDivId); // This might be null if div doesn't exist
+
+      const email = emailInput.value;
+
+      // Clear previous messages
+      console.log('Clearing previous messages...'); // Add log
+      if (successMessageDiv) successMessageDiv.classList.add('hidden');
+      if (errorMessageDiv) { // Check if errorMessageDiv exists before using it
+         errorMessageDiv.classList.add('hidden');
+         errorMessageDiv.textContent = '';
+      } else {
+          console.warn('Error message div not found with ID:', errorMessageDivId);
+      }
+
+
+      // Key Checkpoint 1: Validation
+      console.log('Checking email validity:', email);
+      if (!email || !emailInput.checkValidity()) {
+        console.log('Validation failed. Email:', email, 'Validity:', emailInput.checkValidity());
+        emailInput.reportValidity(); // This might show a browser default bubble
+        return; // Exit if validation fails
+      }
+      console.log('Validation passed.');
+
+      // Key Checkpoint 2: Disable elements
+      console.log('Disabling form elements...');
+      emailInput.disabled = true;
+      submitButton.disabled = true;
+      submitButton.textContent = 'Processing...'; // Give user feedback
+
+      // Key Checkpoint 3: Fetch call
+      try {
+          console.log('Attempting fetch to /api/join_waitlist with email:', email);
+          const response = await fetch('/api/join_waitlist', { // Call the backend API
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ email: email }),
+          });
+          console.log('Fetch request possibly sent. Response status (if received):', response.status); // Log after fetch attempt
+
+          // Check if response is ok before trying to parse JSON
+          const result = await response.json(); 
+          console.log('Parsed JSON result:', result); 
+
+          if (response.ok) {
+              console.log('Response OK');
+              // Success (2xx status code)
+              if (successMessageDiv) {
+                  // Use message from backend
+                  successMessageDiv.textContent = result.message || 'Success! Check your email.';
+                  successMessageDiv.classList.remove('hidden');
+              }
+               // Keep form disabled on success to prevent resubmission
+               submitButton.textContent = 'Submitted'; // Update button text
+
+          } else {
+              console.log('Response NOT OK:', response.status);
+              // Error (4xx, 5xx status code)
+              const errorMessage = result.message || `Error: ${response.statusText}`;
+              if (errorMessageDiv) {
+                  errorMessageDiv.textContent = errorMessage;
+                  errorMessageDiv.classList.remove('hidden');
+              } else {
+                   alert(errorMessage); // Fallback alert
+              }
+               // Re-enable form on error
+               emailInput.disabled = false;
+               submitButton.disabled = false;
+               // Restore original button text (you might need to store it or use translations)
+               const buttonKey = submitButton.getAttribute('data-translate-key');
+               submitButton.textContent = buttonKey ? (translations[currentLanguage][buttonKey] || 'Join Now') : 'Join Now';
+
+          }
+
+      } catch (error) {
+          console.error('Fetch catch block error:', error);
+          const networkErrorMsg = 'Network error. Please check your connection and try again.';
+          if (errorMessageDiv) {
+              errorMessageDiv.textContent = networkErrorMsg;
+              errorMessageDiv.classList.remove('hidden');
+          } else {
+               alert(networkErrorMsg); // Fallback alert
+          }
+           // Re-enable form on network error
+           emailInput.disabled = false;
+           submitButton.disabled = false;
+           const buttonKey = submitButton.getAttribute('data-translate-key');
+           submitButton.textContent = buttonKey ? (translations[currentLanguage][buttonKey] || 'Join Now') : 'Join Now';
+
+      }
+    }
+    
+    // Update copyright year
+    const currentYearSpan = document.getElementById('currentYear');
+    if (currentYearSpan) {
+        currentYearSpan.textContent = new Date().getFullYear();
+    }
+    
+    // --- Placeholder for Advanced Scroll Animations --- 
+    // For the visual flow sections, you'd implement Intersection Observer 
+    // or a library like GSAP here to trigger animations as sections scroll into view.
+    // Example using basic class toggling (like previous scroll animation):
+    const flowSections = document.querySelectorAll(".flow-section");
+    const observerOptions = { root: null, threshold: 0.3 }; // Adjust threshold
+
+    const observer = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          // Find animatable children within the intersecting section
+          const animatables = entry.target.querySelectorAll('.animate-on-scroll');
+          animatables.forEach(el => {
+              el.classList.add('is-visible'); // Use is-visible to trigger animation defined in CSS
+          });
+          // observer.unobserve(entry.target); // Optional: stop observing once visible
+        } else {
+          // Optional: Reset animation if element scrolls out of view
+          // const animatables = entry.target.querySelectorAll('.animate-on-scroll');
+          // animatables.forEach(el => {
+          //     el.classList.remove('is-visible');
+          // });
+        }
+      });
+    }, observerOptions);
+
+    flowSections.forEach(section => { observer.observe(section); });
+
+    // Set initial language (e.g., check localStorage or browser preference)
+    // const preferredLang = localStorage.getItem('preferredLanguage');
+    // const browserLang = navigator.language.split('-')[0]; // Get 'en', 'zh', etc.
+    // const initialLang = preferredLang || (translations[browserLang] ? browserLang : 'en');
+    const initialLang = /* preferredLang || */ (translations[navigator.language.split('-')[0]] ? navigator.language.split('-')[0] : 'en'); // Simplified initial lang detection
+    setLanguage('en'); // Start with English for now
+    // setLanguage(initialLang); // Uncomment this line to enable auto-detection
+
+  </script>
+</body>
+</html>

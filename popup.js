@@ -563,6 +563,9 @@ function getPageStructureAndGenerateStyle(tabId, style, customDescription) {
 
 // 应用自定义CSS的函数
 function applyCustomCSS(tabId, css) {
+    // 确保所有样式规则都有 !important
+    const enhancedCSS = addImportantToCSS(css);
+    
     // 先确保内容脚本已注入
     ensureContentScriptInjected(tabId).then(isInjected => {
         if (!isInjected) {
@@ -583,7 +586,7 @@ function applyCustomCSS(tabId, css) {
             const tryApplyStyle = (retryCount = 0) => {
                 chrome.tabs.sendMessage(tabId, {
                     action: "applyStyle",
-                    style: css,
+                    style: enhancedCSS,
                     styleId: styleId
                 }, response => {
                     if (chrome.runtime.lastError) {
@@ -598,12 +601,40 @@ function applyCustomCSS(tabId, css) {
 
                     console.log('自定义CSS应用成功');
                     chrome.storage.local.remove('defaultStyle');
-                    saveCustomCSSToDatabase(css, styleId);
+                    saveCustomCSSToDatabase(enhancedCSS, styleId);
                 });
             };
 
             tryApplyStyle();
         });
+    });
+}
+
+// 添加新的辅助函数来处理 CSS
+function addImportantToCSS(css) {
+    // 使用正则表达式匹配 CSS 规则
+    return css.replace(/([^{]+\{[^}]+\})/g, function(rule) {
+        // 分离选择器和样式声明
+        const parts = rule.split('{');
+        if (parts.length !== 2) return rule;
+        
+        const selector = parts[0];
+        const styles = parts[1].replace('}', '');
+        
+        // 处理每个样式声明
+        const enhancedStyles = styles.split(';')
+            .map(style => {
+                style = style.trim();
+                if (!style) return '';
+                if (style.includes('!important')) return style;
+                return style.endsWith(';') ? 
+                    style.slice(0, -1) + ' !important;' : 
+                    style + ' !important;';
+            })
+            .filter(Boolean)
+            .join(' ');
+            
+        return `${selector} { ${enhancedStyles} }`;
     });
 }
 
