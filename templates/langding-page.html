@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" data-translate-key="metaDescription" content="StyleSwift - Witness the magic of AI transforming web pages. Join the waitlist for early access!" />
   <title data-translate-key="pageTitle">StyleSwift | Experience AI Web Transformation</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='pic/icon48.svg') }}">
   
   <!-- SEO Meta Tags (Keep updated ones) -->
   <meta property="og:title" data-translate-key="ogTitle" content="StyleSwift | Experience AI Web Transformation" />
@@ -552,7 +553,7 @@
       const errorMessageDiv = document.getElementById(errorMessageDivId); // This might be null if div doesn't exist
 
       const email = emailInput.value;
-
+      
       // Clear previous messages
       console.log('Clearing previous messages...'); // Add log
       if (successMessageDiv) successMessageDiv.classList.add('hidden');
@@ -572,7 +573,7 @@
         return; // Exit if validation fails
       }
       console.log('Validation passed.');
-
+      
       // Key Checkpoint 2: Disable elements
       console.log('Disabling form elements...');
       emailInput.disabled = true;
@@ -598,10 +599,10 @@
           if (response.ok) {
               console.log('Response OK');
               // Success (2xx status code)
-              if (successMessageDiv) {
+      if (successMessageDiv) {
                   // Use message from backend
                   successMessageDiv.textContent = result.message || 'Success! Check your email.';
-                  successMessageDiv.classList.remove('hidden');
+          successMessageDiv.classList.remove('hidden');
               }
                // Keep form disabled on success to prevent resubmission
                submitButton.textContent = 'Submitted'; // Update button text
