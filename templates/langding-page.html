@@ -82,23 +82,23 @@
     }
 
     .hero-before {
-      background-image: url("{{ url_for('static', filename='pic/youzack/复古风/首页原样.png') }}"); /* Placeholder 'Before' Image */
+      background-image: url("{{ url_for('static', filename='pic/youzack/复古风/首页原样.png') }}"); /* Placeholder 'After' Image (Beautified) */
       z-index: 1;
-      /* Add styles to make it look 'dull' - e.g., grayscale? */
-      /* filter: grayscale(80%); */ 
+      /* Remove grayscale filter if it was added */
+      /* filter: grayscale(80%); */
     }
 
     .hero-after {
-      background-image: url("{{ url_for('static', filename='pic/youzack/复古风/首页美化后.png') }}"); /* Placeholder 'After' Image - make it look styled */
+      background-image: url("{{ url_for('static', filename='pic/youzack/复古风/首页美化后.png') }}"); /* Placeholder 'Before' Image (Original) */
       z-index: 2;
-      clip-path: inset(0 0 0 50%); /* Initially show 50% */
+      clip-path: inset(0 100% 0 0); /* Initially hide the 'Before' image */
     }
 
     .hero-slider {
       position: absolute;
       top: 0;
       bottom: 0;
-      left: 50%; /* Initial position */
+      left: 0%; /* Initial position at the left edge */
       width: 4px;
       background-color: rgba(255, 255, 255, 0.8);
       cursor: ew-resize;
@@ -107,7 +107,7 @@
       box-shadow: 0 0 10px rgba(0,0,0,0.3);
       border-radius: 2px;
       /* Apply nudge animation */
-      animation: nudge-slider 1.2s ease-in-out 1.8s 2; /* name duration timing-function delay iteration-count */
+      animation: nudge-slider 1.5s ease-in-out 1.8s 2; /* Adjusted duration slightly */
     }
     .hero-slider::before {
         content: '';
@@ -210,11 +210,10 @@
         animation: gradient-x 4s linear infinite;
     }
 
-    /* Nudge Animation for Slider Guidance */
+    /* Nudge Animation for Slider Guidance (Adjusted for left start) */
     @keyframes nudge-slider {
-      0%, 100% { transform: translateX(-50%); } /* Start and end centered */
-      25% { transform: translateX(calc(-50% - 8px)); } /* Nudge left */
-      75% { transform: translateX(calc(-50% + 8px)); } /* Nudge right */
+      0%, 100% { left: 0%; } /* Start and end at the left edge */
+      50% { left: 5%; } /* Nudge slightly to the right and back */
     }
 
     @keyframes pulse-button {
@@ -273,7 +272,7 @@
             <span data-translate-key="heroTitlePart1">See AI </span><span class="animated-gradient-text" data-translate-key="heroTitlePart2">Instantly</span><span data-translate-key="heroTitlePart3"> Restyle the Web</span>
           </h1>
           <p class="text-lg md:text-xl text-gray-700 mb-8 max-w-2xl mx-auto" data-translate-key="heroSubtitle">
-            Tired of cluttered designs? Drag the slider below to witness {brandName}'s AI magic transform a standard page into something beautiful and clean.
+            Tired of cluttered designs? Drag the slider to the right to witness {brandName}'s AI magic transform a standard page into something beautiful and clean.
           </p>
       </div>
 
@@ -477,7 +476,7 @@
         x = Math.max(0, Math.min(x, rect.width));
         const percent = (x / rect.width) * 100;
         slider.style.left = `${percent}%`;
-        afterImage.style.clipPath = `inset(0 0 0 ${percent}%)`;
+        afterImage.style.clipPath = `inset(0 ${100 - percent}% 0 0)`;
     }
 
     if (slider && afterImage && container) {
@@ -539,7 +538,7 @@
         heroTitlePart1: 'See AI ',
         heroTitlePart2: 'Instantly',
         heroTitlePart3: ' Restyle the Web',
-        heroSubtitle: 'Tired of cluttered designs? Drag the slider below to witness {brandName}\'s AI magic transform a standard page into something beautiful and clean.',
+        heroSubtitle: 'Tired of cluttered designs? Drag the slider to the right to witness {brandName}\'s AI magic transform a standard page into something beautiful and clean.',
         heroSliderTitle: 'Drag to compare',
         heroCta: 'Join the Waitlist & Get Early Access',
         heroDisclaimer: 'The website shown in the image is unrelated to this site and is for demonstration purposes only.',
@@ -599,7 +598,7 @@
         heroTitlePart1: '见证 AI ',
         heroTitlePart2: '即刻',
         heroTitlePart3: ' 重塑网页风格',
-        heroSubtitle: '厌倦了杂乱的设计？拖动下面的滑块，亲眼见证 {brandName} 的 AI 魔法如何将普通页面转变为美观简洁的杰作。',
+        heroSubtitle: '厌倦了杂乱的设计？向右拖动滑块，亲眼见证 {brandName} 的 AI 魔法如何将普通页面转变为美观简洁的杰作。',
         heroSliderTitle: '拖动以对比',
         heroCta: '加入候补名单 & 获取抢先体验',
         heroDisclaimer: '图片里的网站与本站无关，仅作演示使用',
