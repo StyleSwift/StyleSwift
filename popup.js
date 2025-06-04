@@ -178,15 +178,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // 处理全站点模式的应用按钮
     document.getElementById('applyAllSites').addEventListener('click', function() {
         const selectedWidget = widgetSelector.value;
-        if (selectedWidget === 'custom-code') {
-            const customHTML = document.getElementById('customHTML').value;
-            const customCSS = document.getElementById('customCSSAll').value;
-            const customJS = document.getElementById('customJS').value;
-            
-            applyCustomCodeToAllSites(customHTML, customCSS, customJS);
-        } else {
-            applyWidgetToAllSites(selectedWidget);
-        }
+        // 统一使用 applyWidgetToAllSitesEnhanced 处理所有挂件类型
+        applyWidgetToAllSitesEnhanced(selectedWidget);
     });
 
     // 选择元素按钮点击事件
@@ -431,67 +424,49 @@ function generateAndApplyStyle(style, customDescription = '') {
 
 // 处理样式应用函数
 function handleStyleApplication(tabId, style, customDescription, resolve, reject) {
-    // 如果选择了自定义CSS
-    if (style === 'custom-css') {
-        const customCSS = document.getElementById('customCSS');
-        if (customCSS) {
-            applyCustomCSS(tabId, customCSS.value, resolve, reject);
-        } else {
-            reject(new Error('自定义CSS输入框未找到'));
+    const startTime = getBeijingTime();
+    console.log('=== 样式应用处理开始 ===');
+    console.log('开始时间:', formatBeijingTime(startTime));
+    console.log('标签页ID:', tabId);
+    console.log('样式类型:', style);
+    console.log('自定义描述:', customDescription);
+
+    chrome.runtime.sendMessage({
+        action: "generateAndApplyStyle",
+        style: style,
+        customDescription: customDescription,
+        tabId: tabId
+    }, response => {
+        const endTime = getBeijingTime();
+        const duration = calculateDuration(startTime, endTime);
+        
+        console.log('=== 样式应用处理完成 ===');
+        console.log('结束时间:', formatBeijingTime(endTime));
+        console.log('总耗时:', duration.toFixed(3), '秒');
+        console.log('后台响应:', response);
+        
+        if (chrome.runtime.lastError) {
+            console.error('消息发送失败:', chrome.runtime.lastError);
+            reject(new Error('消息发送失败: ' + chrome.runtime.lastError.message));
+            return;
         }
-    } 
-    // 如果选择了默认样式
-    else if (style === 'default') {
-        // 发送消息给内容脚本,移除所有已应用的样式
-        chrome.tabs.sendMessage(tabId, { action: "removeAllStyles" }, function(response) {
-            if (chrome.runtime.lastError) {
-                console.error('移除样式时出错:', chrome.runtime.lastError);
-                alert('移除样式失败，请刷新页面后重试');
-                reject(new Error('移除样式失败'));
-                return;
+        
+        if (response && response.success) {
+            // 检查是否是重复样式
+            if (response.is_duplicate) {
+                console.log('🔄 检测到重复样式，使用现有样式:', response.style_id);
+                console.log('样式应用成功 - 已应用到所有网站');
+            } else {
+                console.log('✅ 新样式生成并应用成功:', response.style_id);
+                console.log('样式应用成功 - 已应用到所有网站');
             }
-
-            if (!response || !response.success) {
-                console.error('移除样式失败');
-                alert('移除样式失败，请刷新页面后重试');
-                reject(new Error('移除样式失败'));
-                return;
-            }
-
-            // 在本地存储中设置默认样式标志
-            chrome.storage.local.set({defaultStyle: true}, function() {
-                if (chrome.runtime.lastError) {
-                    console.error('设置默认样式标志时出错:', chrome.runtime.lastError);
-                    reject(new Error('设置默认样式标志时出错'));
-                    return;
-                }
-                console.log('默认样式标志已设置');
-            });
-            
-            // 获取当前标签页的URL并移除其存储的样式
-            chrome.tabs.get(tabId, function(tab) {
-                if (chrome.runtime.lastError) {
-                    console.error('获取标签页信息失败:', chrome.runtime.lastError);
-                    reject(new Error('获取标签页信息失败'));
-                    return;
-                }
-                chrome.storage.local.remove(tab.url, function() {
-                    if (chrome.runtime.lastError) {
-                        console.error('移除存储的样式时出错:', chrome.runtime.lastError);
-                        reject(new Error('移除存储的样式时出错'));
-                        return;
-                    }
-                    console.log('保存的样式已移除');
-                    resolve();
-                });
-            });
-        });
-    } 
-    // 如果选择了其他预设样式
-    else {
-        // 获取页面结构并生成相应的样式
-        getPageStructureAndGenerateStyle(tabId, style, customDescription, resolve, reject);
-    }
+            resolve();
+        } else {
+            const errorMsg = response ? response.error : '未知错误';
+            console.error('样式应用失败:', errorMsg);
+            reject(new Error(errorMsg));
+        }
+    });
 }
 
 // 获取页面结构并生成样式的函数
@@ -588,54 +563,70 @@ function getPageStructureAndGenerateStyle(tabId, style, customDescription, resol
 
 // 应用自定义CSS的函数
 function applyCustomCSS(tabId, css, resolve, reject) {
-    // 先确保内容脚本已注入
-    ensureContentScriptInjected(tabId).then(isInjected => {
-        if (!isInjected) {
-            console.error('无法注入内容脚本');
-            reject(new Error('无法注入内容脚本'));
+    const styleId = generateUniqueStyleId();
+    console.log('=== 应用自定义CSS开始 ===');
+    console.log('样式ID:', styleId);
+    console.log('CSS长度:', css ? css.length : 0);
+    
+    chrome.tabs.get(tabId, function(tab) {
+        if (chrome.runtime.lastError) {
+            console.error('获取标签页信息失败:', chrome.runtime.lastError);
+            reject(new Error('获取标签页信息失败'));
             return;
         }
 
-        const styleId = generateStyleId();
-        
-        // 使用 chrome.tabs.sendMessage 之前先检查标签页是否存在
-        chrome.tabs.get(tabId, function(tab) {
-            if (chrome.runtime.lastError) {
-                console.error('标签页不存在:', chrome.runtime.lastError);
-                reject(new Error('标签页不存在'));
-                return;
-            }
+        const hostname = new URL(tab.url).hostname;
+        console.log('目标域名:', hostname);
 
-            // 添加重试机制
-            const tryApplyStyle = (retryCount = 0) => {
-                chrome.tabs.sendMessage(tabId, {
-                    action: "applyStyle",
-                    style: css,
-                    styleId: styleId
-                }, response => {
-                    if (chrome.runtime.lastError) {
-                        if (retryCount < 3) {
-                            // 延迟 500ms 后重试
-                            setTimeout(() => tryApplyStyle(retryCount + 1), 500);
-                        } else {
-                            console.error('应用自定义CSS失败，已重试3次:', chrome.runtime.lastError);
-                            reject(new Error('应用自定义CSS失败'));
+        // 保存到后台数据库
+        saveCustomCSSToDatabase(css, styleId)
+            .then(result => {
+                console.log('CSS保存结果:', result);
+                
+                // 检查是否是重复样式
+                if (result.is_duplicate) {
+                    console.log('🔄 检测到重复CSS，使用现有样式:', result.style_id);
+                } else {
+                    console.log('✅ 新CSS保存成功:', result.style_id);
+                }
+
+                const finalStyleId = result.style_id;
+
+                // 应用到当前标签页并使用最终的样式ID
+                const tryApplyStyle = (retryCount = 0) => {
+                    chrome.tabs.sendMessage(tabId, {
+                        action: "applyStyle",
+                        style: css,
+                        styleId: finalStyleId
+                    }, function(response) {
+                        if (chrome.runtime.lastError) {
+                            console.warn(`尝试 ${retryCount + 1}: 发送消息失败:`, chrome.runtime.lastError);
+                            if (retryCount < 2) {
+                                console.log('重试应用样式...');
+                                setTimeout(() => tryApplyStyle(retryCount + 1), 1000);
+                            } else {
+                                console.error('应用样式最终失败');
+                                reject(new Error('应用样式失败: ' + chrome.runtime.lastError.message));
+                            }
+                            return;
                         }
-                        return;
-                    }
 
-                    console.log('自定义CSS应用成功');
-                    chrome.storage.local.remove('defaultStyle');
-                    saveCustomCSSToDatabase(css, styleId);
-                    resolve();
-                });
-            };
+                        if (response && response.success) {
+                            console.log('自定义CSS应用成功');
+                            resolve();
+                        } else {
+                            console.error('应用样式失败:', response);
+                            reject(new Error('应用样式失败'));
+                        }
+                    });
+                };
 
-            tryApplyStyle();
-        });
-    }).catch(error => {
-        console.error('确保内容脚本注入失败:', error);
-        reject(error);
+                tryApplyStyle();
+            })
+            .catch(error => {
+                console.error('保存CSS到数据库失败:', error);
+                reject(error);
+            });
     });
 }
 
@@ -716,28 +707,369 @@ function getUserSpecificInfo() {
     return Math.random().toString(36).substring(2, 15);
   }
 
-// 添加应用代码到所有站点的函数
-function applyCustomCodeToAllSites(html, css, js) {
-    // 这里实现将代码应用到所有站点的逻辑
-    chrome.storage.local.set({
-        globalCustomCode: {
-            html: html,
-            css: css,
-            js: js
-        }
-    }, function() {
-        console.log('全局自定义代码已保存');
-    });
+// 生成挂件ID的函数
+function generateWidgetId() {
+    return `widget_${Date.now()}`;
 }
 
-// 添加应用挂件到所有站点的函数
-function applyWidgetToAllSites(widgetType) {
-    // 这里实现将挂件应用到所有站点的逻辑
-    chrome.storage.local.set({
-        globalWidget: widgetType
-    }, function() {
-        console.log('全局挂件设置已保存');
-    });
+// 增强版应用挂件到所有站点函数
+async function applyWidgetToAllSitesEnhanced(widgetType) {
+    const requestStartTime = getBeijingTime();
+    console.log('=== 应用挂件到所有站点 ===');
+    console.log('开始时间:', formatBeijingTime(requestStartTime));
+    console.log('挂件类型:', widgetType);
+    
+    // 获取应用按钮，用于禁用状态控制
+    const applyButton = document.getElementById('applyAllSites');
+    let showLoading = false;
+    
+    try {
+        if (widgetType === 'default') {
+            // 移除所有挂件
+            console.log('移除所有挂件');
+            await removeAllWidgets();
+            return;
+        }
+        
+        let widgetData;
+        
+        if (['catgirl', 'transformer', 'pokemon'].includes(widgetType)) {
+            // 预设挂件：从数据库获取
+            console.log('获取预设挂件:', widgetType);
+            const response = await fetch('http://127.0.0.1:5000/api/apply_widget', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ widget_id: widgetType })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`获取预设挂件失败: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            widgetData = {
+                widgetId: data.widget_id,
+                html: data.html_code,
+                css: data.css_code,
+                js: data.js_code,
+                config: JSON.parse(data.default_config || '{}')
+            };
+        } else if (widgetType === 'custom-widget') {
+            // 自定义挂件：AI生成 - 需要显示加载状态
+            const description = document.getElementById('customWidgetDescription').value;
+            if (!description) {
+                console.warn('请先描述您想要的自定义挂件');
+                alert('请先描述您想要的自定义挂件');
+                return;
+            }
+            
+            showLoading = true;
+            console.log('=== 开始AI生成自定义挂件 ===');
+            console.log('显示加载指示器...');
+            document.getElementById('loadingIndicator').style.display = 'block';
+            
+            // 禁用按钮，防止重复点击
+            if (applyButton) {
+                applyButton.disabled = true;
+                console.log('已禁用应用按钮，防止重复请求');
+            }
+            
+            const aiStart = getBeijingTime();
+            console.log('AI生成开始时间:', formatBeijingTime(aiStart));
+            
+            widgetData = await generateCustomWidget(description);
+            
+            const aiEnd = getBeijingTime();
+            const aiDuration = calculateDuration(aiStart, aiEnd);
+            console.log('AI生成完成，耗时:', aiDuration.toFixed(3), '秒');
+            
+        } else if (widgetType === 'custom-code') {
+            // 自定义代码：保存并应用
+            const html = document.getElementById('customHTML').value;
+            const css = document.getElementById('customCSSAll').value;
+            const js = document.getElementById('customJS').value;
+            
+            console.log('=== 保存自定义代码挂件 ===');
+            widgetData = await saveCustomWidgetCode(html, css, js);
+        }
+        
+        if (widgetData) {
+            console.log('=== 开始应用挂件到所有标签页 ===');
+            console.log('挂件ID:', widgetData.widgetId);
+            
+            // 保存挂件配置到本地存储
+            await chrome.storage.local.set({
+                globalWidget: {
+                    ...widgetData,
+                    enabled: true
+                }
+            });
+            
+            // 通知所有标签页应用挂件
+            await applyWidgetToAllTabs(widgetData);
+            
+            if (widgetData.isDuplicate) {
+                console.log('🔄 使用现有挂件:', widgetData.widgetId);
+            } else {
+                console.log('✅ 新挂件应用成功:', widgetData.widgetId);
+            }
+            console.log('挂件应用成功 - 已应用到所有网站');
+        }
+    } catch (error) {
+        console.error('=== 应用挂件失败 ===');
+        console.error('错误详情:', error);
+        alert('应用挂件失败: ' + error.message);
+    } finally {
+        // 隐藏加载指示器
+        if (showLoading) {
+            console.log('隐藏加载指示器');
+            document.getElementById('loadingIndicator').style.display = 'none';
+        }
+        
+        // 重新启用按钮
+        if (applyButton) {
+            applyButton.disabled = false;
+            console.log('重新启用应用按钮');
+        }
+        
+        const requestEndTime = getBeijingTime();
+        const totalDuration = calculateDuration(requestStartTime, requestEndTime);
+        console.log('=== 挂件应用流程完成 ===');
+        console.log('总耗时:', totalDuration.toFixed(3), '秒');
+    }
+}
+
+// 生成自定义挂件
+async function generateCustomWidget(description, existingWidget = null) {
+    const functionStartTime = getBeijingTime();
+    console.log('=== generateCustomWidget 函数开始 ===');
+    console.log('函数开始时间:', formatBeijingTime(functionStartTime));
+    
+    try {
+        const widgetId = generateWidgetId();
+        console.log('生成的挂件ID:', widgetId);
+        console.log('描述内容:', description);
+        console.log('描述长度:', description ? description.length : 0, '字符');
+        console.log('现有挂件:', existingWidget ? '存在' : '无');
+        
+        const requestStartTime = getBeijingTime();
+        console.log('开始发送API请求 - 时间:', formatBeijingTime(requestStartTime));
+        
+        const response = await fetch('http://localhost:5000/api/generate_ai_widget', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                description: description,
+                widgetId: widgetId,
+                existingWidget: existingWidget
+            })
+        });
+
+        const requestEndTime = getBeijingTime();
+        const requestDuration = calculateDuration(requestStartTime, requestEndTime);
+        console.log('API请求完成 - 时间:', formatBeijingTime(requestEndTime));
+        console.log('API请求耗时:', requestDuration.toFixed(3), '秒');
+        console.log('响应状态码:', response.status);
+
+        const result = await response.json();
+        console.log('API响应解析完成');
+        console.log('响应数据长度:', JSON.stringify(result).length, '字符');
+        
+        if (response.ok) {
+            // 检查是否是重复挂件
+            if (result.is_duplicate) {
+                console.log('🔄 检测到重复挂件代码，使用现有挂件:', result.widget_id);
+                console.log('HTML代码长度:', result.html_code ? result.html_code.length : 0);
+                console.log('CSS代码长度:', result.css_code ? result.css_code.length : 0);
+                console.log('JS代码长度:', result.js_code ? result.js_code.length : 0);
+                
+                return {
+                    widgetId: result.widget_id,
+                    html: result.html_code,
+                    css: result.css_code,
+                    js: result.js_code,
+                    config: {
+                        position: { x: 20, y: 100 },
+                        size: { width: 200, height: 300 }
+                    },
+                    isDuplicate: true
+                };
+            } else {
+                console.log('✅ 新挂件生成成功:', result.widget_id);
+                console.log('HTML代码长度:', result.html_code ? result.html_code.length : 0);
+                console.log('CSS代码长度:', result.css_code ? result.css_code.length : 0);
+                console.log('JS代码长度:', result.js_code ? result.js_code.length : 0);
+                
+                return {
+                    widgetId: result.widget_id,
+                    html: result.html_code,
+                    css: result.css_code,
+                    js: result.js_code,
+                    config: {
+                        position: { x: 20, y: 100 },
+                        size: { width: 200, height: 300 }
+                    },
+                    isDuplicate: false
+                };
+            }
+        } else {
+            const errorMsg = result.error || '生成挂件失败';
+            console.error('API请求失败:', errorMsg);
+            throw new Error(errorMsg);
+        }
+    } catch (error) {
+        const errorTime = getBeijingTime();
+        console.error('=== generateCustomWidget 函数失败 ===');
+        console.error('错误时间:', formatBeijingTime(errorTime));
+        console.error('错误类型:', error.name);
+        console.error('错误消息:', error.message);
+        console.error('完整错误:', error);
+        throw error;
+    } finally {
+        const functionEndTime = getBeijingTime();
+        const totalDuration = calculateDuration(functionStartTime, functionEndTime);
+        console.log('=== generateCustomWidget 函数完成 ===');
+        console.log('函数结束时间:', formatBeijingTime(functionEndTime));
+        console.log('函数总耗时:', totalDuration.toFixed(3), '秒');
+    }
+}
+
+// 保存自定义代码挂件
+async function saveCustomWidgetCode(html, css, js) {
+    const functionStartTime = getBeijingTime();
+    console.log('=== saveCustomWidgetCode 函数开始 ===');
+    console.log('函数开始时间:', formatBeijingTime(functionStartTime));
+    
+    try {
+        const widgetId = generateWidgetId();
+        console.log('生成的挂件ID:', widgetId);
+        console.log('HTML代码长度:', html ? html.length : 0, '字符');
+        console.log('CSS代码长度:', css ? css.length : 0, '字符');
+        console.log('JS代码长度:', js ? js.length : 0, '字符');
+        console.log('总代码长度:', (html?.length || 0) + (css?.length || 0) + (js?.length || 0), '字符');
+        
+        const requestStartTime = getBeijingTime();
+        console.log('开始发送保存请求 - 时间:', formatBeijingTime(requestStartTime));
+        
+        const response = await fetch('http://localhost:5000/api/save_custom_widget_code', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                html: html,
+                css: css,
+                js: js,
+                widgetId: widgetId
+            })
+        });
+
+        const requestEndTime = getBeijingTime();
+        const requestDuration = calculateDuration(requestStartTime, requestEndTime);
+        console.log('保存请求完成 - 时间:', formatBeijingTime(requestEndTime));
+        console.log('保存请求耗时:', requestDuration.toFixed(3), '秒');
+        console.log('响应状态码:', response.status);
+
+        const result = await response.json();
+        console.log('保存响应解析完成');
+        console.log('响应消息:', result.message);
+        
+        if (response.ok) {
+            // 检查是否是重复挂件
+            if (result.is_duplicate) {
+                console.log('🔄 检测到重复挂件代码，使用现有挂件:', result.widget_id);
+                return {
+                    widgetId: result.widget_id,
+                    html: html || '',
+                    css: css || '',
+                    js: js || '',
+                    isDuplicate: true
+                };
+            } else {
+                console.log('✅ 新挂件代码保存成功:', result.widget_id);
+                return {
+                    widgetId: result.widget_id,
+                    html: html || '',
+                    css: css || '',
+                    js: js || '',
+                    isDuplicate: false
+                };
+            }
+        } else {
+            const errorMsg = result.message || '保存挂件失败';
+            console.error('保存请求失败:', errorMsg);
+            throw new Error(errorMsg);
+        }
+    } catch (error) {
+        const errorTime = getBeijingTime();
+        console.error('=== saveCustomWidgetCode 函数失败 ===');
+        console.error('错误时间:', formatBeijingTime(errorTime));
+        console.error('错误类型:', error.name);
+        console.error('错误消息:', error.message);
+        console.error('完整错误:', error);
+        throw error;
+    } finally {
+        const functionEndTime = getBeijingTime();
+        const totalDuration = calculateDuration(functionStartTime, functionEndTime);
+        console.log('=== saveCustomWidgetCode 函数完成 ===');
+        console.log('函数结束时间:', formatBeijingTime(functionEndTime));
+        console.log('函数总耗时:', totalDuration.toFixed(3), '秒');
+    }
+}
+
+// 应用挂件到所有标签页
+async function applyWidgetToAllTabs(widgetData) {
+    const tabs = await chrome.tabs.query({});
+    const normalTabs = tabs.filter(tab => 
+        !tab.url.startsWith('chrome-extension://') && 
+        !tab.url.startsWith('chrome://') &&
+        !tab.url.startsWith('edge://') &&
+        tab.url !== ''
+    );
+    
+    console.log(`开始向 ${normalTabs.length} 个标签页应用挂件`);
+    
+    for (const tab of normalTabs) {
+        try {
+            // 确保内容脚本已注入
+            await ensureContentScriptInjected(tab.id);
+            
+            // 发送挂件数据到标签页
+            await chrome.tabs.sendMessage(tab.id, {
+                action: "applyWidget",
+                widget: widgetData
+            });
+            
+            console.log(`挂件已应用到标签页: ${tab.title}`);
+        } catch (error) {
+            console.warn(`无法在标签页 ${tab.id} 应用挂件:`, error);
+        }
+    }
+}
+
+// 移除所有挂件
+async function removeAllWidgets() {
+    await chrome.storage.local.remove('globalWidget');
+    
+    const tabs = await chrome.tabs.query({});
+    const normalTabs = tabs.filter(tab => 
+        !tab.url.startsWith('chrome-extension://') && 
+        !tab.url.startsWith('chrome://')
+    );
+    
+    for (const tab of normalTabs) {
+        try {
+            await chrome.tabs.sendMessage(tab.id, {
+                action: "removeWidget"
+            });
+        } catch (error) {
+            console.warn(`无法在标签页 ${tab.id} 移除挂件:`, error);
+        }
+    }
+    
+    console.log('所有挂件已移除');
 }
 
 // 获取当前活动标签页的函数

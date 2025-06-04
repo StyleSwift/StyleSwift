@@ -13,6 +13,7 @@ import json
 import sqlalchemy
 import time
 import re
+import hashlib  # 用于计算代码哈希值
 from urllib.parse import urlparse, urljoin # For creating absolute URLs
 from flask_mail import Mail, Message  # Import Flask-Mail
 import secrets                          # For generating secure tokens
@@ -48,6 +49,67 @@ def calculate_duration(start_time, end_time=None):
         beijing_tz = timezone(timedelta(hours=8))
         end_time = end_time.replace(tzinfo=beijing_tz)
     return (end_time - start_time).total_seconds()
+
+def calculate_code_hash(content):
+    """
+    计算代码内容的SHA256哈希值，用于重复检测
+    
+    Args:
+        content (str): 代码内容
+    
+    Returns:
+        str: 哈希值字符串
+    """
+    if not content:
+        return None
+    
+    # 标准化代码内容：移除多余空白和换行
+    normalized_content = re.sub(r'\s+', ' ', content.strip())
+    
+    # 计算SHA256哈希
+    return hashlib.sha256(normalized_content.encode('utf-8')).hexdigest()
+
+def calculate_widget_hash(html_code, css_code, js_code):
+    """
+    计算挂件组合代码的哈希值
+    
+    Args:
+        html_code (str): HTML代码
+        css_code (str): CSS代码
+        js_code (str): JavaScript代码
+    
+    Returns:
+        str: 组合哈希值字符串
+    """
+    # 组合所有代码内容
+    combined_content = f"HTML:{html_code or ''}\nCSS:{css_code or ''}\nJS:{js_code or ''}"
+    return calculate_code_hash(combined_content)
+
+def check_duplicate_widget(html_code, css_code, js_code):
+    """
+    检查是否存在相同的挂件代码
+    
+    Args:
+        html_code (str): HTML代码
+        css_code (str): CSS代码
+        js_code (str): JavaScript代码
+    
+    Returns:
+        Widget: 如果找到重复的挂件则返回挂件对象，否则返回None
+    """
+    try:
+        # 计算当前挂件的哈希值
+        widget_hash = calculate_widget_hash(html_code, css_code, js_code)
+        
+        if widget_hash:
+            # 查询数据库中是否存在相同哈希值的挂件
+            existing_widget = Widget.query.filter_by(combined_code_hash=widget_hash).first()
+            return existing_widget
+        
+        return None
+    except Exception as e:
+        app.logger.error(f"检查重复挂件时出错: {str(e)}")
+        return None
 
 # 创建Flask应用实例
 app = Flask(__name__)
@@ -127,10 +189,11 @@ app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
 app.config['MAIL_MAX_EMAILS'] = None
 
-# Server Name for URL Generation
-app.config['SERVER_NAME'] = os.environ.get('SERVER_NAME')
+# Server Name for URL Generation (支持多个域名)
+app.config['SERVER_NAME'] = None  # 允许任何主机名
+# app.config['SERVER_NAME'] = os.environ.get('SERVER_NAME')
 app.config['APPLICATION_ROOT'] = '/'
-app.config['PREFERRED_URL_SCHEME'] = 'https' if app.config.get('SERVER_NAME') and not app.config['SERVER_NAME'].startswith('localhost') else 'http'
+app.config['PREFERRED_URL_SCHEME'] = 'https' if app.config.get('SERVER_NAME') and not (app.config.get('SERVER_NAME', '').startswith('localhost') or app.config.get('SERVER_NAME', '').startswith('127.0.0.1')) else 'http'
 
 # Optional: Flask Secret Key (Good practice)
 # app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
@@ -382,8 +445,30 @@ class Style(db.Model):
     description = db.Column(db.Text)  # 样式描述
     style_url = db.Column(db.String(255))  # 样式URL
     style_code = db.Column(db.Text)  # 样式代码
+    style_code_hash = db.Column(db.String(64), index=True)  # 样式代码哈希值，用于去重
     style_type = db.Column(db.Enum('default', 'custom-css', 'cute', 'custom', 'modern', 'retro', 'eyecare'), nullable=False)  # 样式类型
     preview_image_url = db.Column(db.String(255))  # 预览图URL
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'))  # 创建者ID
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+    total_ratings = db.Column(db.Integer, default=0)  # 总评分次数
+    total_score = db.Column(db.Float, default=0.0)  # 总评分
+    average_rating = db.Column(db.Float, default=0.0)  # 平均评分
+
+# 定义挂件模型 (参考样式模型设计)
+class Widget(db.Model):
+    __tablename__ = 'widgets'
+    id = db.Column(db.Integer, primary_key=True)  # 主键
+    widget_id = db.Column(db.String(100), unique=True, nullable=False)  # 挂件ID
+    name = db.Column(db.String(100), nullable=False)  # 挂件名称
+    description = db.Column(db.Text)  # 挂件描述
+    widget_type = db.Column(db.Enum('catgirl', 'transformer', 'pokemon', 'custom', 'custom-code'), nullable=False)  # 挂件类型
+    html_code = db.Column(db.Text)  # HTML代码
+    css_code = db.Column(db.Text)  # CSS代码
+    js_code = db.Column(db.Text)  # JavaScript代码
+    combined_code_hash = db.Column(db.String(64), index=True)  # 组合代码哈希值，用于去重
+    preview_image_url = db.Column(db.String(255))  # 预览图URL
+    default_config = db.Column(db.Text)  # 默认配置(JSON字符串格式)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'))  # 创建者ID
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
@@ -562,6 +647,22 @@ def generate_ai_style():
         db_operation_start = get_beijing_time()
         app.logger.info("开始数据库操作...")
         
+        # 计算样式代码哈希值
+        style_hash = calculate_code_hash(generated_style)
+        app.logger.info(f"计算样式哈希值: {style_hash}")
+        
+        # 检查是否已存在相同的样式代码
+        existing_style_by_hash = Style.query.filter_by(style_code_hash=style_hash).first()
+        if existing_style_by_hash:
+            app.logger.info(f"发现重复样式，使用现有记录: {existing_style_by_hash.style_id}")
+            # 返回现有样式的ID，避免重复存储
+            return jsonify({
+                "message": "Found existing style with same content",
+                "style_code": existing_style_by_hash.style_code,
+                "style_id": existing_style_by_hash.style_id,
+                "is_duplicate": True
+            }), 200
+        
         style_record = Style.query.filter_by(style_id=style_id).first()
         if style_record:
             app.logger.info(f"找到现有样式记录，ID: {style_id}")
@@ -575,6 +676,7 @@ def generate_ai_style():
                 app.logger.info("使用新生成的样式")
                 
             style_record.style_code = final_style
+            style_record.style_code_hash = style_hash
             style_record.updated_at = get_beijing_time()
             app.logger.info(f"更新现有样式记录完成，ID: {style_id}")
         else:
@@ -586,6 +688,7 @@ def generate_ai_style():
                 description=custom_description or f"Generated style for {url}",
                 style_url=url,
                 style_code=generated_style,
+                style_code_hash=style_hash,
                 style_type=style,
                 created_at=get_beijing_time()
             )
@@ -645,13 +748,11 @@ def generate_ai_style_with_retry(prompt, max_retries=3):
             # 首先尝试API1 (Deepseek)
             try:
                 app.logger.info("尝试使用 DeepSeek API...")
-                # 如果API1失败,尝试API2 (Claude)
                 api_key = os.environ.get('DEEPSEEK_API_KEY', "sk-a76edfa9a4fa4bab8a25eb030738e14d")
                 client = OpenAI(
                     api_key=api_key,
                     base_url="https://api.deepseek.com"
                 )
-                app.logger.info("DeepSeek 客户端初始化完成")
                 
                 deepseek_start = get_beijing_time()
                 app.logger.info(f"开始调用 DeepSeek API - {format_beijing_time(deepseek_start)}")
@@ -674,11 +775,11 @@ def generate_ai_style_with_retry(prompt, max_retries=3):
                 
                 raw_content = response.choices[0].message.content
                 app.logger.info(f"DeepSeek 返回内容长度: {len(raw_content)} 字符")
-                app.logger.debug(f"DeepSeek 原始返回内容: {raw_content[:200]}...")
                 
                 extracted_css = extract_css_from_response(raw_content)
                 app.logger.info(f"CSS 提取完成，长度: {len(extracted_css)} 字符")
                 return extracted_css
+                
             except Exception as e:
                 app.logger.warning(f"DeepSeek API (API1) failed on attempt {attempt + 1}/{max_retries}, trying Claude API (API2). Error: {str(e)}")
                 app.logger.debug(f"DeepSeek API error details: {repr(e)}", exc_info=True)
@@ -843,10 +944,26 @@ def save_custom_css():
         return jsonify({"message": "CSS, styleId, and url are required"}), 400
 
     try:
+        # 计算CSS哈希值
+        css_hash = calculate_code_hash(css)
+        app.logger.info(f"计算自定义CSS哈希值: {css_hash}")
+        
+        # 检查是否已存在相同的CSS代码
+        existing_style_by_hash = Style.query.filter_by(style_code_hash=css_hash).first()
+        if existing_style_by_hash:
+            app.logger.info(f"发现重复CSS，使用现有记录: {existing_style_by_hash.style_id}")
+            # 返回现有样式的ID，避免重复存储
+            return jsonify({
+                "message": "Found existing CSS with same content",
+                "style_id": existing_style_by_hash.style_id,
+                "is_duplicate": True
+            }), 200
+        
         new_style = Style(
             style_id=style_id,
             name="Custom CSS",
             style_code=css,
+            style_code_hash=css_hash,
             style_type="custom-css",
             style_url=url
         )
@@ -854,7 +971,8 @@ def save_custom_css():
         db.session.commit()
         return jsonify({
             "message": "Custom CSS saved successfully",
-            "style_id": style_id
+            "style_id": style_id,
+            "is_duplicate": False
         }), 200
     except sqlalchemy.exc.IntegrityError as e:
         db.session.rollback()
@@ -1091,6 +1209,409 @@ def remove_element_style(css_code, element_selector):
     cleaned_css = re.sub(r'\n\s*\n', '\n\n', cleaned_css)
     
     return cleaned_css.strip()
+
+# API路由：应用挂件 (参考样式应用模式)
+@app.route('/api/apply_widget', methods=['POST'])
+def apply_widget():
+    data = request.json
+    widget = Widget.query.filter_by(widget_id=data['widget_id']).first()
+    if widget:
+        return jsonify({
+            "message": "Widget applied successfully",
+            "html_code": widget.html_code,
+            "css_code": widget.css_code,
+            "js_code": widget.js_code,
+            "widget_id": widget.widget_id,
+            "default_config": widget.default_config
+        }), 200
+    return jsonify({"message": "Widget not found"}), 404
+
+# API路由：获取所有挂件 (参考获取所有样式)
+@app.route('/api/widgets', methods=['GET'])
+def get_widgets():
+    widgets = Widget.query.all()  # 查询所有挂件
+    return jsonify([{
+        "id": w.id, 
+        "widget_id": w.widget_id,
+        "name": w.name, 
+        "type": w.widget_type,
+        "description": w.description,
+        "preview_image_url": w.preview_image_url
+    } for w in widgets])  # 返回挂件列表
+
+# API路由：生成AI自定义挂件 (参考AI样式生成)
+@app.route('/api/generate_ai_widget', methods=['POST'])
+def generate_ai_widget():
+    request_start_time = get_beijing_time()
+    app.logger.info(f"=== 自定义挂件生成请求开始 ===")
+    app.logger.info(f"请求时间: {format_beijing_time(request_start_time)}")
+    
+    data = request.json
+    description = data.get('description')
+    widget_id = data.get('widgetId')
+    existing_widget = data.get('existingWidget')
+    
+    app.logger.info(f"请求参数 - 描述: {description}")
+    app.logger.info(f"请求参数 - 挂件ID: {widget_id}")
+    
+    if not widget_id:
+        return jsonify({"error": "widgetId is required"}), 400
+
+    try:
+        # 生成挂件提示词
+        app.logger.info("开始生成AI挂件提示词...")
+        prompt = generate_widget_prompt(description, existing_widget)
+        app.logger.info(f"提示词生成完成，长度: {len(prompt)} 字符")
+        
+        # 生成挂件代码
+        ai_request_start = get_beijing_time()
+        app.logger.info(f"开始调用AI服务生成挂件 - {format_beijing_time(ai_request_start)}")
+        generated_widget = generate_ai_widget_with_retry(prompt)
+        ai_request_end = get_beijing_time()
+        ai_duration = calculate_duration(ai_request_start, ai_request_end)
+        app.logger.info(f"AI服务调用完成 - 耗时: {ai_duration:.3f}秒")
+        
+        # 保存到数据库
+        db_operation_start = get_beijing_time()
+        app.logger.info("开始数据库操作...")
+        
+        # 计算挂件代码哈希值（用于日志记录）
+        try:
+            widget_hash = calculate_widget_hash(
+                generated_widget['html'], 
+                generated_widget['css'], 
+                generated_widget['js']
+            )
+            app.logger.info(f"计算挂件哈希值: {widget_hash}")
+        except Exception as e:
+            app.logger.warning(f"计算挂件哈希值失败: {str(e)}")
+            widget_hash = None
+        
+        # 安全地检查是否已存在相同的挂件代码
+        existing_widget_by_hash = check_duplicate_widget(generated_widget['html'], generated_widget['css'], generated_widget['js'])
+        app.logger.info(f"重复检测结果: {'找到重复' if existing_widget_by_hash else '未找到重复'}")
+        
+        # 检查是否已存在相同的挂件代码
+        if existing_widget_by_hash:
+            app.logger.info(f"发现重复挂件，使用现有记录: {existing_widget_by_hash.widget_id}")
+            # 返回现有挂件的信息，避免重复存储
+            return jsonify({
+                "message": "Found existing widget with same content",
+                "html_code": existing_widget_by_hash.html_code,
+                "css_code": existing_widget_by_hash.css_code,
+                "js_code": existing_widget_by_hash.js_code,
+                "widget_id": existing_widget_by_hash.widget_id,
+                "is_duplicate": True
+            }), 200
+        
+        widget_record = Widget.query.filter_by(widget_id=widget_id).first()
+        if widget_record:
+            app.logger.info(f"找到现有挂件记录，ID: {widget_id}")
+            widget_record.html_code = generated_widget['html']
+            widget_record.css_code = generated_widget['css']
+            widget_record.js_code = generated_widget['js']
+            widget_record.combined_code_hash = widget_hash
+            widget_record.updated_at = get_beijing_time()
+        else:
+            app.logger.info(f"创建新挂件记录，ID: {widget_id}")
+            widget_record = Widget(
+                widget_id=widget_id,
+                name="自定义挂件",
+                description=description,
+                widget_type='custom',
+                html_code=generated_widget['html'],
+                css_code=generated_widget['css'],
+                js_code=generated_widget['js'],
+                combined_code_hash=widget_hash,
+                default_config='{"position": {"x": 20, "y": 100}, "size": {"width": 200, "height": 300}}',
+                created_at=get_beijing_time()
+            )
+            db.session.add(widget_record)
+        
+        # 提交数据库事务
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                db.session.commit()
+                db_operation_end = get_beijing_time()
+                db_duration = calculate_duration(db_operation_start, db_operation_end)
+                app.logger.info(f"数据库事务提交成功 - 耗时: {db_duration:.3f}秒")
+                break
+            except sqlalchemy.exc.OperationalError as e:
+                app.logger.warning(f"数据库操作重试 {attempt + 1}/{max_retries}: {str(e)}")
+                if attempt == max_retries - 1:
+                    app.logger.error(f"数据库操作最终失败: {str(e)}")
+                    raise
+                db.session.rollback()
+                time.sleep(1)
+
+        request_end_time = get_beijing_time()
+        total_duration = calculate_duration(request_start_time, request_end_time)
+        app.logger.info(f"=== 自定义挂件生成请求完成 ===")
+        app.logger.info(f"总耗时: {total_duration:.3f}秒")
+
+        return jsonify({
+            "message": "AI widget generated and saved successfully",
+            "html_code": generated_widget['html'],
+            "css_code": generated_widget['css'],
+            "js_code": generated_widget['js'],
+            "widget_id": widget_id
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        request_end_time = get_beijing_time()
+        total_duration = calculate_duration(request_start_time, request_end_time)
+        app.logger.error(f"=== 自定义挂件生成请求失败 ===")
+        app.logger.error(f"失败时间: {format_beijing_time(request_end_time)}")
+        app.logger.error(f"总耗时: {total_duration:.3f}秒")
+        app.logger.error(f"错误详情: {str(e)}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# API路由：保存自定义代码挂件
+@app.route('/api/save_custom_widget_code', methods=['POST'])
+def save_custom_widget_code():
+    data = request.json
+    html_code = data.get('html')
+    css_code = data.get('css')
+    js_code = data.get('js')
+    widget_id = data.get('widgetId')
+
+    if not widget_id:
+        return jsonify({"message": "widgetId is required"}), 400
+
+    try:
+        # 计算挂件代码哈希值（用于日志记录）
+        try:
+            widget_hash = calculate_widget_hash(html_code, css_code, js_code)
+            app.logger.info(f"计算自定义挂件哈希值: {widget_hash}")
+        except Exception as e:
+            app.logger.warning(f"计算挂件哈希值失败: {str(e)}")
+            widget_hash = None
+        
+        # 安全地检查是否已存在相同的挂件代码
+        existing_widget_by_hash = check_duplicate_widget(html_code, css_code, js_code)
+        if existing_widget_by_hash:
+            app.logger.info(f"发现重复挂件代码，使用现有记录: {existing_widget_by_hash.widget_id}")
+            # 返回现有挂件的信息，避免重复存储
+            return jsonify({
+                "message": "Found existing widget with same content",
+                "widget_id": existing_widget_by_hash.widget_id,
+                "is_duplicate": True
+            }), 200
+        
+        widget_record = Widget.query.filter_by(widget_id=widget_id).first()
+        if widget_record:
+            # 更新现有记录
+            widget_record.html_code = html_code or ''
+            widget_record.css_code = css_code or ''
+            widget_record.js_code = js_code or ''
+            widget_record.combined_code_hash = widget_hash
+            widget_record.updated_at = get_beijing_time()
+        else:
+            # 创建新记录
+            widget_record = Widget(
+                widget_id=widget_id,
+                name="自定义代码挂件",
+                description="用户自定义代码挂件",
+                widget_type='custom-code',
+                html_code=html_code or '',
+                css_code=css_code or '',
+                js_code=js_code or '',
+                combined_code_hash=widget_hash,
+                default_config='{"position": {"x": 20, "y": 100}, "size": {"width": 200, "height": 300}}'
+            )
+            db.session.add(widget_record)
+        
+        db.session.commit()
+        return jsonify({
+            "message": "Custom widget code saved successfully",
+            "widget_id": widget_id,
+            "is_duplicate": False
+        }), 200
+    except sqlalchemy.exc.IntegrityError as e:
+        db.session.rollback()
+        return jsonify({"message": "Widget ID already exists"}), 409
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error saving widget code: {str(e)}")
+        return jsonify({"message": "Internal server error"}), 500
+
+def generate_widget_prompt(description, existing_widget=None):
+    """生成挂件的AI提示词"""
+    base_prompt = f"""Create a complete web widget based on the following description:
+
+Description: {description}
+
+Please generate a complete widget with the following structure:
+1. HTML: A self-contained HTML structure for the widget
+2. CSS: Styling for the widget (should be scoped to avoid conflicts)
+3. JavaScript: Interactive functionality for the widget
+
+Requirements:
+- The widget should be self-contained and not interfere with the host page
+- Use unique class names and IDs to avoid conflicts
+- Include basic interactive features appropriate for the widget type
+- Make it visually appealing and modern
+- Ensure responsive design
+- Add smooth animations and transitions where appropriate
+
+Output format should be:
+```html
+[HTML code here]
+```
+
+```css
+[CSS code here]
+```
+
+```javascript
+[JavaScript code here]
+```
+
+Focus on creating a functional, beautiful, and interactive widget."""
+
+    if existing_widget:
+        base_prompt += f"""
+
+Existing widget to improve:
+HTML: {existing_widget.get('html', '')}
+CSS: {existing_widget.get('css', '')}
+JavaScript: {existing_widget.get('js', '')}
+
+Please improve and enhance the existing widget based on the new description while maintaining its core functionality."""
+
+    return base_prompt
+
+def generate_ai_widget_with_retry(prompt, max_retries=3):
+    """使用重试机制生成AI挂件"""
+    app.logger.info(f"开始AI挂件生成 - 最大重试次数: {max_retries}")
+    
+    for attempt in range(max_retries):
+        app.logger.info(f"AI挂件调用尝试 {attempt + 1}/{max_retries}")
+        try:
+            # 首先尝试API1 (Deepseek)
+            try:
+                app.logger.info("尝试使用 DeepSeek API 生成挂件...")
+                api_key = os.environ.get('DEEPSEEK_API_KEY', "sk-a76edfa9a4fa4bab8a25eb030738e14d")
+                client = OpenAI(
+                    api_key=api_key,
+                    base_url="https://api.deepseek.com"
+                )
+                
+                deepseek_start = get_beijing_time()
+                app.logger.info(f"开始调用 DeepSeek API 生成挂件 - {format_beijing_time(deepseek_start)}")
+                
+                response = client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=[
+                        {"role": "system", "content": "You are a skilled web developer. Generate HTML, CSS, and JavaScript code for widgets."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=3000,
+                    stream=False,
+                    timeout=60
+                )
+                
+                deepseek_end = get_beijing_time()
+                deepseek_duration = calculate_duration(deepseek_start, deepseek_end)
+                app.logger.info(f"DeepSeek API 挂件调用成功 - 耗时: {deepseek_duration:.3f}秒")
+                
+                raw_content = response.choices[0].message.content
+                app.logger.info(f"DeepSeek 挂件返回内容长度: {len(raw_content)} 字符")
+                
+                extracted_widget = extract_widget_from_response(raw_content)
+                app.logger.info(f"挂件代码提取完成")
+                return extracted_widget
+                
+            except Exception as e:
+                app.logger.warning(f"DeepSeek API 挂件生成失败，尝试 Claude API: {str(e)}")
+                
+                # 如果API1失败,尝试API2 (Claude)
+                baseurl = "https://api.link-ai.tech/v1/chat/completions"
+                headers = {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "Authorization": "Bearer Link_tYOZdFTnf0RDsOkryM5gk8lrUkwIBLZDFirsZko8XH"
+                }
+                body = {
+                    "app_code": "",
+                    "model": "claude-3-5-sonnet",
+                    "messages": [
+                        {"role": "system", "content": "You are a skilled web developer. Generate HTML, CSS, and JavaScript code for widgets."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 3000
+                }
+                
+                claude_start = get_beijing_time()
+                app.logger.info(f"开始调用 Claude API 生成挂件 - {format_beijing_time(claude_start)}")
+                
+                response = requests.post(baseurl, json=body, headers=headers, timeout=60)
+                
+                claude_end = get_beijing_time()
+                claude_duration = calculate_duration(claude_start, claude_end)
+                
+                if response.status_code == 200:
+                    app.logger.info(f"Claude API 挂件调用成功 - 耗时: {claude_duration:.3f}秒")
+                    result = response.json()
+                    raw_content = result['choices'][0]['message']['content']
+                    app.logger.info(f"Claude 挂件返回内容长度: {len(raw_content)} 字符")
+                    
+                    extracted_widget = extract_widget_from_response(raw_content)
+                    app.logger.info(f"挂件代码提取完成")
+                    return extracted_widget
+                else:
+                    error_message = f"Claude API 挂件生成失败 status {response.status_code}"
+                    try:
+                        error_details = response.json()
+                        error_message += f" - Details: {json.dumps(error_details)}"
+                    except ValueError:
+                        error_message += f" - Content: {response.text}"
+                    app.logger.error(error_message)
+                    raise Exception(error_message)
+
+        except Exception as e:
+            app.logger.error(f"挂件生成重试 {attempt + 1}/{max_retries} 失败: {str(e)}", exc_info=True)
+            if attempt == max_retries - 1:
+                raise Exception(f"挂件生成失败，已重试 {max_retries} 次: {str(e)}")
+            time.sleep(1)
+
+def extract_widget_from_response(response_content):
+    """从AI响应中提取并格式化挂件代码"""
+    widget = {
+        'html': '',
+        'css': '',
+        'js': ''
+    }
+    
+    # 提取HTML代码
+    html_match = re.search(r'```html\n(.*?)\n```', response_content, re.DOTALL | re.IGNORECASE)
+    if html_match:
+        widget['html'] = html_match.group(1).strip()
+    
+    # 提取CSS代码
+    css_match = re.search(r'```css\n(.*?)\n```', response_content, re.DOTALL | re.IGNORECASE)
+    if css_match:
+        widget['css'] = css_match.group(1).strip()
+    
+    # 提取JavaScript代码
+    js_match = re.search(r'```javascript\n(.*?)\n```', response_content, re.DOTALL | re.IGNORECASE)
+    if not js_match:
+        js_match = re.search(r'```js\n(.*?)\n```', response_content, re.DOTALL | re.IGNORECASE)
+    if js_match:
+        widget['js'] = js_match.group(1).strip()
+    
+    # 如果没有找到特定的代码块，尝试从整个响应中提取
+    if not any(widget.values()):
+        # 这里可以添加更多的提取逻辑
+        widget['html'] = '<div class="custom-widget">挂件生成中...</div>'
+        widget['css'] = '.custom-widget { padding: 20px; background: #f0f0f0; border-radius: 8px; }'
+        widget['js'] = '// 挂件JavaScript代码'
+    
+    return widget
 
 # 主程序入口
 if __name__ == '__main__':

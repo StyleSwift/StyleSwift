@@ -307,25 +307,35 @@ function isExtensionContextValid() {
     }
 }
 
+// 添加一个全局变量来跟踪警告状态
+let contextInvalidationWarned = false;
+
 // 监听来自扩展程序的消息
 function initializeContentScript() {
     const maxRetries = 5; // 增加最大重试次数
     let retryCount = 0;
+    let initWarned = false; // 添加初始化警告标志
     const retryDelay = 800; // 增加重试间隔
 
     function tryInitialize() {
         if (!isExtensionContextValid()) {
-            console.warn('Extension context is invalid during initialization, attempt:', retryCount + 1);
+            if (!initWarned) {
+                console.info('🔄 等待扩展初始化完成...', '尝试次数:', retryCount + 1);
+                initWarned = true;
+            }
             
             if (retryCount < maxRetries) {
                 retryCount++;
                 setTimeout(tryInitialize, retryDelay);
                 return;
             } else {
-                console.error('Extension initialization failed after', maxRetries, 'attempts');
+                console.warn('⚠️ 扩展初始化超时，请刷新页面重试');
                 return;
             }
         }
+
+        // 重置警告标志
+        initWarned = false;
 
         try {
             chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -361,9 +371,18 @@ function initializeContentScript() {
                     } else if (request.action === "removeAllStyles") {
                         const success = removeAllAppliedStyles();
                         sendResponse({success: success});
+                    } else if (request.action === "applyWidget") {
+                        const result = applyWidget(request.widget);
+                        sendResponse(result);
+                    } else if (request.action === "removeWidget") {
+                        const success = removeWidget();
+                        sendResponse({success: success});
                     }
                 } catch (error) {
-                    console.error('Content script error:', error);
+                    // 静默处理上下文无效错误，避免控制台噪音
+                    if (!error.message.includes('Extension context invalidated')) {
+                        console.error('Content script error:', error);
+                    }
                     sendResponse({ success: false, error: error.message });
                 }
                 return true;
@@ -372,14 +391,14 @@ function initializeContentScript() {
             // 添加错误处理的监听器
             chrome.runtime.onMessageExternal?.addListener(() => {
                 if (!isExtensionContextValid()) {
-                    console.warn('Extension context invalidated');
+                    // 静默处理，不显示警告
                     return;
                 }
             });
 
             // 监听扩展上下文失效
             chrome.runtime.onSuspend?.addListener(() => {
-                console.warn('Extension is being suspended');
+                console.info('🔄 扩展正在暂停...');
             });
 
             // 确保在页面加载和DOM变化时检查并应用样式
@@ -400,6 +419,29 @@ function initializeContentScript() {
                 if (namespace === 'local' && changes[window.location.hostname]) {
                     checkAndApplyStyle();
                 }
+                
+                // 监听全局挂件变化（包括位置和尺寸同步）
+                if (namespace === 'local' && changes['globalWidget']) {
+                    console.log('检测到全局挂件配置变化');
+                    const newValue = changes['globalWidget'].newValue;
+                    const oldValue = changes['globalWidget'].oldValue;
+                    
+                    // 如果挂件已存在，检查是否需要同步状态
+                    if (currentWidget && newValue && newValue.enabled) {
+                        // 检查是否是位置或尺寸的变化
+                        const configChanged = 
+                            JSON.stringify(newValue.config?.position) !== JSON.stringify(oldValue?.config?.position) ||
+                            JSON.stringify(newValue.config?.size) !== JSON.stringify(oldValue?.config?.size);
+                            
+                        if (configChanged) {
+                            console.log('检测到挂件状态变化，正在同步...');
+                            syncWidgetState(newValue);
+                        }
+                    } else {
+                        // 挂件不存在或配置发生重大变化，重新应用
+                        checkAndApplyGlobalWidget();
+                    }
+                }
             });
 
             console.log('Content script initialized');
@@ -409,6 +451,9 @@ function initializeContentScript() {
 
             // 确保在初始化完成后再检查样式
             setTimeout(checkAndApplyStyle, 100);
+            
+            // 检查并应用全局挂件
+            setTimeout(checkAndApplyGlobalWidget, 300);
 
             // 添加恢复机制
             window.addEventListener('error', function(event) {
@@ -419,7 +464,7 @@ function initializeContentScript() {
                 }
             });
 
-            console.log('Content script initialized successfully');
+            console.log('✅ StyleSwift 扩展初始化成功');
 
         } catch (error) {
             console.error('Error in initializeContentScript:', error);
@@ -520,9 +565,16 @@ async function checkAndApplyStyle() {
     try {
         // 首先检查扩展上下文是否有效
         if (!isExtensionContextValid()) {
-            console.warn('Extension context invalidated. Skipping checkAndApplyStyle.');
+            // 只在第一次遇到上下文无效时显示警告，避免重复警告
+            if (!contextInvalidationWarned) {
+                console.info('🔄 扩展正在重新加载中，样式将在重新加载完成后自动应用');
+                contextInvalidationWarned = true;
+            }
             return;
         }
+
+        // 重置警告标志（如果上下文有效）
+        contextInvalidationWarned = false;
 
         const hostname = window.location.hostname;
         const data = await chrome.storage.local.get(hostname);
@@ -559,7 +611,15 @@ async function checkAndApplyStyle() {
             }
         }
     } catch (error) {
-        console.error('Error checking and applying style:', error);
+        // 检查是否是扩展上下文相关的错误
+        if (error.message && error.message.includes('Extension context invalidated')) {
+            if (!contextInvalidationWarned) {
+                console.info('🔄 扩展上下文已重置，功能将在扩展重新加载后恢复');
+                contextInvalidationWarned = true;
+            }
+        } else {
+            console.error('Error checking and applying style:', error);
+        }
     }
 }
 
@@ -1748,6 +1808,872 @@ function simplifySelector(selector) {
     
     // 如果没有特殊标识，返回原始选择器
     return selector;
+}
+
+// ========== 挂件功能区域 ==========
+
+// 全局变量存储当前挂件实例
+let currentWidget = null;
+
+// 预定义的挂件行为模式 - 完全避免动态代码执行
+const WIDGET_BEHAVIORS = {
+    // 点击交互
+    click: {
+        bounce: (element) => {
+            element.style.transform = 'scale(0.9)';
+            setTimeout(() => { element.style.transform = 'scale(1)'; }, 150);
+        },
+        pulse: (element) => {
+            element.style.animation = 'pulse 0.5s ease';
+            setTimeout(() => { element.style.animation = ''; }, 500);
+        },
+        rotate: (element) => {
+            const currentRotation = element.dataset.rotation || '0';
+            const newRotation = (parseInt(currentRotation) + 90) % 360;
+            element.style.transform = `rotate(${newRotation}deg)`;
+            element.dataset.rotation = newRotation;
+        }
+    },
+    
+    // 悬停交互
+    hover: {
+        glow: (element) => {
+            element.style.boxShadow = '0 0 20px rgba(255, 255, 255, 0.8)';
+        },
+        grow: (element) => {
+            element.style.transform = 'scale(1.1)';
+        },
+        fade: (element) => {
+            element.style.opacity = '0.7';
+        }
+    },
+    
+    // 自动动画
+    animation: {
+        floating: (element) => {
+            let direction = 1;
+            let position = 0;
+            setInterval(() => {
+                position += direction * 0.5;
+                if (Math.abs(position) > 10) direction *= -1;
+                element.style.transform = `translateY(${position}px)`;
+            }, 50);
+        },
+        rotating: (element) => {
+            let rotation = 0;
+            setInterval(() => {
+                rotation += 1;
+                element.style.transform = `rotate(${rotation}deg)`;
+            }, 50);
+        },
+        blinking: (element) => {
+            let visible = true;
+            setInterval(() => {
+                element.style.opacity = visible ? '0.3' : '1';
+                visible = !visible;
+            }, 1000);
+        }
+    },
+    
+    // 音频交互
+    audio: {
+        click: () => {
+            try {
+                // 使用Web Audio API创建简单音效
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } catch (e) {
+                console.log('音效播放失败:', e);
+            }
+        },
+        meow: () => {
+            try {
+                // 模拟猫叫声
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(600, audioContext.currentTime + 0.1);
+                oscillator.frequency.linearRampToValueAtTime(300, audioContext.currentTime + 0.3);
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (e) {
+                console.log('猫叫音效播放失败:', e);
+            }
+        }
+    }
+};
+
+// 应用挂件到页面
+function applyWidget(widgetData) {
+    console.log('=== Content: 收到挂件应用请求 ===');
+    console.log('应用时间:', formatBeijingTime());
+    console.log('挂件ID:', widgetData.widgetId);
+    console.log('挂件数据:', widgetData);
+    
+    try {
+        // 移除现有挂件
+        removeWidget();
+        
+        // 创建挂件容器
+        const widgetContainer = createWidgetContainer(widgetData);
+        
+        // 添加到页面
+        document.body.appendChild(widgetContainer);
+        
+        // 存储当前挂件引用
+        currentWidget = widgetContainer;
+        
+        // 保存挂件信息到本地存储
+        chrome.storage.local.set({
+            currentPageWidget: {
+                widgetId: widgetData.widgetId,
+                applied: true,
+                timestamp: Date.now()
+            }
+        });
+        
+        console.log('挂件应用成功');
+        return { success: true };
+        
+    } catch (error) {
+        console.error('应用挂件失败:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// 创建挂件容器（使用Shadow DOM封装）
+function createWidgetContainer(widgetData) {
+    // 创建主容器
+    const container = document.createElement('div');
+    container.id = 'styleswift-widget-container';
+    container.style.cssText = `
+        position: fixed;
+        z-index: 999999;
+        pointer-events: none;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    `;
+    
+    // 创建挂件包装器
+    const widgetWrapper = document.createElement('div');
+    widgetWrapper.className = 'styleswift-widget-wrapper';
+    widgetWrapper.style.cssText = `
+        position: absolute;
+        pointer-events: auto;
+        cursor: move;
+        user-select: none;
+        transform-origin: center;
+        transition: transform 0.2s ease;
+    `;
+    
+    // 设置初始位置和大小（优先使用全局配置）
+    const defaultConfig = {
+        position: { x: 20, y: 100 },
+        size: { width: 200, height: 300 }
+    };
+    
+    // 合并配置：优先使用传入的config，然后是默认配置
+    const config = {
+        position: {
+            x: widgetData.config?.position?.x ?? defaultConfig.position.x,
+            y: widgetData.config?.position?.y ?? defaultConfig.position.y
+        },
+        size: {
+            width: widgetData.config?.size?.width ?? defaultConfig.size.width,
+            height: widgetData.config?.size?.height ?? defaultConfig.size.height
+        },
+        isMinimized: widgetData.config?.isMinimized ?? false
+    };
+    
+    console.log('应用挂件配置:', config);
+    
+    widgetWrapper.style.left = config.position.x + 'px';
+    widgetWrapper.style.top = config.position.y + 'px';
+    widgetWrapper.style.width = config.size.width + 'px';
+    widgetWrapper.style.height = config.size.height + 'px';
+    
+    // 应用缩小状态
+    if (config.isMinimized) {
+        widgetWrapper.style.transform = 'scale(0.3)';
+        console.log('应用保存的缩小状态');
+    }
+    
+    // 创建Shadow DOM
+    const shadow = widgetWrapper.attachShadow({ mode: 'closed' });
+    
+    // 添加样式到Shadow DOM
+    const style = document.createElement('style');
+    style.textContent = `
+        :host {
+            display: block;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .widget-content {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            overflow: visible;
+            position: relative;
+        }
+        
+        .widget-controls {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: rgba(0,0,0,0.6);
+            padding: 2px;
+            border-radius: 4px;
+            display: flex;
+            gap: 2px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 10;
+        }
+        
+        .widget-content:hover .widget-controls {
+            opacity: 1;
+        }
+        
+        .control-btn {
+            width: 14px;
+            height: 14px;
+            border: none;
+            background: rgba(255,255,255,0.9);
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 9px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255,255,255,1);
+        }
+        
+        .resize-handle {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 10px;
+            height: 10px;
+            background: rgba(0,0,0,0.2);
+            cursor: nw-resize;
+            border-radius: 2px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .widget-content:hover .resize-handle {
+            opacity: 1;
+        }
+        
+        .resize-handle:hover {
+            background: rgba(0,0,0,0.4);
+        }
+        
+        /* 添加基础动画关键帧 */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        
+        /* 挂件特定样式 */
+        ${widgetData.css || ''}
+    `;
+    shadow.appendChild(style);
+    
+    // 创建挂件内容
+    const content = document.createElement('div');
+    content.className = 'widget-content';
+    content.innerHTML = `
+        <div class="widget-controls">
+            <button class="control-btn close-btn" title="关闭">×</button>
+            <button class="control-btn minimize-btn" title="最小化">−</button>
+        </div>
+        ${widgetData.html || '<div style="padding: 20px; text-align: center;">挂件内容</div>'}
+        <div class="resize-handle"></div>
+    `;
+    shadow.appendChild(content);
+    
+    // 应用预定义行为而不是执行动态JavaScript
+    applyWidgetBehaviors(shadow, widgetData);
+    
+    // 添加拖拽功能
+    addWidgetDragFunctionality(widgetWrapper, shadow);
+    
+    // 添加缩放功能
+    addWidgetResizeFunctionality(widgetWrapper, shadow);
+    
+    // 添加控制按钮功能
+    addWidgetControlFunctionality(widgetWrapper, shadow);
+    
+    container.appendChild(widgetWrapper);
+    return container;
+}
+
+// 应用预定义的挂件行为
+function applyWidgetBehaviors(shadow, widgetData) {
+    try {
+        console.log('应用挂件行为，挂件类型:', widgetData.widget_type || widgetData.widgetType);
+        
+        // 根据挂件类型应用预定义行为
+        const widgetType = widgetData.widget_type || widgetData.widgetType || 'custom';
+        
+        switch (widgetType) {
+            case 'catgirl':
+                applyCatgirlBehaviors(shadow);
+                break;
+            case 'transformer':
+                applyTransformerBehaviors(shadow);
+                break;
+            case 'pokemon':
+                applyPokemonBehaviors(shadow);
+                break;
+            default:
+                applyDefaultBehaviors(shadow);
+                break;
+        }
+        
+        // 应用通用交互行为
+        applyUniversalBehaviors(shadow);
+        
+        // 不再执行动态JavaScript代码，而是基于HTML内容应用行为
+        applyBehaviorsBasedOnContent(shadow);
+        
+        console.log('挂件行为应用完成');
+    } catch (error) {
+        console.warn('应用挂件行为时出错:', error);
+    }
+}
+
+// 猫女挂件行为
+function applyCatgirlBehaviors(shadow) {
+    const catElements = shadow.querySelectorAll('.cat, .catgirl, [class*="cat"]');
+    
+    catElements.forEach(element => {
+        // 点击时播放猫叫声
+        element.addEventListener('click', () => {
+            WIDGET_BEHAVIORS.audio.meow();
+            WIDGET_BEHAVIORS.click.bounce(element);
+        });
+        
+        // 悬停时发光
+        element.addEventListener('mouseenter', () => {
+            WIDGET_BEHAVIORS.hover.glow(element);
+        });
+        
+        element.addEventListener('mouseleave', () => {
+            element.style.boxShadow = '';
+        });
+    });
+    
+    // 添加自动摆尾动画（如果有尾巴元素）
+    const tailElements = shadow.querySelectorAll('.tail, [class*="tail"]');
+    tailElements.forEach(tail => {
+        let swayDirection = 1;
+        let swayAmount = 0;
+        setInterval(() => {
+            swayAmount += swayDirection * 2;
+            if (Math.abs(swayAmount) > 15) swayDirection *= -1;
+            tail.style.transform = `rotate(${swayAmount}deg)`;
+        }, 100);
+    });
+}
+
+// 变形金刚挂件行为
+function applyTransformerBehaviors(shadow) {
+    const transformerElements = shadow.querySelectorAll('.transformer, .robot, [class*="transform"]');
+    
+    transformerElements.forEach(element => {
+        // 点击时变形（旋转）
+        element.addEventListener('click', () => {
+            WIDGET_BEHAVIORS.click.rotate(element);
+            // 播放机械音效
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(100, audioContext.currentTime + 0.2);
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+            } catch (e) {
+                console.log('机械音效播放失败:', e);
+            }
+        });
+        
+        // 悬停时发出蓝光
+        element.addEventListener('mouseenter', () => {
+            element.style.boxShadow = '0 0 20px rgba(0, 150, 255, 0.8)';
+        });
+        
+        element.addEventListener('mouseleave', () => {
+            element.style.boxShadow = '';
+        });
+    });
+}
+
+// 宝可梦挂件行为
+function applyPokemonBehaviors(shadow) {
+    const pokemonElements = shadow.querySelectorAll('.pokemon, [class*="pokemon"], [class*="poke"]');
+    
+    pokemonElements.forEach(element => {
+        // 点击时跳跃
+        element.addEventListener('click', () => {
+            element.style.animation = 'float 0.6s ease-in-out';
+            setTimeout(() => { element.style.animation = ''; }, 600);
+            
+            // 播放可爱的音效
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(800, audioContext.currentTime + 0.1);
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+            } catch (e) {
+                console.log('音效播放失败:', e);
+            }
+        });
+        
+        // 添加轻微的浮动动画
+        element.style.animation = 'float 3s ease-in-out infinite';
+    });
+}
+
+// 默认挂件行为
+function applyDefaultBehaviors(shadow) {
+    const interactiveElements = shadow.querySelectorAll('.interactive, [data-interactive="true"]');
+    
+    interactiveElements.forEach(element => {
+        element.addEventListener('click', () => {
+            WIDGET_BEHAVIORS.click.pulse(element);
+            WIDGET_BEHAVIORS.audio.click();
+        });
+        
+        element.addEventListener('mouseenter', () => {
+            WIDGET_BEHAVIORS.hover.grow(element);
+        });
+        
+        element.addEventListener('mouseleave', () => {
+            element.style.transform = 'scale(1)';
+        });
+    });
+}
+
+// 应用通用交互行为
+function applyUniversalBehaviors(shadow) {
+    // 为所有可点击元素添加基础交互
+    const clickableElements = shadow.querySelectorAll('button, [onclick], .clickable, .btn');
+    clickableElements.forEach(element => {
+        element.addEventListener('click', () => {
+            WIDGET_BEHAVIORS.click.bounce(element);
+        });
+    });
+    
+    // 为所有图片添加悬停效果
+    const images = shadow.querySelectorAll('img');
+    images.forEach(img => {
+        img.addEventListener('mouseenter', () => {
+            WIDGET_BEHAVIORS.hover.grow(img);
+        });
+        
+        img.addEventListener('mouseleave', () => {
+            img.style.transform = 'scale(1)';
+        });
+    });
+}
+
+// 基于HTML内容应用行为（替代JavaScript代码执行）
+function applyBehaviorsBasedOnContent(shadow) {
+    try {
+        console.log('基于HTML内容应用行为');
+        
+        // 查找带有特定class的元素并应用相应行为
+        const animatedElements = shadow.querySelectorAll('.animated, [class*="animate"]');
+        animatedElements.forEach(element => {
+            if (element.className.includes('rotate')) {
+                WIDGET_BEHAVIORS.animation.rotating(element);
+            } else if (element.className.includes('float')) {
+                WIDGET_BEHAVIORS.animation.floating(element);
+            } else if (element.className.includes('blink')) {
+                WIDGET_BEHAVIORS.animation.blinking(element);
+            }
+        });
+        
+        // 查找音频触发元素
+        const audioTriggers = shadow.querySelectorAll('[class*="sound"], [class*="audio"], [data-sound]');
+        audioTriggers.forEach(element => {
+            element.addEventListener('click', () => {
+                WIDGET_BEHAVIORS.audio.click();
+            });
+        });
+        
+        // 查找特殊交互元素
+        const specialElements = shadow.querySelectorAll('[data-behavior]');
+        specialElements.forEach(element => {
+            const behavior = element.dataset.behavior;
+            switch (behavior) {
+                case 'rotate':
+                    element.addEventListener('click', () => {
+                        WIDGET_BEHAVIORS.click.rotate(element);
+                    });
+                    break;
+                case 'bounce':
+                    element.addEventListener('click', () => {
+                        WIDGET_BEHAVIORS.click.bounce(element);
+                    });
+                    break;
+                case 'pulse':
+                    element.addEventListener('click', () => {
+                        WIDGET_BEHAVIORS.click.pulse(element);
+                    });
+                    break;
+            }
+        });
+        
+        console.log('基于内容的行为应用完成');
+    } catch (error) {
+        console.warn('应用基于内容的行为时出错:', error);
+    }
+}
+
+// 添加挂件拖拽功能
+function addWidgetDragFunctionality(wrapper, shadow) {
+    let isDragging = false;
+    let startX, startY, startLeft, startTop;
+    
+    const content = shadow.querySelector('.widget-content');
+    
+    content.addEventListener('mousedown', (e) => {
+        // 避免在控制按钮和缩放手柄上开始拖拽
+        if (e.target.closest('.widget-controls') || e.target.closest('.resize-handle')) {
+            return;
+        }
+        
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = parseInt(wrapper.style.left);
+        startTop = parseInt(wrapper.style.top);
+        
+        // 添加轻微的透明度变化以提示正在拖拽
+        wrapper.style.opacity = '0.8';
+        e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        
+        const newLeft = Math.max(0, Math.min(window.innerWidth - wrapper.offsetWidth, startLeft + deltaX));
+        const newTop = Math.max(0, Math.min(window.innerHeight - wrapper.offsetHeight, startTop + deltaY));
+        
+        wrapper.style.left = newLeft + 'px';
+        wrapper.style.top = newTop + 'px';
+    });
+    
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            // 恢复透明度
+            wrapper.style.opacity = '1';
+            
+            // 保存新位置
+            saveWidgetPosition(wrapper);
+        }
+    });
+}
+
+// 添加挂件缩放功能
+function addWidgetResizeFunctionality(wrapper, shadow) {
+    const resizeHandle = shadow.querySelector('.resize-handle');
+    let isResizing = false;
+    let startX, startY, startWidth, startHeight;
+    
+    resizeHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startWidth = wrapper.offsetWidth;
+        startHeight = wrapper.offsetHeight;
+        
+        e.preventDefault();
+        e.stopPropagation();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        
+        const newWidth = Math.max(150, startWidth + deltaX);
+        const newHeight = Math.max(100, startHeight + deltaY);
+        
+        wrapper.style.width = newWidth + 'px';
+        wrapper.style.height = newHeight + 'px';
+    });
+    
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            
+            // 保存新尺寸
+            saveWidgetSize(wrapper);
+        }
+    });
+}
+
+// 添加挂件控制按钮功能
+function addWidgetControlFunctionality(wrapper, shadow) {
+    const closeBtn = shadow.querySelector('.close-btn');
+    const minimizeBtn = shadow.querySelector('.minimize-btn');
+    
+    closeBtn.addEventListener('click', () => {
+        removeWidget();
+    });
+    
+    minimizeBtn.addEventListener('click', () => {
+        const currentTransform = wrapper.style.transform;
+        const isMinimized = currentTransform.includes('scale(0.3)');
+        const newScale = isMinimized ? 'scale(1)' : 'scale(0.3)';
+        
+        wrapper.style.transform = newScale;
+        
+        // 保存缩小状态到全局配置
+        saveWidgetMinimizeState(!isMinimized);
+        
+        console.log('挂件缩小状态已变更:', !isMinimized);
+    });
+}
+
+// 保存挂件位置（同步到全局配置）
+function saveWidgetPosition(wrapper) {
+    const position = {
+        x: parseInt(wrapper.style.left),
+        y: parseInt(wrapper.style.top)
+    };
+    
+    console.log('保存挂件位置:', position);
+    
+    // 同时更新本地页面配置和全局配置
+    chrome.storage.local.get(['currentPageWidget', 'globalWidget'], (result) => {
+        // 更新当前页面挂件配置
+        if (result.currentPageWidget) {
+            result.currentPageWidget.position = position;
+            chrome.storage.local.set({ currentPageWidget: result.currentPageWidget });
+        }
+        
+        // 更新全局挂件配置，触发其他页面同步
+        if (result.globalWidget) {
+            result.globalWidget.config = result.globalWidget.config || {};
+            result.globalWidget.config.position = position;
+            chrome.storage.local.set({ globalWidget: result.globalWidget }, () => {
+                console.log('全局挂件位置已更新，将同步到其他页面');
+            });
+        }
+    });
+}
+
+// 保存挂件尺寸（同步到全局配置）
+function saveWidgetSize(wrapper) {
+    const size = {
+        width: wrapper.offsetWidth,
+        height: wrapper.offsetHeight
+    };
+    
+    console.log('保存挂件尺寸:', size);
+    
+    // 同时更新本地页面配置和全局配置
+    chrome.storage.local.get(['currentPageWidget', 'globalWidget'], (result) => {
+        // 更新当前页面挂件配置
+        if (result.currentPageWidget) {
+            result.currentPageWidget.size = size;
+            chrome.storage.local.set({ currentPageWidget: result.currentPageWidget });
+        }
+        
+        // 更新全局挂件配置，触发其他页面同步
+        if (result.globalWidget) {
+            result.globalWidget.config = result.globalWidget.config || {};
+            result.globalWidget.config.size = size;
+            chrome.storage.local.set({ globalWidget: result.globalWidget }, () => {
+                console.log('全局挂件尺寸已更新，将同步到其他页面');
+            });
+        }
+    });
+}
+
+// 同步挂件状态（从全局配置更新当前挂件）
+function syncWidgetState(globalWidget) {
+    if (!currentWidget || !globalWidget.config) {
+        return;
+    }
+    
+    console.log('同步挂件状态:', globalWidget.config);
+    
+    const wrapper = currentWidget.querySelector('.styleswift-widget-wrapper');
+    if (!wrapper) {
+        return;
+    }
+    
+    // 同步位置
+    if (globalWidget.config.position) {
+        const { x, y } = globalWidget.config.position;
+        wrapper.style.left = x + 'px';
+        wrapper.style.top = y + 'px';
+        console.log('挂件位置已同步:', { x, y });
+    }
+    
+    // 同步尺寸
+    if (globalWidget.config.size) {
+        const { width, height } = globalWidget.config.size;
+        wrapper.style.width = width + 'px';
+        wrapper.style.height = height + 'px';
+        console.log('挂件尺寸已同步:', { width, height });
+    }
+    
+    // 同步缩小状态
+    if (globalWidget.config.hasOwnProperty('isMinimized')) {
+        const isMinimized = globalWidget.config.isMinimized;
+        const newScale = isMinimized ? 'scale(0.3)' : 'scale(1)';
+        wrapper.style.transform = newScale;
+        console.log('挂件缩小状态已同步:', isMinimized);
+    }
+}
+
+// 移除挂件
+function removeWidget() {
+    try {
+        if (currentWidget) {
+            currentWidget.remove();
+            currentWidget = null;
+        }
+        
+        // 移除所有可能存在的挂件容器
+        const containers = document.querySelectorAll('#styleswift-widget-container');
+        containers.forEach(container => container.remove());
+        
+        // 清理本地存储
+        chrome.storage.local.remove('currentPageWidget');
+        
+        console.log('挂件已移除');
+        return true;
+        
+    } catch (error) {
+        console.error('移除挂件失败:', error);
+        return false;
+    }
+}
+
+// 检查并应用全局挂件
+async function checkAndApplyGlobalWidget() {
+    try {
+        const data = await chrome.storage.local.get(['globalWidget']);
+        
+        if (data.globalWidget && data.globalWidget.enabled) {
+            console.log('检测到全局挂件配置，正在应用...', data.globalWidget.config);
+            applyWidget(data.globalWidget);
+        }
+    } catch (error) {
+        console.error('检查全局挂件失败:', error);
+    }
+}
+
+// 在页面加载时检查全局挂件
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(checkAndApplyGlobalWidget, 1000);
+});
+
+// 如果页面已经加载完成
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(checkAndApplyGlobalWidget, 500);
+}
+
+// 保存挂件缩小状态（同步到全局配置）
+function saveWidgetMinimizeState(isMinimized) {
+    console.log('保存挂件缩小状态:', isMinimized);
+    
+    // 同时更新本地页面配置和全局配置
+    chrome.storage.local.get(['currentPageWidget', 'globalWidget'], (result) => {
+        // 更新当前页面挂件配置
+        if (result.currentPageWidget) {
+            result.currentPageWidget.isMinimized = isMinimized;
+            chrome.storage.local.set({ currentPageWidget: result.currentPageWidget });
+        }
+        
+        // 更新全局挂件配置，触发其他页面同步
+        if (result.globalWidget) {
+            result.globalWidget.config = result.globalWidget.config || {};
+            result.globalWidget.config.isMinimized = isMinimized;
+            chrome.storage.local.set({ globalWidget: result.globalWidget }, () => {
+                console.log('全局挂件缩小状态已更新，将同步到其他页面');
+            });
+        }
+    });
 }
 
 

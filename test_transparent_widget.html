@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>透明挂件融合效果测试</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .content-area {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .test-section h2 {
+            color: #ffd700;
+            margin-bottom: 15px;
+        }
+        
+        .test-section p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        
+        .image-placeholder {
+            width: 200px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            display: inline-block;
+            margin: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .image-placeholder::before {
+            content: '📸';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3em;
+            opacity: 0.5;
+        }
+        
+        .widget-test-area {
+            margin: 40px 0;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            text-align: center;
+            min-height: 300px;
+            position: relative;
+        }
+        
+        .widget-test-area h3 {
+            color: #ff6b6b;
+            margin-bottom: 20px;
+        }
+        
+        .test-instructions {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .test-instructions h4 {
+            color: #4ecdc4;
+            margin-bottom: 15px;
+        }
+        
+        .test-instructions ul {
+            text-align: left;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .test-instructions li {
+            margin-bottom: 10px;
+            padding-left: 10px;
+        }
+        
+        .floating-elements {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .background-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>') repeat;
+            pointer-events: none;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="background-pattern"></div>
+    <div class="floating-elements">🌟</div>
+    
+    <div class="content-area">
+        <h1>🎨 透明挂件融合效果测试</h1>
+        
+        <div class="test-section">
+            <h2>📋 测试说明</h2>
+            <p>本页面用于测试StyleSwift扩展的透明挂件功能。挂件现在具有以下优化特性：</p>
+            <ul>
+                <li>✨ <strong>完全透明背景</strong> - 挂件背景设置为100%透明</li>
+                <li>🚫 <strong>无阴影效果</strong> - 移除了容器阴影，减少视觉隔离感</li>
+                <li>🎯 <strong>无边框圆角</strong> - 移除容器圆角，让内容更自然</li>
+                <li>👆 <strong>优化的控制按钮</strong> - 仅在悬停时显示，更小更精致</li>
+                <li>🔧 <strong>改进的拖拽体验</strong> - 拖拽时使用透明度变化而非鼠标样式</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎮 功能特点</h2>
+            <p>新的挂件设计让挂件内容看起来像是页面的原生组成部分，而不是悬浮在上面的独立元素。</p>
+            
+            <div class="image-placeholder"></div>
+            <div class="image-placeholder"></div>
+            <div class="image-placeholder"></div>
+            
+            <p>这样的设计可以让挂件更好地与页面内容融合，提供更自然的用户体验。</p>
+        </div>
+        
+        <div class="widget-test-area">
+            <h3>🎯 挂件测试区域</h3>
+            <p>在这个区域应用挂件，测试透明效果和融合程度</p>
+            
+            <div style="display: flex; justify-content: space-around; align-items: center; margin: 20px 0;">
+                <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;">
+                    <h4>📊 数据展示</h4>
+                    <p>这里是一些模拟的页面内容</p>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;">
+                    <h4>📈 图表区域</h4>
+                    <p>挂件应该能很好地融入此处</p>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;">
+                    <h4>🎨 设计元素</h4>
+                    <p>测试透明度和融合效果</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-instructions">
+            <h4>🔧 测试步骤</h4>
+            <ul>
+                <li>1️⃣ 打开StyleSwift扩展的popup界面</li>
+                <li>2️⃣ 切换到"挂件模式"标签页</li>
+                <li>3️⃣ 选择任意挂件类型（猫女、变形金刚、宝可梦或自定义）</li>
+                <li>4️⃣ 应用挂件到所有网站</li>
+                <li>5️⃣ 观察挂件在页面上的显示效果</li>
+                <li>6️⃣ 测试拖拽功能（只有轻微透明度变化）</li>
+                <li>7️⃣ 悬停挂件查看控制按钮的显示效果</li>
+                <li>8️⃣ 验证挂件背景的透明度和融合程度</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h2>✅ 预期效果</h2>
+            <p><strong>优化前：</strong> 挂件具有明显的白色背景、阴影和圆角边框，看起来像是悬浮在页面上的独立窗口。</p>
+            <p><strong>优化后：</strong> 挂件背景完全透明，无阴影无边框，内容直接显示在页面上，看起来像是页面的原生组成部分。</p>
+            <p><strong>控制元素：</strong> 控制按钮和缩放手柄只在悬停时显示，不影响正常浏览体验。</p>
+        </div>
+    </div>
+    
+    <script>
+        // 添加一些动态效果让页面更生动
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎨 透明挂件测试页面已加载');
+            console.log('📝 请按照测试步骤验证挂件的透明融合效果');
+            
+            // 创建更多的浮动元素
+            const emojis = ['⭐', '✨', '🌙', '☀️', '🎈', '🎪', '🎭', '🎨'];
+            
+            setInterval(() => {
+                const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+                const floatingEl = document.createElement('div');
+                floatingEl.textContent = emoji;
+                floatingEl.style.cssText = `
+                    position: fixed;
+                    left: ${Math.random() * window.innerWidth}px;
+                    top: ${window.innerHeight}px;
+                    font-size: 20px;
+                    pointer-events: none;
+                    z-index: 1;
+                    animation: floatUp 4s linear forwards;
+                `;
+                
+                document.body.appendChild(floatingEl);
+                
+                setTimeout(() => {
+                    floatingEl.remove();
+                }, 4000);
+            }, 3000);
+            
+            // 添加CSS动画
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes floatUp {
+                    0% {
+                        transform: translateY(0) rotate(0deg);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: translateY(-${window.innerHeight + 100}px) rotate(360deg);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        });
+    </script>
+</body>
+</html> 

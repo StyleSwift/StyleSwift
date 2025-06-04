@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>挂件同步测试 - 页面B</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientMove 10s ease infinite;
+            min-height: 100vh;
+            color: white;
+        }
+        
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            margin-bottom: 30px;
+        }
+        
+        .sync-status {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .status-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(46, 204, 113, 0.9);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .test-area {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+        }
+        
+        .instructions {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.2), rgba(155, 89, 182, 0.2));
+            border: 1px solid rgba(52, 152, 219, 0.5);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        
+        .back-link {
+            display: inline-block;
+            background: linear-gradient(45deg, #3498db, #9b59b6);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+        
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .widget-info {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="status-indicator">
+        📱 页面B - 同步监听中
+    </div>
+    
+    <div class="container">
+        <h1>📱 页面B - 同步接收器</h1>
+        
+        <div class="sync-status">
+            <h3>🔄 同步状态监控</h3>
+            <p>当前页面正在监听来自其他页面的挂件状态变化</p>
+            <div id="syncLog" class="widget-info">等待同步事件...</div>
+        </div>
+        
+        <div class="test-area">
+            <h3>🎯 测试区域</h3>
+            <p>在这个页面中，您可以：</p>
+            <ul>
+                <li>观察挂件位置是否与页面A同步</li>
+                <li>拖拽挂件测试反向同步</li>
+                <li>调整挂件大小测试尺寸同步</li>
+                <li>验证实时同步的响应速度</li>
+            </ul>
+        </div>
+        
+        <div class="instructions">
+            <h4>📝 当前页面功能</h4>
+            <ul>
+                <li><strong>自动同步</strong>：页面加载时自动应用最新的挂件配置</li>
+                <li><strong>双向同步</strong>：可以接收和发送同步信号</li>
+                <li><strong>状态显示</strong>：实时显示同步日志和挂件状态</li>
+                <li><strong>独立测试</strong>：可以独立测试挂件功能</li>
+            </ul>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="test_widget_sync.html" class="back-link">🔙 返回页面A</a>
+            <a href="test_widget_sync_c.html" class="back-link">➡️ 打开页面C</a>
+        </div>
+        
+        <div class="widget-info" id="widgetStatus">
+            <strong>挂件状态：</strong><span id="statusText">未检测到挂件</span>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📱 挂件同步测试页面B已加载');
+            
+            const syncLog = document.getElementById('syncLog');
+            const statusText = document.getElementById('statusText');
+            let logCount = 0;
+            
+            function addSyncLog(message) {
+                logCount++;
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = `[${timestamp}] ${message}`;
+                
+                // 更新同步日志
+                if (syncLog.innerHTML === '等待同步事件...') {
+                    syncLog.innerHTML = logEntry;
+                } else {
+                    syncLog.innerHTML = logEntry + '\n' + syncLog.innerHTML;
+                }
+                
+                // 限制日志条数
+                const lines = syncLog.innerHTML.split('\n');
+                if (lines.length > 10) {
+                    syncLog.innerHTML = lines.slice(0, 10).join('\n');
+                }
+                
+                console.log('📱 页面B同步日志:', logEntry);
+            }
+            
+            function updateWidgetStatus(status) {
+                statusText.textContent = status;
+                addSyncLog(`挂件状态更新: ${status}`);
+            }
+            
+            // 模拟监听挂件状态
+            let checkCount = 0;
+            const checkInterval = setInterval(() => {
+                checkCount++;
+                const widgetContainer = document.querySelector('#styleswift-widget-container');
+                
+                if (widgetContainer) {
+                    const wrapper = widgetContainer.querySelector('.styleswift-widget-wrapper');
+                    if (wrapper) {
+                        const position = {
+                            x: parseInt(wrapper.style.left),
+                            y: parseInt(wrapper.style.top)
+                        };
+                        const size = {
+                            width: wrapper.offsetWidth,
+                            height: wrapper.offsetHeight
+                        };
+                        
+                        updateWidgetStatus(`已检测到挂件 - 位置:(${position.x}, ${position.y}) 尺寸:${size.width}x${size.height}`);
+                    } else {
+                        updateWidgetStatus('挂件容器存在但无内容');
+                    }
+                } else {
+                    if (checkCount % 10 === 0) { // 每10秒记录一次
+                        updateWidgetStatus('未检测到挂件容器');
+                    }
+                }
+            }, 1000);
+            
+            // 页面可见性变化时的处理
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) {
+                    addSyncLog('页面重新获得焦点，检查同步状态');
+                }
+            });
+            
+            // 初始化日志
+            addSyncLog('页面B初始化完成，开始监听同步事件');
+            
+            // 添加页面特效
+            let particleCount = 0;
+            setInterval(() => {
+                if (particleCount < 5) {
+                    createParticle();
+                    particleCount++;
+                }
+            }, 3000);
+            
+            function createParticle() {
+                const particle = document.createElement('div');
+                particle.style.cssText = `
+                    position: fixed;
+                    width: 6px;
+                    height: 6px;
+                    background: rgba(255, 255, 255, 0.8);
+                    border-radius: 50%;
+                    pointer-events: none;
+                    z-index: 1000;
+                    left: ${Math.random() * window.innerWidth}px;
+                    top: -10px;
+                    animation: fall ${5 + Math.random() * 3}s linear forwards;
+                `;
+                
+                document.body.appendChild(particle);
+                
+                setTimeout(() => {
+                    particle.remove();
+                    particleCount--;
+                }, 8000);
+            }
+            
+            // 添加下落动画
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fall {
+                    to {
+                        transform: translateY(${window.innerHeight + 20}px) rotate(360deg);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        });
+    </script>
+</body>
+</html> 
