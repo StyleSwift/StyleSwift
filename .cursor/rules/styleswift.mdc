@@ -100,4 +100,4 @@ alwaysApply: true
 
 ---
 
-请遵循 Chrome Extension 官方文档和 Flask 文档的最佳实践、安全指南和 API 用法。
+请遵循 Chrome Extension 官方文档和 Flask 文档的最佳实践、安全指南和 API 用法；专注当下问题和功能的解决，不要改动与当下问题和功能无关的代码。

@@ -431,42 +431,54 @@ function handleStyleApplication(tabId, style, customDescription, resolve, reject
     console.log('样式类型:', style);
     console.log('自定义描述:', customDescription);
 
-    chrome.runtime.sendMessage({
-        action: "generateAndApplyStyle",
-        style: style,
-        customDescription: customDescription,
-        tabId: tabId
-    }, response => {
-        const endTime = getBeijingTime();
-        const duration = calculateDuration(startTime, endTime);
-        
-        console.log('=== 样式应用处理完成 ===');
-        console.log('结束时间:', formatBeijingTime(endTime));
-        console.log('总耗时:', duration.toFixed(3), '秒');
-        console.log('后台响应:', response);
-        
-        if (chrome.runtime.lastError) {
-            console.error('消息发送失败:', chrome.runtime.lastError);
-            reject(new Error('消息发送失败: ' + chrome.runtime.lastError.message));
+    // 如果是默认样式，直接移除样式
+    if (style === 'default') {
+        console.log('应用默认样式 - 移除所有样式');
+        chrome.tabs.sendMessage(tabId, {
+            action: "removeAllStyles"
+        }, response => {
+            const endTime = getBeijingTime();
+            const duration = calculateDuration(startTime, endTime);
+            console.log('=== 默认样式应用完成 ===');
+            console.log('结束时间:', formatBeijingTime(endTime));
+            console.log('总耗时:', duration.toFixed(3), '秒');
+            
+            if (chrome.runtime.lastError) {
+                console.error('移除样式失败:', chrome.runtime.lastError);
+                reject(new Error('移除样式失败: ' + chrome.runtime.lastError.message));
+                return;
+            }
+            
+            if (response && response.success) {
+                console.log('✅ 默认样式应用成功 - 样式已移除');
+                resolve();
+            } else {
+                console.error('移除样式失败:', response);
+                reject(new Error('移除样式失败'));
+            }
+        });
+        return;
+    }
+
+    // 对于自定义CSS样式
+    if (style === 'custom-css') {
+        const customCSS = document.getElementById('customCSS').value;
+        if (!customCSS) {
+            console.warn('自定义CSS为空');
+            reject(new Error('请输入自定义CSS代码'));
             return;
         }
         
-        if (response && response.success) {
-            // 检查是否是重复样式
-            if (response.is_duplicate) {
-                console.log('🔄 检测到重复样式，使用现有样式:', response.style_id);
-                console.log('样式应用成功 - 已应用到所有网站');
-            } else {
-                console.log('✅ 新样式生成并应用成功:', response.style_id);
-                console.log('样式应用成功 - 已应用到所有网站');
-            }
-            resolve();
-        } else {
-            const errorMsg = response ? response.error : '未知错误';
-            console.error('样式应用失败:', errorMsg);
-            reject(new Error(errorMsg));
-        }
-    });
+        console.log('应用自定义CSS');
+        console.log('CSS长度:', customCSS.length, '字符');
+        
+        applyCustomCSS(tabId, customCSS, resolve, reject);
+        return;
+    }
+
+    // 对于需要AI生成的样式，获取页面结构
+    console.log('需要AI生成样式，开始获取页面结构...');
+    getPageStructureAndGenerateStyle(tabId, style, customDescription, resolve, reject);
 }
 
 // 获取页面结构并生成样式的函数
@@ -664,30 +676,33 @@ async function ensureContentScriptInjected(tabId) {
 
 // 保存自定义CSS到数据库的函数
 function saveCustomCSSToDatabase(css, styleId) {
-    getActiveTab(function(tab) {
-        fetch('http://127.0.0.1:5000/api/save_custom_css', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                css: css,
-                url: tab.url,
-                styleId: styleId
-            }),
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('自定义CSS保存成功:', data);
-        })
-        .catch((error) => {
-            console.error('保存自定义CSS时出错:', error);
-            alert('保存自定义CSS失败，请稍后再试。');
+    return new Promise((resolve, reject) => {
+        getActiveTab(function(tab) {
+            fetch('http://127.0.0.1:5000/api/save_custom_css', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    css: css,
+                    url: tab.url,
+                    styleId: styleId
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('自定义CSS保存成功:', data);
+                resolve(data);
+            })
+            .catch((error) => {
+                console.error('保存自定义CSS时出错:', error);
+                reject(error);
+            });
         });
     });
 }
@@ -985,6 +1000,10 @@ async function saveCustomWidgetCode(html, css, js) {
                     html: html || '',
                     css: css || '',
                     js: js || '',
+                    config: {
+                        position: { x: 20, y: 100 },
+                        size: { width: 200, height: 300 }
+                    },
                     isDuplicate: true
                 };
             } else {
@@ -994,6 +1013,10 @@ async function saveCustomWidgetCode(html, css, js) {
                     html: html || '',
                     css: css || '',
                     js: js || '',
+                    config: {
+                        position: { x: 20, y: 100 },
+                        size: { width: 200, height: 300 }
+                    },
                     isDuplicate: false
                 };
             }

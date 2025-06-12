@@ -1400,10 +1400,13 @@ def save_custom_widget_code():
                 "is_duplicate": True
             }), 200
         
+        # 清理HTML代码，移除外部资源引用
+        cleaned_html = clean_widget_html(html_code or '')
+        
         widget_record = Widget.query.filter_by(widget_id=widget_id).first()
         if widget_record:
             # 更新现有记录
-            widget_record.html_code = html_code or ''
+            widget_record.html_code = cleaned_html
             widget_record.css_code = css_code or ''
             widget_record.js_code = js_code or ''
             widget_record.combined_code_hash = widget_hash
@@ -1415,7 +1418,7 @@ def save_custom_widget_code():
                 name="自定义代码挂件",
                 description="用户自定义代码挂件",
                 widget_type='custom-code',
-                html_code=html_code or '',
+                html_code=cleaned_html,
                 css_code=css_code or '',
                 js_code=js_code or '',
                 combined_code_hash=widget_hash,
@@ -1455,21 +1458,26 @@ Requirements:
 - Make it visually appealing and modern
 - Ensure responsive design
 - Add smooth animations and transitions where appropriate
+- DO NOT include any external resource references (no <link>, <script src="">, <img src="">, etc.)
+- All styles must be inline or in <style> tags within the HTML
+- All JavaScript must be inline or in <script> tags within the HTML
+- Do not reference any external files, fonts, or resources
+- Use only self-contained code that works without external dependencies
 
 Output format should be:
 ```html
-[HTML code here]
+[HTML code here - must be completely self-contained]
 ```
 
 ```css
-[CSS code here]
+[CSS code here - will be applied via style tags]
 ```
 
 ```javascript
-[JavaScript code here]
+[JavaScript code here - will be applied via script tags]
 ```
 
-Focus on creating a functional, beautiful, and interactive widget."""
+Focus on creating a functional, beautiful, and interactive widget that works entirely independently."""
 
     if existing_widget:
         base_prompt += f"""
@@ -1579,6 +1587,72 @@ def generate_ai_widget_with_retry(prompt, max_retries=3):
                 raise Exception(f"挂件生成失败，已重试 {max_retries} 次: {str(e)}")
             time.sleep(1)
 
+def clean_widget_html(html_code):
+    """清理挂件HTML代码，移除本地文件引用，保留在线外部资源"""
+    if not html_code:
+        return html_code
+    
+    app.logger.info("开始清理挂件HTML代码，移除本地文件引用，保留在线外部资源")
+    original_length = len(html_code)
+    
+    # 1. 移除本地CSS文件引用，保留在线外部CSS（HTTP/HTTPS）
+    before_css = html_code
+    # 移除相对路径和绝对路径的本地CSS文件
+    html_code = re.sub(r'<link[^>]*rel=["\']stylesheet["\'][^>]*href=["\'](?!https?://)[^"\']*\.css["\'][^>]*/?>', '', html_code, flags=re.IGNORECASE)
+    html_code = re.sub(r'<link[^>]*href=["\'](?!https?://)[^"\']*\.css["\'][^>]*rel=["\']stylesheet["\'][^>]*/?>', '', html_code, flags=re.IGNORECASE)
+    # 移除没有http/https的相对路径CSS引用
+    html_code = re.sub(r'<link[^>]*rel=["\']stylesheet["\'][^>]*href=["\']\.?\.?/[^"\']*["\'][^>]*/?>', '', html_code, flags=re.IGNORECASE)
+    html_code = re.sub(r'<link[^>]*href=["\']\.?\.?/[^"\']*["\'][^>]*rel=["\']stylesheet["\'][^>]*/?>', '', html_code, flags=re.IGNORECASE)
+    if len(html_code) != len(before_css):
+        app.logger.info("已移除本地CSS文件引用，保留在线CSS资源")
+    
+    # 2. 移除本地JavaScript文件引用，保留在线外部JS（HTTP/HTTPS）
+    before_js = html_code
+    # 移除相对路径和本地的JS文件引用
+    html_code = re.sub(r'<script[^>]*src=["\'](?!https?://)[^"\']*\.js["\'][^>]*></script>', '', html_code, flags=re.IGNORECASE)
+    html_code = re.sub(r'<script[^>]*src=["\']\.?\.?/[^"\']*["\'][^>]*></script>', '', html_code, flags=re.IGNORECASE)
+    if len(html_code) != len(before_js):
+        app.logger.info("已移除本地JavaScript文件引用，保留在线JS资源")
+    
+    # 3. 移除本地图片引用，保留在线图片和data:uri
+    before_img = html_code
+    # 移除相对路径的本地图片，但保留HTTP/HTTPS和data:uri
+    html_code = re.sub(r'<img[^>]*src=["\'](?!https?://|data:)[^"\']*\.(jpg|jpeg|png|gif|svg|webp)["\'][^>]*/?>', '', html_code, flags=re.IGNORECASE)
+    html_code = re.sub(r'<img[^>]*src=["\']\.?\.?/[^"\']*["\'][^>]*/?>', '', html_code, flags=re.IGNORECASE)
+    if len(html_code) != len(before_img):
+        app.logger.info("已移除本地图片引用，保留在线图片和data:uri")
+    
+    # 4. 移除本地字体文件引用，保留在线字体（如Google Fonts）
+    before_font = html_code
+    # 移除本地字体文件，保留在线字体服务
+    html_code = re.sub(r'<link[^>]*href=["\'](?!https?://)[^"\']*\.(woff|woff2|ttf|otf|eot)["\'][^>]*/?>', '', html_code, flags=re.IGNORECASE)
+    html_code = re.sub(r'<link[^>]*href=["\']\.?\.?/[^"\']*\.(woff|woff2|ttf|otf|eot)["\'][^>]*/?>', '', html_code, flags=re.IGNORECASE)
+    if len(html_code) != len(before_font):
+        app.logger.info("已移除本地字体文件引用，保留在线字体服务")
+    
+    # 5. 移除本地favicon和manifest文件引用
+    before_other = html_code
+    # 移除本地favicon，但保留在线favicon
+    html_code = re.sub(r'<link[^>]*rel=["\']icon["\'][^>]*href=["\'](?!https?://)[^"\']*["\'][^>]*/?>', '', html_code, flags=re.IGNORECASE)
+    html_code = re.sub(r'<link[^>]*rel=["\']shortcut icon["\'][^>]*href=["\'](?!https?://)[^"\']*["\'][^>]*/?>', '', html_code, flags=re.IGNORECASE)
+    # 移除本地manifest
+    html_code = re.sub(r'<link[^>]*rel=["\']manifest["\'][^>]*href=["\'](?!https?://)[^"\']*["\'][^>]*/?>', '', html_code, flags=re.IGNORECASE)
+    if len(html_code) != len(before_other):
+        app.logger.info("已移除本地favicon和manifest引用，保留在线资源")
+    
+    # 6. 清理多余的空白和换行
+    html_code = re.sub(r'\n\s*\n+', '\n', html_code)  # 多个连续空行合并为一个
+    html_code = re.sub(r'^\s+', '', html_code, flags=re.MULTILINE)  # 移除行首空白
+    html_code = html_code.strip()
+    
+    cleaned_length = len(html_code)
+    if original_length != cleaned_length:
+        app.logger.info(f"HTML清理完成: 原长度 {original_length} -> 清理后长度 {cleaned_length}")
+    else:
+        app.logger.info("HTML代码未发现需要清理的本地文件引用")
+    
+    return html_code
+
 def extract_widget_from_response(response_content):
     """从AI响应中提取并格式化挂件代码"""
     widget = {
@@ -1590,7 +1664,8 @@ def extract_widget_from_response(response_content):
     # 提取HTML代码
     html_match = re.search(r'```html\n(.*?)\n```', response_content, re.DOTALL | re.IGNORECASE)
     if html_match:
-        widget['html'] = html_match.group(1).strip()
+        raw_html = html_match.group(1).strip()
+        widget['html'] = clean_widget_html(raw_html)  # 清理HTML代码
     
     # 提取CSS代码
     css_match = re.search(r'```css\n(.*?)\n```', response_content, re.DOTALL | re.IGNORECASE)
@@ -1610,6 +1685,8 @@ def extract_widget_from_response(response_content):
         widget['html'] = '<div class="custom-widget">挂件生成中...</div>'
         widget['css'] = '.custom-widget { padding: 20px; background: #f0f0f0; border-radius: 8px; }'
         widget['js'] = '// 挂件JavaScript代码'
+    
+    app.logger.info(f"提取的挂件代码 - HTML长度: {len(widget['html'])}, CSS长度: {len(widget['css'])}, JS长度: {len(widget['js'])}")
     
     return widget
 
