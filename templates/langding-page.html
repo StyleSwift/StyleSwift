@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" data-translate-key="metaDescription" content="StyleSwift - Witness the magic of AI transforming web pages. Join the waitlist for early access!" />
+  <title data-translate-key="pageTitle">StyleSwift | Experience AI Web Transformation</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='pic/icon48.svg') }}">
+  
+  <!-- SEO Meta Tags (Keep updated ones) -->
+  <meta property="og:title" data-translate-key="ogTitle" content="StyleSwift | Experience AI Web Transformation" />
+  <meta property="og:title" content="StyleSwift | Experience AI Web Transformation" />
+  <meta property="og:description" data-translate-key="ogDescription" content="Drag the slider to see how {brandName} uses AI to instantly beautify any website. Join the waitlist!" />
+  <meta property="og:image" content="https://example.com/your-interactive-preview.jpg" /> <!-- Needs updated preview image -->
+  <meta property="og:url" content="https://example.com/your-landing-page-url" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" data-translate-key="twitterTitle" content="StyleSwift | Experience AI Web Transformation" />
+  <meta name="twitter:description" data-translate-key="twitterDescription" content="Drag the slider to see how {brandName} uses AI to instantly beautify any website. Join the waitlist!" />
+  <meta name="twitter:image" content="https://example.com/your-interactive-preview.jpg" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Consider adding a more expressive display font if desired -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            purple: { DEFAULT: '#8b5cf6', 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9', 800: '#5b21b6', 900: '#4c1d95' },
+            orange: { DEFAULT: '#f97316', 400: '#fb923c', 500: '#f97316', 600: '#ea580c'},
+            // Add more colors if needed for the new design
+            dark: '#1a1a1a', // Example dark background
+            light: '#fefefe', // Example light text/background
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            display: ['Syne', 'sans-serif'],
+          },
+          animation: {
+            'gradient-x':'gradient-x 10s ease infinite',
+          },
+        },
+      },
+    }
+  </script>
+
+  <style>
+    html {
+      scroll-behavior: smooth;
+    }
+    body {
+      background-color: #f5f3ff; /* Light purple bg */
+      color: #1a1a1a;
+      user-select: none; /* Prevent text selection on the entire page */
+      -webkit-user-select: none; /* Safari */
+      -moz-user-select: none;    /* Firefox */
+      -ms-user-select: none;     /* Internet Explorer/Edge */
+    }
+
+    /* Interactive Hero Styles */
+    .interactive-hero {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9; /* Adjust aspect ratio as needed */
+      overflow: hidden;
+      border-radius: 1rem; /* Rounded corners */
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    .hero-before,
+    .hero-after {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      font-family: sans-serif; /* Generic font for example */
+    }
+
+    .hero-before {
+      background-image: url("https://i.postimg.cc/yYbJX54J/image.png"); /* Placeholder 'After' Image (Beautified) */
+      z-index: 1;
+      /* Remove grayscale filter if it was added */
+      /* filter: grayscale(80%); */
+    }
+
+    .hero-after {
+      background-image: url("https://i.postimg.cc/4ywcgNSw/image.png"); /* Placeholder 'Before' Image (Original) */
+      z-index: 2;
+      clip-path: inset(0 100% 0 0); /* Initially hide the 'Before' image */
+    }
+
+    .hero-slider {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0%; /* Initial position at the left edge */
+      width: 4px;
+      background-color: rgba(255, 255, 255, 0.8);
+      cursor: ew-resize;
+      z-index: 3;
+      transform: translateX(-50%);
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      border-radius: 2px;
+      /* Apply nudge animation */
+      animation: nudge-slider 1.5s ease-in-out 1.8s 2; /* Adjusted duration slightly */
+    }
+    .hero-slider::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 40px; /* Increased size */
+        height: 40px; /* Increased size */
+        background-color: rgba(255, 255, 255, 0.95); /* Slightly more opaque */
+        border-radius: 50%;
+        border: 2px solid #8b5cf6; /* purple-500 */
+        /* Add arrow icons using background images */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%237c3aed' width='18px' height='18px'%3E%3Cpath d='M14 7l-5 5 5 5V7z'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%237c3aed' width='18px' height='18px'%3E%3Cpath d='M10 17l5-5-5-5v10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: center left 5px, center right 5px; /* Adjusted arrow positions */
+        background-size: 16px 16px, 16px 16px; /* Arrow size */
+        box-shadow: 0 0 8px rgba(0,0,0,0.2); /* Enhanced shadow for better affordance */
+        transition: transform 0.2s ease-out, box-shadow 0.2s ease-out; /* Added transition for dragging effect */
+    }
+
+    /* Style for slider when dragging */
+    .hero-slider.is-dragging::before {
+        transform: translate(-50%, -50%) scale(1.15); /* Scale up more when dragging */
+        box-shadow: 0 0 12px rgba(139, 92, 246, 0.4); /* Purple glow */
+    }
+
+    /* Basic section styling for visual flow */
+    .flow-section {
+      min-height: 80vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .flow-section h2 {
+        font-size: 3rem; /* Example */
+        font-weight: 700;
+        color: #333;
+    }
+     /* Add more specific styles per section */
+     
+    /* Scroll Animation for Flow Sections */
+    .animate-on-scroll {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 1s cubic-bezier(0.25, 0.1, 0.25, 1), transform 1s cubic-bezier(0.25, 0.1, 0.25, 1);
+    }
+    .animate-on-scroll.is-visible {
+      opacity: 1;
+      transform: translate(0, 0);
+    }
+
+    /* Logo Marquee Styles */
+    .marquee-container {
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+      padding: 2rem 0;
+      background-color: #ffffff; /* White background for this section */
+    }
+
+    .marquee-content {
+      display: flex;
+      width: fit-content; /* Adjust width based on content */
+      animation: marquee 40s linear infinite; /* Adjust duration as needed */
+      will-change: transform;
+    }
+
+    .marquee-content img {
+      height: 40px; /* Adjust logo height */
+      margin: 0 2rem; /* Spacing between logos */
+      flex-shrink: 0;
+      object-fit: contain;
+      filter: grayscale(100%);
+      opacity: 0.7;
+      transition: filter 0.3s ease, opacity 0.3s ease;
+    }
+
+    .marquee-content:hover img {
+        filter: grayscale(50%);
+        opacity: 0.5;
+    }
+
+    .marquee-content img:hover {
+         filter: grayscale(0%);
+         opacity: 1;
+         transform: scale(1.1);
+    }
+
+    /* Pause animation on hover */
+    .marquee-container:hover .marquee-content {
+      animation-play-state: paused;
+    }
+
+    @keyframes marquee {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); } /* Translate by half the width for seamless loop */
+    }
+
+    /* Animated Gradient Text */
+    .animated-gradient-text {
+        background: linear-gradient(to right, #8b5cf6, #f97316, #8b5cf6);
+        background-size: 200% auto;
+        color: #000;
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: gradient-x 4s linear infinite;
+    }
+
+    /* Nudge Animation for Slider Guidance (Adjusted for left start) */
+    @keyframes nudge-slider {
+      0%, 100% { left: 0%; } /* Start and end at the left edge */
+      50% { left: 5%; } /* Nudge slightly to the right and back */
+    }
+
+    @keyframes pulse-button {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    /* Rule to trigger button pulse when section is visible */
+    .waitlist-section.is-visible .waitlist-button {
+        animation: pulse-button 1.5s ease-in-out 4; /* Increased iteration count to 4 */
+    }
+
+    /* Subtle shadow for Marquee section top */
+    .logo-marquee-section {
+       box-shadow: inset 0 8px 10px -10px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Smooth focus transition for email inputs */
+    input[type="email"]:focus {
+      transition: box-shadow 0.2s ease-in-out;
+    }
+
+    /* Microinteraction: Header logo/brand name hover */
+    .header-logo-container {
+      transition: transform 0.2s ease-in-out;
+    }
+    .header-logo-container:hover {
+      transform: scale(1.05);
+    }
+
+    /* Microinteraction: Flow section image hover */
+    .flow-image-container {
+      transition: transform 0.25s ease-out;
+      overflow: hidden; /* Ensure scale doesn't break layout if image is flush */
+      border-radius: 0.5rem; /* Match existing rounded-lg for consistency */
+    }
+    .flow-image-container img {
+        transition: transform 0.25s ease-out;
+    }
+    .flow-image-container:hover img {
+      transform: scale(1.03);
+    }
+
+    /* Microinteraction: Header Nav Button */
+    .header-nav-button {
+      transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+    }
+    .header-nav-button:hover {
+      transform: translateY(-2px);
+      /* Tailwind hover:bg-purple-700 hover:shadow-md is already applied via classes */
+    }
+    .header-nav-button:active {
+      transform: translateY(1px);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.05); /* Combined inner and subtle outer shadow */
+    }
+
+    /* Microinteraction: Hero CTA Button */
+    .hero-cta-button {
+        /* Tailwind classes already handle transitions, but we can ensure transform is included if not covered by 'transition-all' */
+        transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-backdrop-filter; 
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 300ms; /* Matches existing duration-300 */
+    }
+    /* Tailwind hover:scale-105 hover:shadow-xl is already good */
+    .hero-cta-button:active {
+        transform: scale(0.98);
+        /* Optional: Slightly adjust shadow or gradient for pressed state if needed */
+    }
+
+    /* Responsive adjustments for Logo Marquee */
+    @media (min-width: 1024px) { /* Corresponds to Tailwind's 'lg' breakpoint */
+      .marquee-container {
+        padding: 2.5rem 0; /* 增大容器的垂直内边距 */
+      }
+      .marquee-content img {
+        height: 50px;     /* 增大徽标的高度 */
+        margin: 0 2.5rem; /* 调整徽标之间的间距 */
+      }
+    }
+
+    @media (min-width: 1280px) { /* Corresponds to Tailwind's 'xl' breakpoint */
+      .marquee-container {
+        padding: 3rem 0;  /* 进一步增大容器的垂直内边距 */
+      }
+      .marquee-content img {
+        height: 60px;   /* 进一步增大徽标的高度 */
+        margin: 0 3rem; /* 进一步调整徽标之间的间距 */
+      }
+    }
+
+  </style>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0v4LLanw2qksYuRlEzO+tcaEPQogQ0KaoGN26/zrn20ImR1DfuLWnOo7aBA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body class="font-sans antialiased text-dark bg-purple-50 overflow-x-hidden">
+
+  <!-- Minimal Header -->
+  <header class="absolute top-0 left-0 right-0 z-50 py-6 px-4 md:px-8">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center header-logo-container">
+         <img src="{{ url_for('static', filename='pic/icon48.svg') }}" width="30" height="30" class="text-purple-600" data-translate-key="logoAlt" alt="StyleSwift Logo">
+          <span class="ml-2 text-xl font-bold animated-gradient-text -mb-[0.2rem]" data-translate-key="brandName">
+            StyleSwift
+          </span>
+      </div>
+      <div class="flex items-center space-x-4">
+        <a 
+          href="#waitlist"
+          class="header-nav-button bg-purple-600 text-white px-6 py-2 rounded-full font-medium transition-all duration-300 hover:bg-purple-700 hover:shadow-md text-sm"
+          data-translate-key="joinWaitlistBtnHeader"
+        >
+          Join Waitlist
+        </a>
+        <!-- Language Switcher -->
+        <div class="flex space-x-2 border-l border-purple-200 pl-4">
+          <button id="lang-en" class="text-sm font-medium text-purple-700 hover:text-purple-900 disabled:opacity-50 disabled:cursor-default" onclick="setLanguage('en')">EN</button>
+          <button id="lang-zh" class="text-sm font-medium text-purple-700 hover:text-purple-900 disabled:opacity-50 disabled:cursor-default" onclick="setLanguage('zh')">中文</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Section 1: Interactive Hero -->
+    <section class="min-h-screen flex flex-col items-center justify-center pt-24 pb-12 px-4 md:px-8 relative text-center">
+      <div class="absolute inset-0 bg-gradient-to-br from-purple-50 to-purple-100 opacity-50 z-0"></div>
+      
+      <div class="relative z-10 mb-8 max-w-4xl mx-auto">
+          <h1 class="text-4xl md:text-6xl font-bold mb-4 font-display">
+            <span data-translate-key="heroTitlePart1">See AI </span><span class="animated-gradient-text" data-translate-key="heroTitlePart2">Instantly</span><span data-translate-key="heroTitlePart3"> Restyle the Web</span>
+          </h1>
+          <p class="text-lg md:text-xl text-gray-700 mb-8 max-w-2xl mx-auto" data-translate-key="heroSubtitle">
+            Tired of cluttered designs? Drag the slider to the right to witness {brandName}'s AI magic transform a standard page into something beautiful and clean.
+          </p>
+      </div>
+
+      <div class="interactive-hero z-10 w-full max-w-5xl mx-auto">
+        <div class="hero-before">
+          <!-- Content inside 'before' div if needed, or just use background -->
+        </div>
+        <div class="hero-after">
+          <!-- Content inside 'after' div if needed -->
+        </div>
+        <div class="hero-slider" data-translate-key="heroSliderTitle" title="Drag to compare"></div>
+      </div>
+      
+      <!-- Disclaimer - Moved and margin adjusted -->
+      <p class="relative z-10 mt-3 text-sm text-gray-500" data-translate-key="heroDisclaimer">
+         The website shown in the image is unrelated to this site and is for demonstration purposes only.
+      </p>
+
+      <a 
+        href="#waitlist"
+        class="hero-cta-button mt-10 relative z-10 bg-gradient-to-r from-purple-600 to-orange-400 text-white px-10 py-4 rounded-full font-semibold text-lg transition-all duration-300 ease-out hover:shadow-xl transform hover:scale-105 hover:bg-gradient-to-l hover:from-purple-600 hover:to-orange-400"
+        data-translate-key="heroCta"
+      >
+        Join the Waitlist & Get Early Access
+      </a>
+    </section>
+
+    <!-- Section 2: Flow - Step 1 -->
+    <section class="flow-section bg-white">
+      <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row items-center gap-12 animate-on-scroll">
+        <div class="md:w-3/5 flow-image-container">
+          <img src="https://i.postimg.cc/Kz8FWGtm/flow1.png" data-translate-key="step1Alt" alt="Step 1: Activate StyleSwift with a click" class="rounded-lg w-full h-auto object-cover" loading="lazy" width="600" height="400">
+        </div>
+        <div class="md:w-2/5 text-left">
+          <span class="text-purple-600 font-bold text-sm uppercase tracking-wider" data-translate-key="step1Label">Step 1</span>
+          <h3 class="font-display text-3xl font-bold mt-2 mb-4 text-gray-800" data-translate-key="step1Title">Activate with One Click</h3>
+          <p class="text-gray-600 text-lg leading-relaxed" data-translate-key="step1Desc">
+            Simply click the StyleSwift icon in your browser toolbar whenever you want to transform a page.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Flow - Step 2 -->
+    <section class="flow-section bg-purple-50">
+      <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row-reverse items-center gap-12 animate-on-scroll">
+        <div class="md:w-3/5 flow-image-container">
+          <img src="https://i.postimg.cc/pTcxbwBz/flow2.png" data-translate-key="step2Alt" alt="Step 2: StyleSwift AI analyzes the page" class="rounded-lg w-full h-auto object-cover" loading="lazy" width="600" height="400">
+        </div>
+        <div class="md:w-2/5 text-left">
+          <span class="text-purple-600 font-bold text-sm uppercase tracking-wider" data-translate-key="step2Label">Step 2</span>
+          <h3 class="font-display text-3xl font-bold mt-2 mb-4 text-gray-800" data-translate-key="step2Title">AI Understands & Adapts</h3>
+          <p class="text-gray-600 text-lg leading-relaxed" data-translate-key="step2Desc">
+             Our intelligent engine analyzes the page structure and content, ready to apply stunning styles or your custom preferences.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Flow - Step 3 -->
+     <section class="flow-section bg-white">
+       <div class="container mx-auto px-6 lg:px-8 flex flex-col md:flex-row items-center gap-12 animate-on-scroll">
+         <div class="md:w-3/5 flow-image-container">
+          <img src="https://i.postimg.cc/fbKD5ttH/flow3.png" data-translate-key="step3Alt" alt="Step 3: Instantly beautified webpage result" class="rounded-lg w-full h-auto object-cover" loading="lazy" width="600" height="400">
+        </div>
+        <div class="md:w-2/5 text-left">
+          <span class="text-purple-600 font-bold text-sm uppercase tracking-wider" data-translate-key="step3Label">Step 3</span>
+          <h3 class="font-display text-3xl font-bold mt-2 mb-4 text-gray-800" data-translate-key="step3Title">Enjoy Instant Beauty</h3>
+          <p class="text-gray-600 text-lg leading-relaxed" data-translate-key="step3Desc">
+            Watch the page transform instantly. Apply curated themes, fine-tune elements, or add helpful widgets.
+          </p>
+        </div>
+      </div>
+     </section>
+
+    <!-- Section: Bento Grid Feature Showcase -->
+    <section id="features" class="py-16 md:py-24 bg-purple-50">
+      <div class="container mx-auto px-4 md:px-6">
+        <div class="text-center mb-12 md:mb-16">
+          <h2 class="text-3xl md:text-4xl font-bold font-display text-gray-800 mb-4" data-translate-key="bentoTitle">
+            Discover the Power of StyleSwift
+          </h2>
+          <p class="text-lg text-gray-600 max-w-2xl mx-auto" data-translate-key="bentoSubtitle">
+            Explore key features that make transforming your web experience effortless and enjoyable.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+          <!-- Card 1: AI One-Click Beautification (Spans 2 columns) -->
+          <div class="bento-card md:col-span-2 p-6 md:p-8 flex flex-col items-center text-center bg-white">
+            <div class="text-purple-600 mb-4 text-4xl"> <!-- Increased icon size -->
+              <i class="fas fa-magic"></i> <!-- Font Awesome Magic Wand -->
+            </div>
+            <h3 class="text-xl md:text-2xl font-semibold text-gray-800 mb-2 font-display" data-translate-key="bentoFeature1Title">AI-Powered One-Click Beautification</h3>
+            <p class="text-gray-600 text-sm md:text-base leading-relaxed mb-3" data-translate-key="bentoFeature1Desc">Let our intelligent AI instantly analyze and restyle any webpage with stunning aesthetics in a single click. Effortless transformation at your fingertips.</p>
+            <div class="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-orange-500 mt-3 mb-4" data-translate-key="heroSlogan">Give your favorite websites a makeover!</div>
+            <span class="inline-block bg-purple-100 text-purple-700 text-xs font-semibold px-3 py-1 rounded-full" data-translate-key="bentoFeature1Tag">Magic Wand Included</span>
+          </div>
+
+          <!-- Card 2: AI-Driven Precision Control -->
+          <div class="bento-card p-6 md:p-8 bg-white">
+            <div class="text-orange-500 mb-4 text-3xl"> <!-- Increased icon size -->
+              <i class="fas fa-sliders-h"></i> <!-- Font Awesome Sliders -->
+            </div>
+            <h3 class="text-lg md:text-xl font-semibold text-gray-800 mb-2 font-display" data-translate-key="bentoFeature2Title">AI-Driven Precision Control</h3>
+            <p class="text-gray-600 text-sm leading-relaxed" data-translate-key="bentoFeature2Desc">Effortlessly guide our AI to fine-tune every detail. Adjust fonts, colors, layouts, or hide elements with intuitive, AI-assisted precision for your perfect page – it's that simple!</p>
+             <div class="mt-3">
+                <span class="inline-block bg-orange-100 text-orange-700 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full" data-translate-key="bentoFeature2Tag1">AI Assisted</span>
+                <span class="inline-block bg-green-100 text-green-700 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full" data-translate-key="bentoFeature2Tag2">Intuitive Commands</span>
+                <span class="inline-block bg-purple-100 text-purple-700 text-xs font-semibold px-2.5 py-0.5 rounded-full" data-translate-key="bentoFeature2Tag3">Pixel Perfect</span>
+            </div>
+          </div>
+
+          <!-- Card 3: Creative Widget Ecosystem -->
+          <div class="bento-card p-6 md:p-8 bg-white">
+            <div class="text-green-500 mb-4 text-3xl"> <!-- Increased icon size -->
+              <i class="fas fa-puzzle-piece"></i> <!-- Font Awesome Puzzle Piece -->
+            </div>
+            <h3 class="text-lg md:text-xl font-semibold text-gray-800 mb-2 font-display" data-translate-key="bentoFeature3Title">Creative Widget Ecosystem</h3>
+            <p class="text-gray-600 text-sm leading-relaxed" data-translate-key="bentoFeature3Desc">Unleash your creativity! Generate unique AI-powered widgets like personalized companions, import your own custom code, or choose from a growing library of useful tools.</p>
+            <div class="mt-3">
+                <span class="inline-block bg-blue-100 text-blue-700 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full" data-translate-key="bentoFeature3Tag1">AI Generated</span>
+                <span class="inline-block bg-teal-100 text-teal-700 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full" data-translate-key="bentoFeature3Tag2">Custom Code</span>
+                <span class="inline-block bg-pink-100 text-pink-700 text-xs font-semibold px-2.5 py-0.5 rounded-full" data-translate-key="bentoFeature3Tag3">Personalized Fun</span>
+            </div>
+          </div>
+
+          <!-- Card 4: Community Works Showcase (Spans 2 columns) -->
+          <div class="bento-card md:col-span-2 p-6 md:p-8 flex flex-col items-center text-center bg-white">
+            <div class="text-purple-600 mb-4 text-4xl"> <!-- Increased icon size -->
+              <i class="fas fa-users"></i> <!-- Font Awesome Users/Community -->
+            </div>
+            <h3 class="text-xl md:text-2xl font-semibold text-gray-800 mb-2 font-display" data-translate-key="bentoFeature4Title">Community Showcase & Inspiration</h3>
+            <p class="text-gray-600 text-sm md:text-base leading-relaxed mb-3" data-translate-key="bentoFeature4Desc">Discover amazing styles created by our community, get inspired, and share your own masterpieces. The possibilities are endless.</p>
+            <a href="#waitlist" class="inline-block bg-gradient-to-r from-purple-600 to-orange-500 text-white px-6 py-2 rounded-full font-medium transition-all duration-300 hover:from-purple-700 hover:to-orange-600 hover:shadow-md text-sm" data-translate-key="bentoFeature4Button">
+              Join & Create
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Styles for Bento Grid -->
+    <style>
+      .bento-card {
+        border-radius: 20px; /* Explicit 20px border radius */
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.07); /* Subtle shadow */
+        transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+        /* overflow: hidden; /* Important if inner elements might overflow rounded corners */
+      }
+
+      .bento-card:hover {
+        transform: translateY(-6px); /* Slightly more pronounced lift */
+        box-shadow: 0 8px 25px rgba(139, 92, 246, 0.15); /* Purple-ish shadow on hover, more distinct */
+      }
+
+      /* Gradient text for key data points - can be applied with a class if needed */
+      .bento-card .animated-gradient-text-feature { /* Example if you want a specific one */
+        background: linear-gradient(to right, #8b5cf6, #f97316, #ec4899, #8b5cf6); /* Adjusted gradient */
+        background-size: 250% auto;
+        color: #000;
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: gradient-x 5s linear infinite; /* Can reuse existing 'gradient-x' or define new */
+      }
+      
+      /* Making sure card titles and descriptions have good contrast and readability */
+      .bento-card h3 {
+        color: #1f2937; /* Tailwind gray-800 */
+      }
+      .bento-card p {
+        color: #4b5563; /* Tailwind gray-600 */
+      }
+      .bento-card .text-sm { /* Ensuring small text is legible */
+        line-height: 1.6;
+      }
+      
+      /* Ensure icons have consistent sizing and alignment if more complex ones are used */
+      .bento-card > div:first-child svg { /* Targets the icon container's SVG */
+          /* margin-bottom: 0.75rem; /* More controlled spacing below icon */
+      }
+
+    </style>
+    <!-- End of Section: Bento Grid Feature Showcase -->
+
+    <!-- Section: Logo Marquee - Added logo-marquee-section class -->
+    <section class="py-16 bg-white logo-marquee-section">
+      <div class="container mx-auto px-4 md:px-6 text-center">
+        <h2 class="text-3xl font-bold mb-4 text-gray-800 font-display" data-translate-key="compatibilityTitle">Works Everywhere You Browse</h2>
+        <p class="text-lg text-gray-600 mb-12 max-w-2xl mx-auto" data-translate-key="compatibilitySubtitle">StyleSwift is designed to enhance your experience on millions of websites.</p>
+
+        <div class="marquee-container">
+          <div class="marquee-content">
+             <!-- Duplicate the logo list for seamless looping -->
+             <!-- Wrap each set in a non-shrinking flex container -->
+             <div class="flex flex-shrink-0 items-center"> <!-- Added wrapper div -->
+               <!-- Set 1 -->
+               <img src="https://logo.clearbit.com/google.com" alt="Google Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/wikipedia.org" alt="Wikipedia Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/github.com" alt="GitHub Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/amazon.com" alt="Amazon Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/reddit.com" alt="Reddit Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/youtube.com" alt="YouTube Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/linkedin.com" alt="LinkedIn Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/nytimes.com" alt="New York Times Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/microsoft.com" alt="Microsoft Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/apple.com" alt="Apple Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/meta.com" alt="Meta Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/netflix.com" alt="Netflix Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/spotify.com" alt="Spotify Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/tiktok.com" alt="TikTok Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/adobe.com" alt="Adobe Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/salesforce.com" alt="Salesforce Logo" loading="lazy" height="40">
+             </div>
+
+             <!-- Wrap each set in a non-shrinking flex container -->
+             <div class="flex flex-shrink-0 items-center"> <!-- Added wrapper div -->
+               <!-- Set 2 (Duplicate of Set 1) -->
+               <img src="https://logo.clearbit.com/google.com" alt="Google Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/wikipedia.org" alt="Wikipedia Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/github.com" alt="GitHub Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/amazon.com" alt="Amazon Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/reddit.com" alt="Reddit Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/youtube.com" alt="YouTube Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/linkedin.com" alt="LinkedIn Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/nytimes.com" alt="New York Times Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/microsoft.com" alt="Microsoft Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/apple.com" alt="Apple Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/meta.com" alt="Meta Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/netflix.com" alt="Netflix Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/spotify.com" alt="Spotify Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/tiktok.com" alt="TikTok Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/adobe.com" alt="Adobe Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/salesforce.com" alt="Salesforce Logo" loading="lazy" height="40">
+             </div>
+
+             <!-- Wrap each set in a non-shrinking flex container -->
+             <div class="flex flex-shrink-0 items-center"> <!-- Added wrapper div - Set 3 (Duplicate of Set 1) -->
+               <!-- Set 3 -->
+               <img src="https://logo.clearbit.com/google.com" alt="Google Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/wikipedia.org" alt="Wikipedia Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/github.com" alt="GitHub Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/amazon.com" alt="Amazon Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/reddit.com" alt="Reddit Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/youtube.com" alt="YouTube Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/linkedin.com" alt="LinkedIn Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/nytimes.com" alt="New York Times Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/microsoft.com" alt="Microsoft Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/apple.com" alt="Apple Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/meta.com" alt="Meta Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/netflix.com" alt="Netflix Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/spotify.com" alt="Spotify Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/tiktok.com" alt="TikTok Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/adobe.com" alt="Adobe Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/salesforce.com" alt="Salesforce Logo" loading="lazy" height="40">
+             </div>
+
+             <!-- Wrap each set in a non-shrinking flex container -->
+             <div class="flex flex-shrink-0 items-center"> <!-- Added wrapper div - Set 4 (Duplicate of Set 2) -->
+               <!-- Set 4 -->
+               <img src="https://logo.clearbit.com/google.com" alt="Google Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/wikipedia.org" alt="Wikipedia Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/github.com" alt="GitHub Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/amazon.com" alt="Amazon Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/reddit.com" alt="Reddit Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/youtube.com" alt="YouTube Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/linkedin.com" alt="LinkedIn Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/nytimes.com" alt="New York Times Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/microsoft.com" alt="Microsoft Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/apple.com" alt="Apple Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/meta.com" alt="Meta Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/netflix.com" alt="Netflix Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/spotify.com" alt="Spotify Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/tiktok.com" alt="TikTok Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/adobe.com" alt="Adobe Logo" loading="lazy" height="40">
+               <img src="https://logo.clearbit.com/salesforce.com" alt="Salesforce Logo" loading="lazy" height="40">
+             </div>
+
+           </div>
+         </div>
+       </div>
+     </section>
+
+    <!-- Section 5: Waitlist - Final CTA -->
+    <section id="waitlist" class="py-20 md:py-32 bg-gradient-to-br from-purple-600 to-orange-500 text-white text-center waitlist-section animate-on-scroll">
+      <div class="container mx-auto px-4 md:px-6">
+         <h2 class="text-3xl md:text-5xl font-bold mb-6 font-display" data-translate-key="finalTitle">Ready for a Smarter Web?</h2>
+         <p class="text-lg md:text-xl text-purple-100 mb-10 max-w-2xl mx-auto" data-translate-key="finalSubtitle">
+           Be the first to experience AI-powered web customization. Join the {brandName} waitlist today.
+         </p>
+         <form id="finalWaitlistForm" class="max-w-lg mx-auto" onsubmit="handleWaitlistSubmit(event)" novalidate>
+           <div class="flex flex-col sm:flex-row gap-3 sm:bg-white/20 sm:p-2 sm:rounded-full sm:shadow-inner">
+              <input
+                type="email"
+                data-translate-key="finalPlaceholder"
+                placeholder="Enter your email address"
+                class="flex-1 px-6 py-3 rounded-full text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 placeholder-gray-500 disabled:bg-gray-200 text-base"
+                required
+              />
+              <button
+                type="submit"
+                data-translate-key="finalButton" 
+                class="waitlist-button px-8 py-3 bg-white text-purple-600 rounded-full font-semibold transition-all duration-300 ease-out hover:bg-purple-100 hover:text-purple-700 disabled:opacity-70 disabled:cursor-not-allowed text-base"
+              >
+                Join Now
+              </button>
+            </div>
+         </form>
+         <div id="finalWaitlistSuccessMessage" class="mt-6 text-center text-green-300 font-medium hidden" data-translate-key="finalSuccess">Thank You! You are on the list.</div>
+         <div id="finalWaitlistErrorMessage" class="mt-4 text-center text-red-300 font-medium hidden"></div>
+         <p class="text-sm text-purple-200 mt-6" data-translate-key="finalNote">Free access during beta. No spam, promise.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Simplified Footer -->
+  <footer class="bg-purple-50 py-8">
+    <div class="container mx-auto px-4 md:px-6 text-center text-gray-600 text-sm">
+       <div class="mb-4">
+          <span class="font-bold text-purple-700" data-translate-key="brandNameFooter">StyleSwift</span> &nbsp;|&nbsp; <span data-translate-key="footerTagline">AI Web Beautifier</span>
+       </div>
+      <div class="space-x-4 mb-4">
+          <a href="#" class="hover:text-purple-600" data-translate-key="footerPrivacy">Privacy Policy</a>
+          <a href="#" class="hover:text-purple-600" data-translate-key="footerTerms">Terms</a>
+          <!-- Add social links if needed, keep minimal -->
+       </div>
+       <div>© <span id="currentYear"></span> <span data-translate-key="brandNameCopyright">StyleSwift</span>. <span data-translate-key="footerRights">All rights reserved.</span></div>
+    </div>
+  </footer>
+
+  <script>
+    // Interactive Hero Slider Logic
+    const slider = document.querySelector('.hero-slider');
+    const afterImage = document.querySelector('.hero-after');
+    const container = document.querySelector('.interactive-hero');
+    let isDragging = false;
+
+    function moveSlider(clientX) {
+        const rect = container.getBoundingClientRect();
+        let x = clientX - rect.left;
+        // Clamp position between 0 and container width
+        x = Math.max(0, Math.min(x, rect.width));
+        const percent = (x / rect.width) * 100;
+        slider.style.left = `${percent}%`;
+        afterImage.style.clipPath = `inset(0 ${100 - percent}% 0 0)`;
+    }
+
+    if (slider && afterImage && container) {
+        slider.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            slider.classList.add('is-dragging'); // Add class when dragging starts
+            slider.style.cursor = 'ew-resize'; // Indicate dragging
+            container.style.cursor = 'ew-resize';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                slider.classList.remove('is-dragging'); // Remove class when dragging stops
+                slider.style.cursor = 'ew-resize';
+                container.style.cursor = 'default';
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            moveSlider(e.clientX);
+        });
+
+        // Touch events for mobile
+        slider.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            slider.classList.add('is-dragging'); // Add class for touch
+            // Prevent page scroll while dragging slider
+            e.preventDefault(); 
+        }, { passive: false });
+
+        document.addEventListener('touchend', () => {
+            if (isDragging) {
+                isDragging = false;
+                slider.classList.remove('is-dragging'); // Remove class for touch
+            }
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            moveSlider(e.touches[0].clientX);
+             e.preventDefault(); // Prevent page scroll
+        }, { passive: false });
+    }
+
+    // --- Language Switching Logic --- 
+    const translations = {
+      // English Translations
+      en: {
+        // Meta
+        pageTitle: 'StyleSwift | Experience AI Web Transformation',
+        metaDescription: 'StyleSwift - Witness the magic of AI transforming web pages. Join the waitlist for early access!',
+        ogTitle: 'StyleSwift | Experience AI Web Transformation',
+        ogDescription: 'Drag the slider to see how {brandName} uses AI to instantly beautify any website. Join the waitlist!',
+        twitterTitle: 'StyleSwift | Experience AI Web Transformation',
+        twitterDescription: 'Drag the slider to see how {brandName} uses AI to instantly beautify any website. Join the waitlist!',
+        logoAlt: 'StyleSwift Logo',
+        brandName: 'StyleSwift',
+        // Header
+        joinWaitlistBtnHeader: 'Join Waitlist',
+        // Hero
+        heroTitlePart1: 'See AI ',
+        heroTitlePart2: 'Instantly',
+        heroTitlePart3: ' Restyle the Web',
+        heroSubtitle: 'Tired of cluttered designs? Drag the slider to the right to witness {brandName}\'s AI magic transform a standard page into something beautiful and clean.',
+        heroSliderTitle: 'Drag to compare',
+        heroCta: 'Join the Waitlist & Get Early Access',
+        heroDisclaimer: 'The website shown in the image is unrelated to this site and is for demonstration purposes only.',
+        // Slogan
+        heroSlogan: 'Give your favorite websites a makeover!',
+        // Flow Step 1
+        step1Label: 'Step 1',
+        step1Title: 'Activate with One Click',
+        step1Desc: 'Simply click the StyleSwift icon in your browser toolbar whenever you want to transform a page.',
+        step1Alt: 'Step 1: Activate StyleSwift with a click',
+        // Flow Step 2
+        step2Label: 'Step 2',
+        step2Title: 'AI Understands & Adapts',
+        step2Desc: 'Our intelligent engine analyzes the page structure and content, ready to apply stunning styles or your custom preferences.',
+        step2Alt: 'Step 2: StyleSwift AI analyzes the page',
+        // Flow Step 3
+        step3Label: 'Step 3',
+        step3Title: 'Enjoy Instant Beauty',
+        step3Desc: 'Watch the page transform instantly. Apply curated themes, fine-tune elements, or add helpful widgets.',
+        step3Alt: 'Step 3: Instantly beautified webpage result',
+        // Compatibility Section
+        compatibilityTitle: 'Works Everywhere You Browse',
+        compatibilitySubtitle: 'StyleSwift is designed to enhance your experience on millions of websites.',
+        // Final Waitlist
+        finalTitle: 'Ready for a Smarter Web?',
+        finalSubtitle: 'Be the first to experience AI-powered web customization. Join the {brandName} waitlist today.',
+        finalPlaceholder: 'Enter your email address',
+        finalButton: 'Join Now',
+        finalSuccess: 'Thank You! You are on the list.',
+        finalNote: 'Free access during beta. No spam, promise.',
+        // Footer
+        footerPrivacy: 'Privacy Policy',
+        footerTerms: 'Terms',
+        footerRights: 'All rights reserved.',
+        brandNameFooter: 'StyleSwift',
+        footerTagline: 'AI Web Beautifier',
+        brandNameCopyright: 'StyleSwift',
+        // Form Status Messages (New)
+        formProcessing: 'Processing...',
+        formSubmitted: 'Submitted',
+        formSuccessFallback: 'Success! Please check your email.',
+        formNetworkError: 'Network error. Please check your connection and try again.',
+        formGenericError: 'An error occurred. Please try again.',
+        bentoTitle: 'Discover the Power of StyleSwift',
+        bentoSubtitle: 'Explore key features that make transforming your web experience effortless and enjoyable.',
+        bentoFeature1Title: 'AI-Powered One-Click Beautification',
+        bentoFeature1Desc: 'Let our intelligent AI instantly analyze and restyle any webpage with stunning aesthetics in a single click. Effortless transformation at your fingertips.',
+        bentoFeature1Tag: 'Magic Wand Included',
+        bentoFeature2Title: 'AI-Driven Precision Control',
+        bentoFeature2Desc: 'Effortlessly guide our AI to fine-tune every detail. Adjust fonts, colors, layouts, or hide elements with intuitive, AI-assisted precision for your perfect page – it\'s that simple!',
+        bentoFeature2Tag1: 'AI Assisted',
+        bentoFeature2Tag2: 'Intuitive Commands',
+        bentoFeature2Tag3: 'Pixel Perfect',
+        bentoFeature3Title: 'Creative Widget Ecosystem',
+        bentoFeature3Desc: 'Unleash your creativity! Generate unique AI-powered widgets like personalized companions, import your own custom code, or choose from a growing library of useful tools.',
+        bentoFeature3Tag1: 'AI Generated',
+        bentoFeature3Tag2: 'Custom Code',
+        bentoFeature3Tag3: 'Personalized Fun',
+        bentoFeature4Title: 'Community Showcase & Inspiration',
+        bentoFeature4Desc: 'Discover amazing styles created by our community, get inspired, and share your own masterpieces. The possibilities are endless.',
+        bentoFeature4Button: 'Join & Create',
+      },
+      // Chinese Translations (简体中文)
+      zh: {
+        // Meta
+        pageTitle: '数字女娲 | 体验 AI 网页重塑',
+        metaDescription: '数字女娲 - 见证 AI 魔法重塑网页。加入候补名单，抢先体验！',
+        ogTitle: '数字女娲 | 体验 AI 网页重塑',
+        ogDescription: '拖动滑块，看{brandName}如何用 AI 即刻美化任何网站。加入候补名单！',
+        twitterTitle: '数字女娲 | 体验 AI 网页重塑',
+        twitterDescription: '拖动滑块，看{brandName}如何用 AI 即刻美化任何网站。加入候补名单！',
+        logoAlt: '数字女娲 Logo',
+        brandName: '数字女娲',
+        // Header
+        joinWaitlistBtnHeader: '加入候补',
+        // Hero
+        heroTitlePart1: '见证 AI ',
+        heroTitlePart2: '即刻',
+        heroTitlePart3: ' 重塑网页风格',
+        heroSubtitle: '厌倦了杂乱的设计？向右拖动滑块，亲眼见证 {brandName} 的 AI 魔法如何将普通页面转变为美观简洁的杰作。',
+        heroSliderTitle: '拖动以对比',
+        heroCta: '加入候补名单 & 获取抢先体验',
+        heroDisclaimer: '图片里的网站与本站无关，仅作演示使用',
+        // Slogan
+        heroSlogan: '给喜爱的网站来个大变身！',
+        // Flow Step 1
+        step1Label: '第一步',
+        step1Title: '一键激活',
+        step1Desc: '任何时候想要改造页面，只需点击浏览器工具栏中的 StyleSwift 图标。',
+        step1Alt: '第一步：点击激活 StyleSwift',
+        // Flow Step 2
+        step2Label: '第二步',
+        step2Title: 'AI 理解并适应',
+        step2Desc: '我们的智能引擎会分析页面结构和内容，准备应用精美样式或您的自定义偏好。',
+        step2Alt: '第二步：StyleSwift AI 分析页面',
+        // Flow Step 3
+        step3Label: '第三步',
+        step3Title: '即刻享受美化',
+        step3Desc: '看着页面瞬间转变。应用精选主题、微调元素或添加实用小部件。',
+        step3Alt: '第三步：即时美化的网页结果',
+        // Compatibility Section
+        compatibilityTitle: '通用适配，随处可用',
+        compatibilitySubtitle: '数字女娲旨在优化您在数百万网站上的浏览体验。',
+        // Final Waitlist
+        finalTitle: '准备好迎接更智能的网络了吗？',
+        finalSubtitle: '率先体验 AI 驱动的网页定制。立即加入 {brandName} 候补名单。',
+        finalPlaceholder: '输入您的邮箱地址',
+        finalButton: '立即加入',
+        finalSuccess: '感谢您！您已成功加入名单。',
+        finalNote: 'Beta 期间免费使用。无垃圾邮件承诺。',
+        // Footer
+        footerPrivacy: '隐私政策',
+        footerTerms: '服务条款',
+        footerRights: '版权所有。',
+        brandNameFooter: '数字女娲',
+        footerTagline: 'AI Web Beautifier',
+        brandNameCopyright: '数字女娲',
+        // Form Status Messages (New)
+        formProcessing: '处理中...',
+        formSubmitted: '已提交',
+        formSuccessFallback: '提交成功！请检查您的邮箱。',
+        formNetworkError: '网络错误，请检查您的连接并重试。',
+        formGenericError: '发生错误，请重试。',
+        bentoTitle: '探索 StyleSwift 的强大功能',
+        bentoSubtitle: '发现核心特性，让您的网页体验轻松愉悦地焕然一新。',
+        bentoFeature1Title: 'AI 一键美化',
+        bentoFeature1Desc: '让我们的智能 AI 即刻分析并一键重塑任何网页，赋予其惊艳的视觉效果。弹指间，轻松实现转变。',
+        bentoFeature1Tag: '内含魔法棒',
+        bentoFeature2Title: 'AI 辅助精准控制',
+        bentoFeature2Desc: '轻松引导我们的 AI 精调每个细节。通过直观的、AI 辅助的精准操作，调整字体、颜色、布局或隐藏元素，打造您的完美页面——就是这么简单！',
+        bentoFeature2Tag1: 'AI 辅助',
+        bentoFeature2Tag2: '直观指令',
+        bentoFeature2Tag3: '像素级完美',
+        bentoFeature3Title: '创意挂件生态',
+        bentoFeature3Desc: '释放您的创造力！生成个性化 AI 伙伴等独特挂件，导入您的自定义代码，或从日益丰富的实用工具库中选择。',
+        bentoFeature3Tag1: 'AI 生成',
+        bentoFeature3Tag2: '自定义代码',
+        bentoFeature3Tag3: '个性趣味',
+        bentoFeature4Title: '社区展示与灵感',
+        bentoFeature4Desc: '发现我们社区用户创造的惊艳样式，获取灵感，并分享您自己的杰作。无限可能，待您探索。',
+        bentoFeature4Button: '加入并创作',
+      }
+    };
+
+    let currentLanguage = 'en'; // Default language
+
+    function setLanguage(lang) {
+      if (!translations[lang]) {
+        console.warn(`Language "${lang}" not found in translations.`);
+        return;
+      }
+      currentLanguage = lang;
+      
+      document.querySelectorAll('[data-translate-key]').forEach(element => {
+        const key = element.getAttribute('data-translate-key');
+        const translation = translations[lang][key];
+        
+        if (translation !== undefined) {
+          if (element.tagName === 'IMG') {
+            element.alt = translation;
+          } else if (element.title && element.hasAttribute('data-translate-key')) {
+            element.title = translation;
+          } else if (element.tagName === 'META' && element.hasAttribute('data-translate-key')) {
+            element.content = translation.replace(/\{brandName\}/g, translations[lang]['brandName'] || 'StyleSwift');
+          } else if (element.tagName === 'INPUT' && element.placeholder) {
+            element.placeholder = translation;
+          } else {
+            if (translation.includes('{brandName}')) {
+                element.innerHTML = translation.replace(/\{brandName\}/g, translations[lang]['brandName'] || 'StyleSwift');
+            } else {
+                element.textContent = translation;
+            }
+          }
+        } else {
+          console.warn(`Translation key "${key}" not found for language "${lang}".`);
+        }
+      });
+
+      // Update button active state
+      document.getElementById('lang-en').disabled = (lang === 'en');
+      document.getElementById('lang-zh').disabled = (lang === 'zh');
+
+      // Optional: Store language preference
+      // localStorage.setItem('preferredLanguage', lang);
+
+      // Update document lang attribute
+      document.documentElement.lang = lang;
+    }
+
+    // Waitlist Form Submission (Updated for Backend Integration & i18n)
+    async function handleWaitlistSubmit(event) {
+      console.log('handleWaitlistSubmit called for form:', event.target.id);
+      event.preventDefault();
+      const form = event.target;
+      const emailInput = form.querySelector('input[type="email"]');
+      const submitButton = form.querySelector('button[type="submit"]');
+      const successMessageDivId = form.id.replace('Form', 'SuccessMessage');
+      const errorMessageDivId = form.id.replace('Form', 'ErrorMessage');
+      const successMessageDiv = document.getElementById(successMessageDivId);
+      const errorMessageDiv = document.getElementById(errorMessageDivId);
+
+      const email = emailInput.value;
+      // Get the original button text key to restore it later
+      const originalButtonKey = submitButton.getAttribute('data-translate-key');
+      const originalButtonText = translations[currentLanguage][originalButtonKey] || 'Join Now'; // Fallback
+
+      // Clear previous messages
+      console.log('Clearing previous messages...');
+      if (successMessageDiv) successMessageDiv.classList.add('hidden');
+      if (errorMessageDiv) {
+         errorMessageDiv.classList.add('hidden');
+         errorMessageDiv.textContent = '';
+      } else {
+          console.warn('Error message div not found with ID:', errorMessageDivId);
+      }
+
+      // Key Checkpoint 1: Validation
+      console.log('Checking email validity:', email);
+      if (!email || !emailInput.checkValidity()) {
+        console.log('Validation failed. Email:', email, 'Validity:', emailInput.checkValidity());
+        emailInput.reportValidity();
+        return;
+      }
+      console.log('Validation passed.');
+
+      // Key Checkpoint 2: Disable elements and show processing text
+      console.log('Disabling form elements...');
+      emailInput.disabled = true;
+      submitButton.disabled = true;
+      // Use translated processing text
+      submitButton.textContent = translations[currentLanguage].formProcessing || 'Processing...'; 
+
+      // Key Checkpoint 3: Fetch call
+      try {
+          console.log('Attempting fetch to /api/join_waitlist with email:', email, 'and language:', currentLanguage);
+          const response = await fetch('/api/join_waitlist', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ email: email, language: currentLanguage }),
+          });
+          console.log('Fetch request possibly sent. Response status (if received)::', response.status);
+
+          const result = await response.json();
+          console.log('Parsed JSON result:', result);
+
+          if (response.ok) {
+              console.log('Response OK');
+              // Success
+              if (successMessageDiv) {
+                  // Use message from backend OR fallback translation
+                  successMessageDiv.textContent = result.message || translations[currentLanguage].formSuccessFallback || 'Success!';
+                  successMessageDiv.classList.remove('hidden');
+              }
+              // Keep form disabled and show submitted text
+              submitButton.textContent = translations[currentLanguage].formSubmitted || 'Submitted'; // Use translated submitted text
+
+          } else {
+              console.log('Response NOT OK:', response.status);
+              // Error
+              // Use message from backend OR generic error translation
+              const errorMessage = result.message || translations[currentLanguage].formGenericError || `Error: ${response.statusText}`;
+              if (errorMessageDiv) {
+                  errorMessageDiv.textContent = errorMessage;
+                  errorMessageDiv.classList.remove('hidden');
+              } else {
+                   alert(errorMessage); // Fallback alert
+              }
+               // Re-enable form on error and restore original button text
+               emailInput.disabled = false;
+               submitButton.disabled = false;
+               submitButton.textContent = originalButtonText;
+
+          }
+
+      } catch (error) {
+          console.error('Fetch catch block error:', error);
+          // Use translated network error text
+          const networkErrorMsg = translations[currentLanguage].formNetworkError || 'Network error.';
+          if (errorMessageDiv) {
+              errorMessageDiv.textContent = networkErrorMsg;
+              errorMessageDiv.classList.remove('hidden');
+          } else {
+               alert(networkErrorMsg); // Fallback alert
+          }
+           // Re-enable form on network error and restore original button text
+           emailInput.disabled = false;
+           submitButton.disabled = false;
+           submitButton.textContent = originalButtonText;
+      }
+    }
+    
+    // Update copyright year
+    const currentYearSpan = document.getElementById('currentYear');
+    if (currentYearSpan) {
+        currentYearSpan.textContent = new Date().getFullYear();
+    }
+    
+    // --- Placeholder for Advanced Scroll Animations --- 
+    // For the visual flow sections, you'd implement Intersection Observer 
+    // or a library like GSAP here to trigger animations as sections scroll into view.
+    // Example using basic class toggling (like previous scroll animation):
+    const flowSections = document.querySelectorAll(".flow-section");
+    const observerOptions = { root: null, threshold: 0.3 }; // Adjust threshold
+
+    // Select all elements that need scroll animation, including the new waitlist section
+    const animatedElements = document.querySelectorAll(".animate-on-scroll");
+
+    const observer = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          // Find animatable children within the intersecting section
+           entry.target.classList.add('is-visible'); // Add is-visible to the element itself
+
+           // Special handling for waitlist button pulse
+           if (entry.target.classList.contains('waitlist-section')) {
+                const waitlistButton = entry.target.querySelector('.waitlist-button');
+                if (waitlistButton) {
+                    // Apply pulse animation via CSS - rule needs to be added
+                    // We just ensure the parent is visible
+                }
+           }
+
+           // observer.unobserve(entry.target); // Optional: stop observing once visible
+        } else {
+          // Optional: Reset animation if element scrolls out of view
+          // const animatables = entry.target.querySelectorAll('.animate-on-scroll');
+          // animatables.forEach(el => {
+          //     el.classList.remove('is-visible');
+          // });
+        }
+      });
+    }, observerOptions);
+
+    // Observe all elements marked for animation
+    animatedElements.forEach(el => { observer.observe(el); });
+
+    // --- Set Initial Language Based on Browser ---
+    // Get browser language (e.g., 'en-US', 'zh-CN') and take the primary part ('en', 'zh')
+    const browserLang = navigator.language.split('-')[0]; 
+    // Check if the detected language is supported in our translations, otherwise default to 'en'
+    const initialLang = translations[browserLang] ? browserLang : 'en'; 
+    
+    // Set the initial language for the page
+    setLanguage(initialLang); 
+
+    // --- End of Initial Language Setting ---
+
+  </script>
+</body>
+</html>

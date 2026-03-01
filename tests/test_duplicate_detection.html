@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>重复代码检测测试</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #FF6B6B, #4ECDC4, #45B7D1, #96CEB4);
+            background-size: 400% 400%;
+            animation: gradientShift 8s ease infinite;
+            min-height: 100vh;
+            color: white;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .test-section h2 {
+            margin-top: 0;
+            color: #4CAF50;
+            font-size: 1.5em;
+        }
+        
+        .test-step {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 3px solid #2196F3;
+        }
+        
+        .test-step h3 {
+            margin-top: 0;
+            color: #2196F3;
+        }
+        
+        .highlight {
+            background: rgba(255, 215, 0, 0.2);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        .warning {
+            background: rgba(255, 152, 0, 0.2);
+            border-left-color: #FF9800;
+            color: #FFB74D;
+        }
+        
+        .success {
+            background: rgba(76, 175, 80, 0.2);
+            border-left-color: #4CAF50;
+            color: #81C784;
+        }
+        
+        .code-examples {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .code-block h4 {
+            margin-top: 0;
+            color: #FFD700;
+        }
+        
+        .duplicate-demo {
+            background: rgba(255, 193, 7, 0.1);
+            border: 2px dashed #FFC107;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .optimization-info {
+            background: rgba(33, 150, 243, 0.1);
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            border-radius: 0 10px 10px 0;
+            margin: 20px 0;
+        }
+        
+        .benefits-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .benefit-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .benefit-item .icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .code-examples {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 重复代码检测测试</h1>
+        
+        <div class="test-section">
+            <h2>📋 功能说明</h2>
+            <p>StyleSwift 现在具备智能重复代码检测功能，避免在数据库中存储相同的样式和挂件代码，提高存储效率和系统性能。</p>
+        </div>
+        
+        <div class="optimization-info">
+            <h3>🚀 优化机制</h3>
+            <ul>
+                <li><strong>SHA256哈希算法</strong>：对代码内容进行标准化后计算哈希值</li>
+                <li><strong>智能去重</strong>：保存前检查是否存在相同哈希值的代码</li>
+                <li><strong>引用复用</strong>：发现重复时返回现有记录的ID，避免重复存储</li>
+                <li><strong>空间优化</strong>：显著减少数据库存储空间占用</li>
+            </ul>
+        </div>
+        
+        <div class="benefits-list">
+            <div class="benefit-item">
+                <div class="icon">💾</div>
+                <h4>节省存储</h4>
+                <p>避免重复代码<br>减少存储占用</p>
+            </div>
+            
+            <div class="benefit-item">
+                <div class="icon">⚡</div>
+                <h4>提升性能</h4>
+                <p>减少数据库负载<br>提高查询效率</p>
+            </div>
+            
+            <div class="benefit-item">
+                <div class="icon">🔄</div>
+                <h4>智能复用</h4>
+                <p>自动识别重复<br>复用现有资源</p>
+            </div>
+            
+            <div class="benefit-item">
+                <div class="icon">📊</div>
+                <h4>统计准确</h4>
+                <p>避免重复计数<br>统计更准确</p>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🧪 测试步骤</h2>
+            
+            <div class="test-step">
+                <h3>步骤 1: 测试样式重复检测</h3>
+                <p>1. 在 StyleSwift 扩展中创建一个自定义样式</p>
+                <p>2. 记录返回的样式ID</p>
+                <p>3. 再次提交完全相同的样式代码</p>
+                <p>4. <span class="highlight">验证是否返回相同的样式ID</span></p>
+                <p>5. 检查浏览器控制台是否显示"检测到重复样式"</p>
+            </div>
+            
+            <div class="test-step">
+                <h3>步骤 2: 测试挂件重复检测</h3>
+                <p>1. 创建一个自定义代码挂件（HTML + CSS + JS）</p>
+                <p>2. 记录返回的挂件ID</p>
+                <p>3. 再次提交完全相同的挂件代码</p>
+                <p>4. <span class="highlight">验证是否返回相同的挂件ID</span></p>
+                <p>5. 检查浏览器控制台是否显示"检测到重复挂件"</p>
+            </div>
+            
+            <div class="test-step warning">
+                <h3>步骤 3: 测试AI生成去重</h3>
+                <p>1. 使用相同的描述生成AI样式或挂件</p>
+                <p>2. 如果AI生成了完全相同的代码</p>
+                <p>3. <span class="highlight">系统应该自动检测并复用现有代码</span></p>
+                <p>4. 观察是否有重复检测的提示信息</p>
+            </div>
+        </div>
+        
+        <div class="duplicate-demo">
+            <h3>🔄 重复检测示例</h3>
+            <p>当系统检测到重复代码时，你会在控制台看到类似信息：</p>
+            
+            <div class="code-examples">
+                <div class="code-block">
+                    <h4>样式重复检测</h4>
+                    <pre>🔄 检测到重复样式，使用现有样式: style_abc123
+✅ 样式应用成功 - 已应用到所有网站</pre>
+                </div>
+                
+                <div class="code-block">
+                    <h4>挂件重复检测</h4>
+                    <pre>🔄 检测到重复挂件代码，使用现有挂件: widget_xyz789
+✅ 挂件应用成功</pre>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section success">
+            <h2>✅ 预期结果</h2>
+            <ul>
+                <li><strong>自动检测</strong>：系统自动识别重复的样式和挂件代码</li>
+                <li><strong>智能复用</strong>：重复代码时返回现有记录的ID，不创建新记录</li>
+                <li><strong>用户提示</strong>：在控制台显示清晰的重复检测信息</li>
+                <li><strong>功能正常</strong>：重复检测不影响样式和挂件的正常应用</li>
+                <li><strong>存储优化</strong>：数据库中不会出现重复的代码记录</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h2>🛠️ 技术实现细节</h2>
+            
+            <div class="code-examples">
+                <div class="code-block">
+                    <h4>哈希计算算法</h4>
+                    <pre>def calculate_code_hash(content):
+    # 标准化代码内容
+    normalized = re.sub(r'\s+', ' ', content.strip())
+    # 计算SHA256哈希
+    return hashlib.sha256(normalized.encode()).hexdigest()</pre>
+                </div>
+                
+                <div class="code-block">
+                    <h4>重复检测逻辑</h4>
+                    <pre># 检查是否已存在相同的代码
+existing = Style.query.filter_by(
+    style_code_hash=style_hash
+).first()
+
+if existing:
+    return existing.style_id  # 复用现有</pre>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section warning">
+            <h2>⚠️ 注意事项</h2>
+            <ul>
+                <li>哈希计算会标准化代码格式，轻微的空格差异不会影响检测</li>
+                <li>只有代码内容完全相同才会被识别为重复</li>
+                <li>重复检测不会影响样式或挂件的功能</li>
+                <li>系统会在控制台提供详细的检测日志</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        console.log('🔍 重复代码检测测试页面已加载');
+        console.log('📝 请按照测试步骤验证重复检测功能');
+        
+        // 检查扩展是否可用
+        if (typeof chrome !== 'undefined' && chrome.runtime) {
+            console.log('✅ StyleSwift 扩展检测成功');
+            console.log('💡 提示：创建相同的样式或挂件来测试重复检测功能');
+        } else {
+            console.warn('⚠️ 未检测到 StyleSwift 扩展，请确保扩展已安装并启用');
+        }
+        
+        // 添加页面动画效果
+        document.addEventListener('click', function(e) {
+            // 创建点击波纹效果
+            const ripple = document.createElement('div');
+            ripple.style.cssText = `
+                position: fixed;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.4);
+                pointer-events: none;
+                transform: scale(0);
+                animation: ripple 0.6s linear;
+                z-index: 9999;
+                left: ${e.clientX - 15}px;
+                top: ${e.clientY - 15}px;
+                width: 30px;
+                height: 30px;
+            `;
+            
+            document.body.appendChild(ripple);
+            
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
+        });
+        
+        // 添加波纹动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes ripple {
+                to {
+                    transform: scale(4);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html> 

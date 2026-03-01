@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StyleSwift 预设挂件 Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .widgets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .widget-demo {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .widget-header h3 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        
+        .widget-info {
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .code-preview {
+            background: rgba(0,0,0,0.4);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 StyleSwift 预设挂件 Demo</h1>
+            <p>体验三种精美的预设挂件：可爱猫女、变形金刚、皮卡丘</p>
+        </div>
+        
+        <div class="widgets-grid">
+            <!-- 猫女挂件 -->
+            <div class="widget-demo">
+                <div class="widget-header">
+                    <h3>🐱 可爱猫女</h3>
+                </div>
+                <div class="widget-info">
+                    <h4 style="color: #ffd700; margin-bottom: 10px;">✨ 特性</h4>
+                    <div class="info-item">
+                        <span>🎭 动态表情</span>
+                        <span>✓</span>
+                    </div>
+                    <div class="info-item">
+                        <span>💬 日语对话</span>
+                        <span>✓</span>
+                    </div>
+                    <div class="info-item">
+                        <span>🖱️ 点击互动</span>
+                        <span>✓</span>
+                    </div>
+                    <div class="info-item">
+                        <span>⏰ 定时切换</span>
+                        <span>✓</span>
+                    </div>
+                    
+                    <h4 style="color: #ffd700; margin: 15px 0 10px;">📊 数据信息</h4>
+                    <div class="code-preview">
+                        widget_id: 'catgirl'
+                        name: '可爱猫女'
+                        type: 'catgirl'
+                        html: 1201 字符
+                        css: 3766 字符 (动画效果)
+                        js: 716 字符 (交互逻辑)
+                        config: {"position": {"x": 20, "y": 100}, "size": {"width": 200, "height": 250}}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 变形金刚挂件 -->
+            <div class="widget-demo">
+                <div class="widget-header">
+                    <h3>🤖 变形金刚</h3>
+                </div>
+                <div class="widget-info">
+                    <h4 style="color: #ffd700; margin-bottom: 10px;">⚡ 特性</h4>
+                    <div class="info-item">
+                        <span>🔋 能量显示</span>
+                        <span>✓</span>
+                    </div>
+                    <div class="info-item">
+                        <span>🔄 变形动画</span>
+                        <span>✓</span>
+                    </div>
+                    <div class="info-item">
+                        <span>📊 HUD界面</span>
+                        <span>✓</span>
+                    </div>
+                    <div class="info-item">
+                        <span>💫 发光效果</span>
+                        <span>✓</span>
+                    </div>
+                    
+                    <h4 style="color: #ffd700; margin: 15px 0 10px;">📊 数据信息</h4>
+                    <div class="code-preview">
+                        widget_id: 'transformer'
+                        name: '变形金刚'
+                        type: 'transformer'
+                        html: 1601 字符
+                        css: 4123 字符 (科幻样式)
+                        js: 1227 字符 (变形逻辑)
+                        config: {"position": {"x": 250, "y": 100}, "size": {"width": 180, "height": 280}}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 宝可梦挂件 -->
+            <div class="widget-demo">
+                <div class="widget-header">
+                    <h3>⚡ 皮卡丘</h3>
+                </div>
+                <div class="widget-info">
+                    <h4 style="color: #ffd700; margin-bottom: 10px;">🎯 特性</h4>
+                    <div class="info-item">
+                        <span>🔊 叫声互动</span>
+                        <span>✓</span>
+                    </div>
+                    <div class="info-item">
+                        <span>❤️ 血量显示</span>
+                        <span>✓</span>
+                    </div>
+                    <div class="info-item">
+                        <span>📈 等级系统</span>
+                        <span>✓</span>
+                    </div>
+                    <div class="info-item">
+                        <span>⚡ 十万伏特</span>
+                        <span>✓</span>
+                    </div>
+                    
+                    <h4 style="color: #ffd700; margin: 15px 0 10px;">📊 数据信息</h4>
+                    <div class="code-preview">
+                        widget_id: 'pokemon'
+                        name: '皮卡丘'
+                        type: 'pokemon'
+                        html: 1863 字符
+                        css: 5909 字符 (宝可梦样式)
+                        js: 2082 字符 (互动功能)
+                        config: {"position": {"x": 150, "y": 50}, "size": {"width": 200, "height": 320}}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="background: rgba(255, 255, 255, 0.1); border-radius: 15px; padding: 25px; margin-top: 30px;">
+            <h2 style="text-align: center; margin-bottom: 20px;">🌟 挂件系统特色</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 10px; text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">🎨</div>
+                    <h3>Shadow DOM 封装</h3>
+                    <p>完全隔离的样式系统，不与网页内容冲突</p>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 10px; text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">🖱️</div>
+                    <h3>拖拽与缩放</h3>
+                    <p>支持自由拖拽和大小调整，用户体验极佳</p>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 10px; text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">⚙️</div>
+                    <h3>交互功能</h3>
+                    <p>丰富的动画效果和点击交互响应</p>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 10px; text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">💾</div>
+                    <h3>状态保存</h3>
+                    <p>自动保存挂件位置和大小设置</p>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 10px; text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">🔧</div>
+                    <h3>控制面板</h3>
+                    <p>内置关闭、最小化等控制功能</p>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 10px; text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">🌐</div>
+                    <h3>全站应用</h3>
+                    <p>一键应用到所有网站，无需重复设置</p>
+                </div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 40px;">
+            <h2>📦 数据库中的挂件信息</h2>
+            <div style="margin-top: 20px; text-align: left; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 10px; font-family: monospace;">
+                <h3>Widget 数据表结构：</h3>
+                <pre style="color: #00ff41; margin: 10px 0; line-height: 1.5;">
+widget_id: 'catgirl' | 'transformer' | 'pokemon'
+name: 挂件显示名称
+description: 挂件功能描述
+widget_type: 枚举类型 (catgirl/transformer/pokemon/custom/custom-code)
+html_code: 完整的HTML结构代码
+css_code: 样式定义和动画效果
+js_code: 交互逻辑和功能实现
+default_config: JSON格式的默认配置 (位置、大小等)
+created_at: 创建时间
+rating: 评分系统字段
+
+API 端点:
+GET  /api/widgets - 获取所有挂件列表
+POST /api/apply_widget - 应用预设挂件
+POST /api/generate_ai_widget - 生成自定义挂件
+POST /api/save_custom_widget_code - 保存自定义代码挂件
+                </pre>
+            </div>
+            <p style="margin-top: 15px; color: #90ee90;">
+                ✅ 数据库初始化完成！已创建 3 个预设挂件<br>
+                🚀 现在可以通过 StyleSwift 扩展测试挂件功能
+            </p>
+        </div>
+    </div>
+</body>
+</html> 
