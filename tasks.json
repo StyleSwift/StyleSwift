@@ -86,7 +86,7 @@
           "id": "T010",
           "title": "实现 service-worker.js",
           "description": "设置 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })，点击扩展图标自动打开 Side Panel",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T002"
