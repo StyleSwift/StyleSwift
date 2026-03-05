@@ -15,6 +15,20 @@ const DB_VERSION = 1;
 const STORE_NAME = 'conversations';
 
 // ============================================================================
+// Storage Schema 版本迁移常量
+// ============================================================================
+
+/**
+ * 当前 Storage Schema 版本号
+ * 用于 chrome.storage.local 数据结构的版本控制
+ * 
+ * 版本历史：
+ * - v1: 初始版本，无迁移逻辑
+ * - v2+: 未来版本，需添加迁移函数到 migrations 对象
+ */
+const CURRENT_SCHEMA_VERSION = 1;
+
+// ============================================================================
 // IndexedDB 封装
 // ============================================================================
 
@@ -30,6 +44,10 @@ let dbInstance = null;
  * 
  * 创建 StyleSwiftDB 数据库和 conversations Object Store。
  * 使用 Promise 封装，支持重复调用（内部缓存数据库实例）。
+ * 
+ * onupgradeneeded 处理 IndexedDB 版本升级：
+ * - 首次创建：创建 conversations Object Store
+ * - 未来版本升级：在此添加迁移逻辑
  * 
  * @returns {Promise<IDBDatabase>} 返回 IDBDatabase 实例
  * @throws {Error} 当数据库打开失败时抛出错误
@@ -47,25 +65,47 @@ function openDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    // 数据库版本升级时创建 Object Store
+    // 数据库版本升级时创建/修改 Object Store
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
-      
-      // 仅在 Object Store 不存在时创建
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
+      const oldVersion = event.oldVersion;
+      const newVersion = event.newVersion;
+
+      console.log(`[IndexedDB] Upgrading: v${oldVersion} → v${newVersion}`);
+
+      // 根据 oldVersion 执行不同的升级逻辑
+      if (oldVersion < 1) {
+        // 版本 0 → 1: 首次创建，创建 conversations Object Store
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME);
+          console.log(`[IndexedDB] Created Object Store: ${STORE_NAME}`);
+        }
       }
+
+      // 未来版本升级示例：
+      // if (oldVersion < 2) {
+      //   // 版本 1 → 2: 添加索引或其他结构变更
+      //   const store = transaction.objectStore(STORE_NAME);
+      //   store.createIndex('domain', 'domain', { unique: false });
+      // }
     };
 
     // 成功打开数据库
     request.onsuccess = (event) => {
       dbInstance = event.target.result;
+      console.log(`[IndexedDB] Database opened successfully: ${dbInstance.name} v${dbInstance.version}`);
       resolve(dbInstance);
     };
 
     // 打开数据库失败
     request.onerror = (event) => {
+      console.error('[IndexedDB] Failed to open database:', event.target.error);
       reject(event.target.error);
+    };
+
+    // 数据库被意外关闭时清除缓存
+    request.onblocked = () => {
+      console.warn('[IndexedDB] Database upgrade blocked by another connection');
     };
   });
 }
@@ -78,6 +118,84 @@ function closeDB() {
   if (dbInstance) {
     dbInstance.close();
     dbInstance = null;
+  }
+}
+
+// ============================================================================
+// Storage Schema 版本迁移
+// ============================================================================
+
+/**
+ * 迁移函数注册表
+ * 
+ * 每个 key 为目标版本号，value 为该版本的迁移函数。
+ * 迁移函数负责将数据从 v-1 升级到 v。
+ * 
+ * 示例：
+ * - 1: 初始版本，无迁移逻辑
+ * - 2: async () => { 重命名 key、添加新字段等 }
+ */
+const migrations = {
+  // 版本 1: 初始版本，无需迁移逻辑
+  // 未来版本迁移示例：
+  // 2: async () => {
+  //   // 迁移逻辑：例如重命名 key、添加新字段
+  //   const all = await chrome.storage.local.get(null);
+  //   const updates = {};
+  //   for (const [key, value] of Object.entries(all)) {
+  //     if (key.startsWith('oldPrefix:')) {
+  //       const newKey = key.replace('oldPrefix:', 'newPrefix:');
+  //       updates[newKey] = value;
+  //       await chrome.storage.local.remove(key);
+  //     }
+  //   }
+  //   await chrome.storage.local.set(updates);
+  // },
+};
+
+/**
+ * 检查并执行 Storage Schema 版本迁移
+ * 
+ * 读取当前 _schemaVersion，按版本号顺序执行迁移函数。
+ * 迁移完成后更新版本号到 CURRENT_SCHEMA_VERSION。
+ * 
+ * @returns {Promise<void>}
+ * 
+ * @example
+ * // Side Panel 启动时调用
+ * await checkAndMigrateStorage();
+ */
+async function checkAndMigrateStorage() {
+  try {
+    // 读取当前版本号，默认为 0（全新安装）
+    const { _schemaVersion = 0 } = await chrome.storage.local.get('_schemaVersion');
+
+    // 如果已是最新版本，跳过迁移
+    if (_schemaVersion >= CURRENT_SCHEMA_VERSION) {
+      console.log(`[Schema] Storage already at version ${_schemaVersion}, skipping migration.`);
+      return;
+    }
+
+    console.log(`[Schema] Migrating storage: v${_schemaVersion} → v${CURRENT_SCHEMA_VERSION}`);
+
+    // 按版本号顺序执行迁移
+    for (let v = _schemaVersion + 1; v <= CURRENT_SCHEMA_VERSION; v++) {
+      if (migrations[v]) {
+        console.log(`[Schema] Executing migration for version ${v}...`);
+        await migrations[v]();
+        console.log(`[Schema] Migration v${v} completed.`);
+      } else {
+        console.log(`[Schema] No migration needed for version ${v}.`);
+      }
+    }
+
+    // 更新版本号
+    await chrome.storage.local.set({ _schemaVersion: CURRENT_SCHEMA_VERSION });
+    console.log(`[Schema] Migration complete. Current version: ${CURRENT_SCHEMA_VERSION}`);
+  } catch (error) {
+    console.error('[Schema] Migration failed:', error);
+    // 不抛出错误，避免阻塞应用启动
+    // 可以在后续操作中重试或提示用户
   }
 }
 
@@ -252,10 +370,48 @@ let currentSession = null;
 // ============================================================================
 
 // 导出常量供其他模块使用
-export { DB_NAME, DB_VERSION, STORE_NAME };
+export { DB_NAME, DB_VERSION, STORE_NAME, CURRENT_SCHEMA_VERSION };
 
 // 导出函数
-export { openDB, closeDB, saveHistory, loadHistory, deleteHistory };
+export { openDB, closeDB, saveHistory, loadHistory, deleteHistory, checkAndMigrateStorage };
 
 // 导出 SessionContext 类和当前会话变量
 export { SessionContext, currentSession };
+
+// ============================================================================
+// 初始化（Side Panel 启动时执行）
+// ============================================================================
+
+/**
+ * 初始化存储层
+ * 
+ * 在 Side Panel 加载时执行：
+ * 1. 检查并执行 Storage Schema 迁移
+ * 2. 打开 IndexedDB 连接（预热）
+ * 
+ * 此函数应在 sidepanel/panel.js 的模块初始化时调用。
+ * 
+ * @returns {Promise<void>}
+ */
+async function initStorage() {
+  try {
+    // 执行 Storage Schema 版本迁移
+    await checkAndMigrateStorage();
+
+    // 预热 IndexedDB 连接（创建但不等待）
+    openDB().catch(err => {
+      console.error('[Storage] Failed to initialize IndexedDB:', err);
+    });
+
+    console.log('[Storage] Storage layer initialized successfully');
+  } catch (error) {
+    console.error('[Storage] Storage initialization failed:', error);
+  }
+}
+
+// 导出初始化函数
+export { initStorage };
+
+// 自动执行初始化（模块加载时立即运行）
+// 注意：这是 IIFE 模式，确保在模块导入时执行
+initStorage();

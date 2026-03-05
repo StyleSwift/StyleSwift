@@ -168,7 +168,7 @@
           "id": "T024",
           "title": "实现存储 Schema 版本迁移机制",
           "description": "实现 checkAndMigrateStorage() 函数，读取 _schemaVersion，按版本号顺序执行迁移函数。当前 CURRENT_SCHEMA_VERSION = 1，初始版本无需迁移逻辑。同时处理 IndexedDB 的 onupgradeneeded 版本升级",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T004",
