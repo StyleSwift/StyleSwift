@@ -82,6 +82,95 @@ function closeDB() {
 }
 
 // ============================================================================
+// 对话历史读写操作
+// ============================================================================
+
+/**
+ * 保存对话历史到 IndexedDB
+ * 
+ * 将对话历史数组存储到 conversations Object Store 中，
+ * key 格式为 {domain}:{sessionId}。
+ * 
+ * @param {string} domain - 域名，如 'github.com'
+ * @param {string} sessionId - 会话 ID
+ * @param {Array} history - 对话历史数组，格式为 Anthropic Messages API 的 messages 数组
+ * @returns {Promise<void>}
+ * @throws {Error} 当保存失败时抛出错误
+ * 
+ * @example
+ * await saveHistory('github.com', 'abc123', [
+ *   { role: 'user', content: '把背景改成深蓝色' },
+ *   { role: 'assistant', content: [{ type: 'text', text: '好的...' }] }
+ * ]);
+ */
+async function saveHistory(domain, sessionId, history) {
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+  
+  // 使用 {domain}:{sessionId} 作为 key
+  store.put(history, `${domain}:${sessionId}`);
+  
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/**
+ * 从 IndexedDB 加载对话历史
+ * 
+ * 从 conversations Object Store 中读取对话历史，
+ * key 格式为 {domain}:{sessionId}。
+ * 
+ * @param {string} domain - 域名，如 'github.com'
+ * @param {string} sessionId - 会话 ID
+ * @returns {Promise<Array>} 对话历史数组，无数据时返回空数组
+ * 
+ * @example
+ * const history = await loadHistory('github.com', 'abc123');
+ * // history 可能是 [{ role: 'user', content: '...' }, ...]
+ * // 或者是 []（无历史）
+ */
+async function loadHistory(domain, sessionId) {
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, 'readonly');
+  const store = tx.objectStore(STORE_NAME);
+  const request = store.get(`${domain}:${sessionId}`);
+  
+  return new Promise((resolve) => {
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => resolve([]);
+  });
+}
+
+/**
+ * 从 IndexedDB 删除对话历史
+ * 
+ * 从 conversations Object Store 中删除对话历史，
+ * key 格式为 {domain}:{sessionId}。
+ * 
+ * @param {string} domain - 域名，如 'github.com'
+ * @param {string} sessionId - 会话 ID
+ * @returns {Promise<void>}
+ * 
+ * @example
+ * await deleteHistory('github.com', 'abc123');
+ */
+async function deleteHistory(domain, sessionId) {
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+  
+  store.delete(`${domain}:${sessionId}`);
+  
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ============================================================================
 // 导出
 // ============================================================================
 
@@ -89,4 +178,4 @@ function closeDB() {
 export { DB_NAME, DB_VERSION, STORE_NAME };
 
 // 导出函数
-export { openDB, closeDB };
+export { openDB, closeDB, saveHistory, loadHistory, deleteHistory };

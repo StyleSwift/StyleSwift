@@ -123,7 +123,7 @@
           "id": "T021",
           "title": "实现 IndexedDB 读写（saveHistory / loadHistory / deleteHistory）",
           "description": "实现对话历史的增删查：saveHistory(domain, sessionId, history)、loadHistory(domain, sessionId)、deleteHistory(domain, sessionId)，key 格式为 {domain}:{sessionId}",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T020"
