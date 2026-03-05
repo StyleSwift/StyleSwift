@@ -12,7 +12,7 @@
  */
 
 import { describe, test, expect } from 'vitest';
-import { splitTopLevelBlocks, parseRules } from '../sidepanel/css-merge.js';
+import { splitTopLevelBlocks, parseRules, serializeRules, mergeCSS } from '../sidepanel/css-merge.js';
 
 describe('splitTopLevelBlocks', () => {
   describe('普通规则', () => {
@@ -515,6 +515,274 @@ describe('parseRules', () => {
       
       const mediaProps = rules.get('@media (prefers-color-scheme: dark)');
       expect(mediaProps.has('__raw__')).toBe(true);
+    });
+  });
+});
+
+describe('serializeRules', () => {
+  describe('普通规则序列化', () => {
+    test('单个规则序列化', () => {
+      const rules = new Map([
+        ['.header', new Map([['color', 'red'], ['font-size', '14px']])]
+      ]);
+      const css = serializeRules(rules);
+      
+      expect(css).toContain('.header {');
+      expect(css).toContain('color: red;');
+      expect(css).toContain('font-size: 14px;');
+    });
+
+    test('多个规则序列化', () => {
+      const rules = new Map([
+        ['.a', new Map([['color', 'red']])],
+        ['.b', new Map([['margin', '0'], ['padding', '10px']])]
+      ]);
+      const css = serializeRules(rules);
+      
+      expect(css).toContain('.a {');
+      expect(css).toContain('.b {');
+      expect(css).toContain('color: red;');
+      expect(css).toContain('margin: 0;');
+    });
+
+    test('规则间有双换行分隔', () => {
+      const rules = new Map([
+        ['.a', new Map([['color', 'red']])],
+        ['.b', new Map([['color', 'blue']])]
+      ]);
+      const css = serializeRules(rules);
+      
+      expect(css).toContain('\n\n');
+    });
+  });
+
+  describe('at-rule 序列化', () => {
+    test('@media 规则保留原始文本', () => {
+      const rules = new Map([
+        ['@media (max-width: 600px)', new Map([['__raw__', '@media (max-width: 600px) { .header { color: blue; } }']])]
+      ]);
+      const css = serializeRules(rules);
+      
+      expect(css).toBe('@media (max-width: 600px) { .header { color: blue; } }');
+    });
+
+    test('@keyframes 规则保留原始文本', () => {
+      const rules = new Map([
+        ['@keyframes fadeIn', new Map([['__raw__', '@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }']])]
+      ]);
+      const css = serializeRules(rules);
+      
+      expect(css).toContain('@keyframes fadeIn');
+      expect(css).toContain('from { opacity: 0; }');
+      expect(css).toContain('to { opacity: 1; }');
+    });
+  });
+
+  describe('混合规则序列化', () => {
+    test('普通规则 + at-rule', () => {
+      const rules = new Map([
+        ['.header', new Map([['color', 'red']])],
+        ['@media print', new Map([['__raw__', '@media print { .header { display: none; } }']])]
+      ]);
+      const css = serializeRules(rules);
+      
+      expect(css).toContain('.header {');
+      expect(css).toContain('@media print');
+    });
+  });
+});
+
+describe('mergeCSS', () => {
+  describe('同选择器同属性覆盖', () => {
+    test('同属性值被覆盖', () => {
+      const existing = '.header { color: red; }';
+      const newCSS = '.header { color: blue; }';
+      const merged = mergeCSS(existing, newCSS);
+      
+      expect(merged).toContain('.header {');
+      expect(merged).toContain('color: blue;');
+      expect(merged).not.toContain('color: red;');
+    });
+
+    test('多个属性部分覆盖', () => {
+      const existing = '.header { color: red; font-size: 14px; margin: 10px; }';
+      const newCSS = '.header { color: blue; font-size: 16px; }';
+      const merged = mergeCSS(existing, newCSS);
+      
+      expect(merged).toContain('color: blue;');
+      expect(merged).toContain('font-size: 16px;');
+      expect(merged).toContain('margin: 10px;');
+    });
+
+    test('带 !important 的属性覆盖', () => {
+      const existing = '.btn { color: red; }';
+      const newCSS = '.btn { color: blue !important; }';
+      const merged = mergeCSS(existing, newCSS);
+      
+      expect(merged).toContain('color: blue !important;');
+    });
+  });
+
+  describe('同选择器不同属性追加', () => {
+    test('不同属性追加到现有规则', () => {
+      const existing = '.header { color: red; }';
+      const newCSS = '.header { font-size: 14px; padding: 10px; }';
+      const merged = mergeCSS(existing, newCSS);
+      
+      expect(merged).toContain('color: red;');
+      expect(merged).toContain('font-size: 14px;');
+      expect(merged).toContain('padding: 10px;');
+    });
+
+    test('追加和覆盖同时进行', () => {
+      const existing = '.header { color: red; margin: 10px; }';
+      const newCSS = '.header { color: blue; padding: 5px; }';
+      const merged = mergeCSS(existing, newCSS);
+      
+      expect(merged).toContain('color: blue;');
+      expect(merged).toContain('margin: 10px;');
+      expect(merged).toContain('padding: 5px;');
+    });
+  });
+
+  describe('不同选择器合并', () => {
+    test('不同选择器直接合并', () => {
+      const existing = '.header { color: red; }';
+      const newCSS = '.footer { color: blue; }';
+      const merged = mergeCSS(existing, newCSS);
+      
+      expect(merged).toContain('.header {');
+      expect(merged).toContain('color: red;');
+      expect(merged).toContain('.footer {');
+      expect(merged).toContain('color: blue;');
+    });
+
+    test('多个不同选择器合并', () => {
+      const existing = '.a { color: red; }';
+      const newCSS = '.b { margin: 0; } .c { padding: 10px; }';
+      const merged = mergeCSS(existing, newCSS);
+      
+      expect(merged).toContain('.a {');
+      expect(merged).toContain('.b {');
+      expect(merged).toContain('.c {');
+    });
+  });
+
+  describe('@media 整体替换', () => {
+    test('@media 整体替换（相同条件）', () => {
+      const existing = '@media (max-width: 600px) { .header { color: red; } }';
+      const newCSS = '@media (max-width: 600px) { .header { color: blue; } }';
+      const merged = mergeCSS(existing, newCSS);
+      
+      expect(merged).toContain('@media (max-width: 600px)');
+      expect(merged).toContain('color: blue;');
+      expect(merged).not.toContain('color: red;');
+    });
+
+    test('@media 不同条件不替换', () => {
+      const existing = '@media (max-width: 600px) { .header { color: red; } }';
+      const newCSS = '@media (min-width: 1200px) { .header { color: blue; } }';
+      const merged = mergeCSS(existing, newCSS);
+      
+      expect(merged).toContain('@media (max-width: 600px)');
+      expect(merged).toContain('@media (min-width: 1200px)');
+      expect(merged).toContain('color: red;');
+      expect(merged).toContain('color: blue;');
+    });
+
+    test('@keyframes 整体替换', () => {
+      const existing = '@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }';
+      const newCSS = '@keyframes fadeIn { from { opacity: 0.5; } to { opacity: 1; } }';
+      const merged = mergeCSS(existing, newCSS);
+      
+      expect(merged).toContain('@keyframes fadeIn');
+      expect(merged).toContain('opacity: 0.5;');
+      expect(merged).not.toContain('opacity: 0; }');
+    });
+  });
+
+  describe('复杂合并场景', () => {
+    test('普通规则 + @media 混合合并', () => {
+      const existing = '.header { color: red; } @media print { .header { display: none; } }';
+      const newCSS = '.header { background: blue; } .footer { margin: 0; }';
+      const merged = mergeCSS(existing, newCSS);
+      
+      expect(merged).toContain('color: red;');
+      expect(merged).toContain('background: blue;');
+      expect(merged).toContain('.footer {');
+      expect(merged).toContain('@media print');
+    });
+
+    test('多轮合并（现有 CSS 已有多个规则）', () => {
+      const existing = '.header { color: red; } .footer { margin: 10px; }';
+      const newCSS = '.header { font-size: 14px; } .sidebar { padding: 5px; }';
+      const merged = mergeCSS(existing, newCSS);
+      
+      expect(merged).toContain('color: red;');
+      expect(merged).toContain('font-size: 14px;');
+      expect(merged).toContain('margin: 10px;');
+      expect(merged).toContain('.sidebar {');
+      expect(merged).toContain('padding: 5px;');
+    });
+
+    test('空字符串合并', () => {
+      expect(mergeCSS('', '.header { color: red; }')).toContain('color: red;');
+      expect(mergeCSS('.header { color: red; }', '')).toContain('color: red;');
+      expect(mergeCSS('', '')).toBe('');
+    });
+
+    test('连续合并多次', () => {
+      let css = '.header { color: red; }';
+      css = mergeCSS(css, '.header { font-size: 14px; }');
+      css = mergeCSS(css, '.header { color: blue; }');
+      css = mergeCSS(css, '.footer { margin: 0; }');
+      
+      expect(css).toContain('color: blue;');
+      expect(css).toContain('font-size: 14px;');
+      expect(css).toContain('.footer {');
+    });
+  });
+
+  describe('实际应用场景', () => {
+    test('深色模式 CSS 合并', () => {
+      const existing = `
+        body { background-color: #fff !important; color: #333 !important; }
+        .site-header { background: #f5f5f5 !important; }
+      `;
+      const newCSS = `
+        body { background-color: #1a1a1a !important; }
+        .site-header { border-bottom: 1px solid #444 !important; }
+      `;
+      const merged = mergeCSS(existing, newCSS);
+      
+      expect(merged).toContain('background-color: #1a1a1a !important;');
+      expect(merged).toContain('color: #333 !important;');
+      expect(merged).toContain('background: #f5f5f5 !important;');
+      expect(merged).toContain('border-bottom: 1px solid #444 !important;');
+    });
+
+    test('@media 规则与普通规则交叉合并', () => {
+      const existing = `
+        body { color: #333; }
+        @media (prefers-color-scheme: dark) {
+          body { color: #e0e0e0; }
+        }
+      `;
+      const newCSS = `
+        body { font-size: 16px; }
+        @media (prefers-color-scheme: dark) {
+          body { background: #1a1a1a; }
+        }
+      `;
+      const merged = mergeCSS(existing, newCSS);
+      
+      // 普通规则合并
+      expect(merged).toContain('color: #333;');
+      expect(merged).toContain('font-size: 16px;');
+      
+      // @media 整体替换
+      expect(merged).toContain('@media (prefers-color-scheme: dark)');
+      expect(merged).toContain('background: #1a1a1a;');
     });
   });
 });

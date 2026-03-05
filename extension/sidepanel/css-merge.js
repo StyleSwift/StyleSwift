@@ -127,7 +127,109 @@ function parseRules(css) {
 }
 
 // ============================================================================
+// CSS 规则序列化
+// ============================================================================
+
+/**
+ * 将结构化规则序列化为 CSS 文本
+ * 
+ * 将 Map<selector, Map<prop, val>> 序列化为格式化的 CSS 文本。
+ * - at-rule：直接输出原始文本
+ * - 普通规则：输出缩进格式
+ * 
+ * @param {Map<string, Map<string, string>>} rules - 解析后的规则映射
+ * @returns {string} 格式化的 CSS 文本
+ * 
+ * @example
+ * const rules = new Map([
+ *   ['.header', new Map([['color', 'red'], ['font-size', '14px']])]
+ * ]);
+ * serializeRules(rules);
+ * // → '.header {\n  color: red;\n  font-size: 14px;\n}'
+ */
+function serializeRules(rules) {
+  const lines = [];
+  for (const [selector, props] of rules) {
+    if (props.has('__raw__')) {
+      // at-rule：直接输出原始文本
+      lines.push(props.get('__raw__'));
+    } else {
+      // 普通规则：输出缩进格式
+      const decls = Array.from(props).map(([p, v]) => `  ${p}: ${v};`).join('\n');
+      lines.push(`${selector} {\n${decls}\n}`);
+    }
+  }
+  return lines.join('\n\n');
+}
+
+// ============================================================================
+// CSS 合并
+// ============================================================================
+
+/**
+ * 合并两段 CSS
+ * 
+ * 合并策略：
+ * - 同选择器同属性：新值覆盖旧值
+ * - 同选择器不同属性：追加到现有属性中
+ * - 不同选择器：直接合并
+ * - at-rule（@media, @keyframes 等）：整体替换
+ * 
+ * @param {string} existingCSS - 已有的 CSS 文本
+ * @param {string} newCSS - 新增的 CSS 文本
+ * @returns {string} 合并后的 CSS 文本
+ * 
+ * @example
+ * // 同属性覆盖
+ * mergeCSS('.header { color: red; }', '.header { color: blue; }')
+ * // → '.header {\n  color: blue;\n}'
+ * 
+ * @example
+ * // 不同属性追加
+ * mergeCSS('.header { color: red; }', '.header { font-size: 14px; }')
+ * // → '.header {\n  color: red;\n  font-size: 14px;\n}'
+ * 
+ * @example
+ * // 不同选择器合并
+ * mergeCSS('.header { color: red; }', '.footer { color: blue; }')
+ * // → '.header {\n  color: red;\n}\n\n.footer {\n  color: blue;\n}'
+ * 
+ * @example
+ * // @media 整体替换
+ * mergeCSS('@media print { .a { color: black; } }', '@media print { .a { color: gray; } }')
+ * // → '@media print { .a { color: gray; } }'
+ */
+function mergeCSS(existingCSS, newCSS) {
+  const existingRules = parseRules(existingCSS);
+  const newRules = parseRules(newCSS);
+
+  for (const [selector, props] of newRules) {
+    if (props.has('__raw__')) {
+      // at-rule 整体覆盖（@media, @keyframes 等）
+      existingRules.set(selector, props);
+    } else if (!existingRules.has(selector)) {
+      // 新选择器：直接添加
+      existingRules.set(selector, props);
+    } else {
+      // 已存在选择器：合并属性
+      const existing = existingRules.get(selector);
+      if (existing.has('__raw__')) {
+        // 如果现有的是 at-rule，整体替换为普通规则
+        existingRules.set(selector, props);
+      } else {
+        // 属性级合并：新值覆盖旧值
+        for (const [prop, val] of props) {
+          existing.set(prop, val);
+        }
+      }
+    }
+  }
+
+  return serializeRules(existingRules);
+}
+
+// ============================================================================
 // 导出
 // ============================================================================
 
-export { splitTopLevelBlocks, parseRules };
+export { splitTopLevelBlocks, parseRules, serializeRules, mergeCSS };

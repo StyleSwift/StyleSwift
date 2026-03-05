@@ -626,7 +626,7 @@
           "id": "T072",
           "title": "实现 mergeCSS",
           "description": "合并两段 CSS：同选择器同属性覆盖，不同选择器合并，at-rule 整体覆盖。基于 parseRules 结果做属性级合并",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T071"
@@ -641,7 +641,7 @@
           "id": "T073",
           "title": "实现 serializeRules",
           "description": "将 Map<selector, Map<prop, val>> 序列化为格式化 CSS 文本，at-rule 输出原始文本，普通规则输出缩进格式",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T071"
