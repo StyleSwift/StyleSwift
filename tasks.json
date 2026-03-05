@@ -184,7 +184,7 @@
           "id": "T025",
           "title": "实现存储清理策略（cleanupStorage）",
           "description": "实现 cleanupStorage()：遍历所有域名会话索引，按 MAX_SESSIONS_PER_DOMAIN=20 和 SESSION_EXPIRE_DAYS=90 清理过期/超限会话，删除关联 meta/styles/IndexedDB 数据。实现 cleanupStyleSkills() 限制最多 50 个技能",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T021",

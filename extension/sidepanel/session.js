@@ -15,6 +15,24 @@ const DB_VERSION = 1;
 const STORE_NAME = 'conversations';
 
 // ============================================================================
+// 存储清理常量
+// ============================================================================
+
+/**
+ * 每个域名最多保留的会话数量
+ * 超过此数量的会话会被清理（按创建时间，保留最新的）
+ * @type {number}
+ */
+const MAX_SESSIONS_PER_DOMAIN = 20;
+
+/**
+ * 会话过期天数
+ * 超过此天数的会话会被自动清理
+ * @type {number}
+ */
+const SESSION_EXPIRE_DAYS = 90;
+
+// ============================================================================
 // Storage Schema 版本迁移常量
 // ============================================================================
 
@@ -366,14 +384,157 @@ class SessionContext {
 let currentSession = null;
 
 // ============================================================================
+// 存储清理策略
+// ============================================================================
+
+/**
+ * 清理会话存储
+ * 
+ * 遍历所有域名会话索引，执行以下清理：
+ * 1. 清理超过 90 天的过期会话
+ * 2. 每个域名保留最新的 20 个会话（清理超出部分）
+ * 3. 删除关联的 meta/styles/IndexedDB 数据
+ * 
+ * @returns {Promise<void>}
+ * 
+ * @example
+ * // Side Panel 打开时自动清理
+ * cleanupStorage().catch(err => console.error('Cleanup failed:', err));
+ */
+async function cleanupStorage() {
+  try {
+    const all = await chrome.storage.local.get(null);
+    const now = Date.now();
+    const keysToRemove = [];
+
+    // 收集所有域名的会话索引
+    const domainIndices = Object.entries(all)
+      .filter(([k]) => k.match(/^sessions:.+:index$/));
+
+    for (const [indexKey, sessions] of domainIndices) {
+      if (!Array.isArray(sessions)) continue;
+      
+      // 提取域名：sessions:{domain}:index
+      const parts = indexKey.split(':');
+      if (parts.length < 3) continue;
+      const domain = parts[1];
+
+      // 按创建时间排序，最新的在前（age 小的在前）
+      const sorted = sessions
+        .map(s => ({ ...s, age: now - (s.created_at || 0) }))
+        .sort((a, b) => a.age - b.age);
+
+      const toKeep = [];
+      const toDelete = [];
+
+      for (const session of sorted) {
+        const expired = session.age > SESSION_EXPIRE_DAYS * 86400000;
+        
+        // 过期或超出数量限制则删除
+        if (expired || toKeep.length >= MAX_SESSIONS_PER_DOMAIN) {
+          toDelete.push(session);
+        } else {
+          toKeep.push(session);
+        }
+      }
+
+      // 删除会话相关的所有数据
+      for (const session of toDelete) {
+        keysToRemove.push(`sessions:${domain}:${session.id}:meta`);
+        keysToRemove.push(`sessions:${domain}:${session.id}:styles`);
+        // IndexedDB 中的对话历史也需要清理
+        await deleteHistory(domain, session.id);
+      }
+
+      // 更新索引（如果有删除）
+      if (toDelete.length > 0) {
+        // 移除 age 临时字段，保留原始结构
+        const cleanToKeep = toKeep.map(({ age, ...rest }) => rest);
+        await chrome.storage.local.set({ [indexKey]: cleanToKeep });
+        console.log(`[Cleanup] Removed ${toDelete.length} sessions for domain: ${domain}`);
+      }
+    }
+
+    // 批量删除 storage keys
+    if (keysToRemove.length > 0) {
+      await chrome.storage.local.remove(keysToRemove);
+      console.log(`[Cleanup] Removed ${keysToRemove.length} storage keys`);
+    }
+
+    // 清理风格技能（上限 50 个）
+    await cleanupStyleSkills();
+    
+  } catch (error) {
+    console.error('[Cleanup] Storage cleanup failed:', error);
+    // 不抛出错误，避免影响应用启动
+  }
+}
+
+/**
+ * 清理风格技能存储
+ * 
+ * 限制最多 50 个技能，超出部分按创建时间淘汰最旧的。
+ * 从 style-skill.js 模块导入执行。
+ * 
+ * @returns {Promise<void>}
+ */
+async function cleanupStyleSkills() {
+  try {
+    // 动态导入 StyleSkillStore 避免循环依赖
+    const { StyleSkillStore } = await import('./style-skill.js');
+    
+    const skills = await StyleSkillStore.list();
+    const MAX_STYLE_SKILLS = 50;
+    
+    if (skills.length <= MAX_STYLE_SKILLS) return;
+
+    // 按创建时间降序排序，最新的在前
+    const sorted = [...skills].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    
+    // 删除超出限制的最旧技能
+    const toRemove = sorted.slice(MAX_STYLE_SKILLS);
+    
+    for (const skill of toRemove) {
+      await StyleSkillStore.remove(skill.id);
+    }
+    
+    if (toRemove.length > 0) {
+      console.log(`[Cleanup] Removed ${toRemove.length} old style skills`);
+    }
+  } catch (error) {
+    console.error('[Cleanup] Style skills cleanup failed:', error);
+    // 不抛出错误，避免影响应用启动
+  }
+}
+
+/**
+ * 获取存储用量
+ * 
+ * 返回当前 chrome.storage.local 的使用情况。
+ * 
+ * @returns {Promise<{bytes: number, maxBytes: number, percent: number}>}
+ * 
+ * @example
+ * const usage = await getStorageUsage();
+ * console.log(`Storage: ${usage.percent}% used (${usage.bytes}/${usage.maxBytes} bytes)`);
+ */
+async function getStorageUsage() {
+  const bytes = await chrome.storage.local.getBytesInUse(null);
+  const maxBytes = chrome.storage.local.QUOTA_BYTES || 10485760;
+  return { bytes, maxBytes, percent: Math.round(bytes / maxBytes * 100) };
+}
+
+// ============================================================================
 // 导出
 // ============================================================================
 
 // 导出常量供其他模块使用
 export { DB_NAME, DB_VERSION, STORE_NAME, CURRENT_SCHEMA_VERSION };
+export { MAX_SESSIONS_PER_DOMAIN, SESSION_EXPIRE_DAYS };
 
 // 导出函数
 export { openDB, closeDB, saveHistory, loadHistory, deleteHistory, checkAndMigrateStorage };
+export { cleanupStorage, cleanupStyleSkills, getStorageUsage };
 
 // 导出 SessionContext 类和当前会话变量
 export { SessionContext, currentSession };
