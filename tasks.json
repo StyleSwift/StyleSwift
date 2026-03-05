@@ -2,7 +2,7 @@
   "projectName": "StyleSwift",
   "version": "1.0.0",
   "description": "Chrome 扩展 - 用一句话个性化任意网页的视觉样式",
-  "designDoc": "doc/StyleSwift-Agent设计方案-v4.md",
+  "designDoc": "doc/StyleSwift设计方案.md",
   "createdAt": "2026-03-04",
   "statusLegend": {
     "pending": "待开始",
