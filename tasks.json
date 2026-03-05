@@ -21,7 +21,7 @@
           "id": "T001",
           "title": "创建项目目录结构",
           "description": "按设计方案 2.2 节创建完整目录骨架：extension/sidepanel/, extension/background/, extension/content/, extension/skills/, extension/skills/style-templates/, extension/icons/",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [],
           "module": "project-setup",
@@ -34,7 +34,7 @@
           "id": "T002",
           "title": "创建 manifest.json",
           "description": "Manifest V3 配置文件，包含 permissions(activeTab, storage, sidePanel)、host_permissions(api.anthropic.com)、optional_host_permissions(https://*/*)、background service_worker、side_panel、content_scripts(early-inject.js + content.js)",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T001"

@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "StyleSwift",
+  "version": "1.0.0",
+  "description": "用一句话个性化任意网页的视觉样式",
+
+  "permissions": [
+    "activeTab",
+    "storage",
+    "sidePanel"
+  ],
+
+  "host_permissions": [
+    "https://api.anthropic.com/*"
+  ],
+
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+
+  "side_panel": {
+    "default_path": "sidepanel/index.html"
+  },
+
+  "action": {
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/early-inject.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
