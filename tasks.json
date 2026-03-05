@@ -45,11 +45,11 @@
           "estimatedHours": 0.5,
           "files": ["extension/manifest.json"]
         },
-        {
+{
           "id": "T003",
           "title": "创建扩展图标占位文件",
           "description": "生成 icon-16.png、icon-48.png、icon-128.png 占位图标文件（可用简单纯色或文字 S 图标）",
-          "status": "pending",
+          "status": "completed",
           "priority": "low",
           "dependencies": [
             "T001"
@@ -57,7 +57,7 @@
           "module": "project-setup",
           "designRef": "§2.2 icons/",
           "testCriteria": "三个尺寸图标文件存在，Chrome 加载后图标正常显示",
-          "estimatedHours": 0.5,
+"estimatedHours": 0.5,
           "files": ["extension/icons/icon-16.png", "extension/icons/icon-48.png", "extension/icons/icon-128.png"]
         },
         {
