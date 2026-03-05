@@ -1,0 +1,13 @@
+{
+  "name": "styleswift-extension",
+  "version": "1.0.0",
+  "description": "StyleSwift Chrome Extension - 用一句话个性化任意网页的视觉样式",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0"
+  }
+}

@@ -153,7 +153,7 @@
           "id": "T023",
           "title": "实现 StyleSkillStore 类（CRUD）",
           "description": "实现 StyleSkillStore 静态类：INDEX_KEY 常量、skillKey(id) 方法、list() 列出所有技能索引、save(id, name, mood, sourceDomain, content) 保存技能、load(id) 加载技能内容、remove(id) 删除技能。使用 chrome.storage.local",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T004"
