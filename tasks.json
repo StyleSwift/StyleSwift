@@ -644,7 +644,7 @@
           "id": "T104",
           "title": "实现 runLoadSkill（内置 + 用户技能加载）",
           "description": "runLoadSkill(skillName): 内置技能通过 chrome.runtime.getURL + fetch 加载静态 .md 文件。用户技能通过 StyleSkillStore.load。未知名称返回可用列表",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T023"

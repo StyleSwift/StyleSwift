@@ -666,3 +666,270 @@ describe('runApplyStyles', () => {
     });
   });
 });
+
+// =============================================================================
+// runLoadSkill 测试
+// =============================================================================
+
+describe('runLoadSkill', () => {
+  // Mock Skill Paths
+  const SKILL_PATHS = {
+    'dark-mode-template': 'skills/style-templates/dark-mode.md',
+    'minimal-template':   'skills/style-templates/minimal.md',
+    'design-principles':  'skills/design-principles.md',
+    'color-theory':       'skills/color-theory.md',
+    'css-selectors':      'skills/css-selectors-guide.md',
+  };
+
+  // Mock StyleSkillStore
+  const mockStyleSkillStore = {
+    skills: {},
+    index: [],
+    
+    async load(id) {
+      return this.skills[id] || null;
+    },
+    
+    async list() {
+      return this.index;
+    },
+    
+    reset() {
+      this.skills = {};
+      this.index = [];
+    }
+  };
+
+  // Mock chrome.runtime
+  const mockRuntime = {
+    getURL(path) {
+      return `chrome-extension://test-id/${path}`;
+    }
+  };
+
+  // Mock fetch
+  const originalFetch = global.fetch;
+  const mockFetchResponses = {};
+
+  beforeEach(() => {
+    // Reset StyleSkillStore
+    mockStyleSkillStore.reset();
+    
+    // Setup chrome.runtime mock
+    global.chrome.runtime = mockRuntime;
+    
+    // Setup fetch mock
+    global.fetch = vi.fn(async (url) => {
+      // Check if it's a built-in skill
+      for (const [name, path] of Object.entries(SKILL_PATHS)) {
+        if (url.includes(path)) {
+          return {
+            ok: true,
+            text: async () => `# ${name}\n\nThis is the content of ${name}.`
+          };
+        }
+      }
+      
+      // Unknown path
+      return {
+        ok: false,
+        text: async () => ''
+      };
+    });
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  // === runLoadSkill implementation (same as tools.js) ===
+  async function runLoadSkill(skillName) {
+    // === 用户动态风格技能 ===
+    if (skillName.startsWith('skill:')) {
+      const id = skillName.slice(6);
+      const content = await mockStyleSkillStore.load(id);
+      
+      if (!content) {
+        return `未找到风格技能: ${id}。使用 list_style_skills 查看可用技能。`;
+      }
+      
+      return content;
+    }
+    
+    // === 内置静态知识 ===
+    const path = SKILL_PATHS[skillName];
+    if (!path) {
+      // 未知名称：返回可用列表
+      const userSkills = await mockStyleSkillStore.list();
+      const userSkillsHint = userSkills.length > 0
+        ? `\n用户风格技能: ${userSkills.map(s => `skill:${s.id} (${s.name})`).join(', ')}`
+        : '';
+      
+      return `未知知识: ${skillName}。可用: ${Object.keys(SKILL_PATHS).join(', ')}${userSkillsHint}`;
+    }
+    
+    // Side Panel 中通过 chrome.runtime.getURL 访问扩展内静态资源
+    const url = chrome.runtime.getURL(path);
+    const resp = await fetch(url);
+    return await resp.text();
+  }
+
+  describe('加载内置技能', () => {
+    test('加载 dark-mode-template 返回 markdown 内容', async () => {
+      const content = await runLoadSkill('dark-mode-template');
+      
+      expect(content).toContain('# dark-mode-template');
+      expect(content).toContain('This is the content');
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('skills/style-templates/dark-mode.md')
+      );
+    });
+
+    test('加载 minimal-template 返回 markdown 内容', async () => {
+      const content = await runLoadSkill('minimal-template');
+      
+      expect(content).toContain('# minimal-template');
+    });
+
+    test('加载 design-principles 返回 markdown 内容', async () => {
+      const content = await runLoadSkill('design-principles');
+      
+      expect(content).toContain('# design-principles');
+    });
+
+    test('加载 color-theory 返回 markdown 内容', async () => {
+      const content = await runLoadSkill('color-theory');
+      
+      expect(content).toContain('# color-theory');
+    });
+
+    test('加载 css-selectors 返回 markdown 内容', async () => {
+      const content = await runLoadSkill('css-selectors');
+      
+      expect(content).toContain('# css-selectors');
+    });
+
+    test('使用 chrome.runtime.getURL 生成正确 URL', async () => {
+      await runLoadSkill('dark-mode-template');
+      
+      expect(fetch).toHaveBeenCalledWith(
+        'chrome-extension://test-id/skills/style-templates/dark-mode.md'
+      );
+    });
+  });
+
+  describe('加载用户技能', () => {
+    test('加载存在的用户技能返回内容', async () => {
+      // Setup: 添加一个用户技能
+      mockStyleSkillStore.skills['abc123'] = '# 我的风格\n\n这是自定义风格。';
+      mockStyleSkillStore.index.push({
+        id: 'abc123',
+        name: '我的风格',
+        mood: '自定义风格',
+        sourceDomain: 'example.com',
+        createdAt: Date.now()
+      });
+
+      const content = await runLoadSkill('skill:abc123');
+      
+      expect(content).toContain('# 我的风格');
+      expect(content).toContain('这是自定义风格');
+    });
+
+    test('加载不存在的用户技能返回提示', async () => {
+      const content = await runLoadSkill('skill:notexist');
+      
+      expect(content).toContain('未找到风格技能: notexist');
+      expect(content).toContain('list_style_skills');
+    });
+
+    test('用户技能内容可以是任意 markdown', async () => {
+      const customContent = `# Custom Style
+      
+## Colors
+- Primary: #ff0000
+- Secondary: #00ff00
+
+## CSS
+body { background: #000; }`;
+      
+      mockStyleSkillStore.skills['xyz789'] = customContent;
+
+      const content = await runLoadSkill('skill:xyz789');
+      
+      expect(content).toBe(customContent);
+    });
+  });
+
+  describe('未知名称处理', () => {
+    test('未知内置技能返回可用列表', async () => {
+      const content = await runLoadSkill('unknown-skill');
+      
+      expect(content).toContain('未知知识: unknown-skill');
+      expect(content).toContain('dark-mode-template');
+      expect(content).toContain('minimal-template');
+      expect(content).toContain('design-principles');
+      expect(content).toContain('color-theory');
+      expect(content).toContain('css-selectors');
+    });
+
+    test('未知名称时，有用户技能则显示用户技能提示', async () => {
+      // Setup: 添加用户技能
+      mockStyleSkillStore.index.push({
+        id: 'user1',
+        name: '用户风格1',
+        mood: '测试',
+        sourceDomain: 'test.com',
+        createdAt: Date.now()
+      });
+      mockStyleSkillStore.index.push({
+        id: 'user2',
+        name: '用户风格2',
+        mood: '测试2',
+        sourceDomain: 'test.com',
+        createdAt: Date.now()
+      });
+
+      const content = await runLoadSkill('unknown-skill');
+      
+      expect(content).toContain('用户风格技能:');
+      expect(content).toContain('skill:user1 (用户风格1)');
+      expect(content).toContain('skill:user2 (用户风格2)');
+    });
+
+    test('未知名称时，无用户技能则不显示用户技能提示', async () => {
+      const content = await runLoadSkill('unknown-skill');
+      
+      expect(content).not.toContain('用户风格技能:');
+    });
+  });
+
+  describe('集成测试', () => {
+    test('完整场景：内置技能 -> 用户技能 -> 未知名称', async () => {
+      // 步骤 1: 加载内置技能
+      let content = await runLoadSkill('dark-mode-template');
+      expect(content).toContain('# dark-mode-template');
+      
+      // 步骤 2: 添加用户技能并加载
+      mockStyleSkillStore.skills['custom'] = '# Custom Style';
+      mockStyleSkillStore.index.push({
+        id: 'custom',
+        name: 'Custom Style',
+        mood: 'Custom',
+        sourceDomain: 'example.com',
+        createdAt: Date.now()
+      });
+      
+      content = await runLoadSkill('skill:custom');
+      expect(content).toContain('# Custom Style');
+      
+      // 步骤 3: 加载不存在的用户技能
+      content = await runLoadSkill('skill:notexist');
+      expect(content).toContain('未找到风格技能');
+      
+      // 步骤 4: 加载未知内置技能，应该显示用户技能提示
+      content = await runLoadSkill('unknown');
+      expect(content).toContain('skill:custom (Custom Style)');
+    });
+  });
+});

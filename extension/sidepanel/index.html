@@ -184,21 +184,15 @@
   </div>
   
   <!-- JavaScript 模块 -->
-  <!-- 注意：加载顺序很重要，依赖关系如下：
-       session.js → 依赖无
-       profile.js → 依赖无
-       css-merge.js → 依赖无
-       api.js → 依赖 session.js
-       tools.js → 依赖 api.js, session.js, profile.js, css-merge.js
-       agent-loop.js → 依赖 api.js, tools.js, session.js, profile.js
-       panel.js → 依赖以上所有模块
-  -->
-  <script src="session.js"></script>
-  <script src="profile.js"></script>
-  <script src="css-merge.js"></script>
-  <script src="api.js"></script>
-  <script src="tools.js"></script>
-  <script src="agent-loop.js"></script>
-  <script src="panel.js"></script>
+  <!-- 使用 ES 模块，import 自动处理依赖关系 -->
+  <!-- style-skill.js 需要在 tools.js 之前被 import（tools.js 中有 import 语句） -->
+  <script type="module" src="style-skill.js"></script>
+  <script type="module" src="session.js"></script>
+  <script type="module" src="profile.js"></script>
+  <script type="module" src="css-merge.js"></script>
+  <script type="module" src="api.js"></script>
+  <script type="module" src="tools.js"></script>
+  <script type="module" src="agent-loop.js"></script>
+  <script type="module" src="panel.js"></script>
 </body>
 </html>
