@@ -507,7 +507,7 @@
           "id": "T085",
           "title": "实现样式摘要更新（updateStylesSummary）",
           "description": "updateStylesSummary(): 读取当前会话 CSS，统计规则数和前 3 个选择器，写入 meta.activeStylesSummary",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T022",
