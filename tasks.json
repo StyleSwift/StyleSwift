@@ -475,7 +475,7 @@
           "id": "T083",
           "title": "实现会话删除（deleteSession）",
           "description": "deleteSession(domain, sessionId): 从 index 移除、删除 meta 和 styles key、删除 IndexedDB 历史。若为最后一个会话返回 { lastSession: true }",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T080",
