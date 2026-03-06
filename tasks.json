@@ -270,11 +270,11 @@
           "estimatedHours": 1,
           "files": ["extension/content/content.js"]
         },
-        {
+{
           "id": "T042",
           "title": "实现分组折叠：groupSimilar / summarizeChildren",
           "description": "groupSimilar(children): 连续相同签名的子元素分组。summarizeChildren(childEls): 生成 'tag×count' 格式摘要",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T041"

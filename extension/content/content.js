@@ -141,5 +141,58 @@ function sameSignature(a, b) {
   return a.tagName === b.tagName && a.className === b.className;
 }
 
+// === 分组折叠 ===
+
+/**
+ * 将连续相同签名的子元素分组
+ * 用于简化树形结构输出，避免重复显示相同元素
+ * 
+ * @param {Element[]} children - 子元素数组
+ * @returns {Element[][]} 分组后的二维数组，每组包含相同签名的连续元素
+ */
+function groupSimilar(children) {
+  if (children.length === 0) return [];
+  
+  const groups = [[children[0]]];
+  
+  for (let i = 1; i < children.length; i++) {
+    const lastGroup = groups[groups.length - 1];
+    
+    // 如果当前元素与上一组的第一个元素签名相同，加入该组
+    if (sameSignature(children[i], lastGroup[0])) {
+      lastGroup.push(children[i]);
+    } else {
+      // 否则创建新组
+      groups.push([children[i]]);
+    }
+  }
+  
+  return groups;
+}
+
+/**
+ * 生成子元素摘要统计
+ * 统计子元素的类型和数量，生成 'tag×count' 格式摘要
+ * 
+ * @param {Element[]} childEls - 子元素数组
+ * @returns {string|null} 摘要字符串，如 "div×3, span×2" 或 null（无子元素时）
+ */
+function summarizeChildren(childEls) {
+  if (childEls.length === 0) return null;
+  
+  const counts = {};
+  
+  // 统计每种选择器的出现次数
+  for (const c of childEls) {
+    const key = shortSelector(c);
+    counts[key] = (counts[key] || 0) + 1;
+  }
+  
+  // 生成摘要字符串：count > 1 时显示 "tag×count"，否则只显示 "tag"
+  return Object.entries(counts)
+    .map(([k, v]) => v > 1 ? `${k}×${v}` : k)
+    .join(', ');
+}
+
 // === 后续功能实现区域 ===
-// T042-T053 任务将在此添加分组折叠、DOM 操作、CSS 注入等功能
+// T043-T053 任务将在此添加计算样式提取、DOM 操作、CSS 注入等功能
