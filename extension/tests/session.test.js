@@ -166,7 +166,7 @@ vi.stubGlobal('crypto', {
 });
 
 // Import function under test
-const { getOrCreateSession, loadSessionMeta, saveSessionMeta, deleteSession } = await import('../sidepanel/session.js');
+const { getOrCreateSession, loadSessionMeta, saveSessionMeta, deleteSession, autoTitle } = await import('../sidepanel/session.js');
 
 describe('getOrCreateSession', () => {
   beforeEach(() => {
@@ -689,5 +689,120 @@ describe('deleteSession', () => {
     
     // 恢复原方法
     mockStorage.get = originalGet;
+  });
+});
+
+describe('autoTitle', () => {
+  test('无标题时自动生成（从首条消息前20字）', () => {
+    const sessionMeta = { title: null, created_at: Date.now(), message_count: 0 };
+    const firstUserMessage = '把背景改成深蓝色';
+    
+    autoTitle(sessionMeta, firstUserMessage);
+    
+    expect(sessionMeta.title).toBe('把背景改成深蓝色');
+  });
+  
+  test('已有标题时不覆盖', () => {
+    const existingTitle = '我的样式调整';
+    const sessionMeta = { title: existingTitle, created_at: Date.now() };
+    const firstUserMessage = '把背景改成深蓝色';
+    
+    autoTitle(sessionMeta, firstUserMessage);
+    
+    expect(sessionMeta.title).toBe(existingTitle);
+  });
+  
+  test('首条消息超过20字时截断', () => {
+    const sessionMeta = { title: null };
+    const longMessage = '这是一条超过二十个字的用户消息内容会被截断只保留前二十个字';
+    
+    autoTitle(sessionMeta, longMessage);
+    
+    // slice(0, 20) 取前 20 个字符
+    expect(sessionMeta.title).toBe('这是一条超过二十个字的用户消息内容会被截');
+    expect(sessionMeta.title.length).toBe(20);
+  });
+  
+  test('首条消息正好20字时完整保留', () => {
+    const sessionMeta = { title: null };
+    // 构造一个正好20个字符的消息
+    const exactMessage = '一二三四五六七八九十一二三四五六七八九十';
+    
+    autoTitle(sessionMeta, exactMessage);
+    
+    expect(sessionMeta.title).toBe(exactMessage);
+    expect(sessionMeta.title.length).toBe(20);
+  });
+  
+  test('首条消息不足20字时完整保留', () => {
+    const sessionMeta = { title: null };
+    const shortMessage = '短消息';
+    
+    autoTitle(sessionMeta, shortMessage);
+    
+    expect(sessionMeta.title).toBe(shortMessage);
+    expect(sessionMeta.title.length).toBe(3);
+  });
+  
+  test('空消息时生成空标题', () => {
+    const sessionMeta = { title: null };
+    const emptyMessage = '';
+    
+    autoTitle(sessionMeta, emptyMessage);
+    
+    expect(sessionMeta.title).toBe('');
+  });
+  
+  test('title 为空字符串时不覆盖', () => {
+    const sessionMeta = { title: '', created_at: Date.now() };
+    const firstUserMessage = '把背景改成深蓝色';
+    
+    autoTitle(sessionMeta, firstUserMessage);
+    
+    // 空字符串是 falsy 值，所以会被覆盖
+    expect(sessionMeta.title).toBe('把背景改成深蓝色');
+  });
+  
+  test('title 为 undefined 时生成标题', () => {
+    const sessionMeta = { title: undefined };
+    const firstUserMessage = '测试消息';
+    
+    autoTitle(sessionMeta, firstUserMessage);
+    
+    expect(sessionMeta.title).toBe('测试消息');
+  });
+  
+  test('包含特殊字符的消息正确处理', () => {
+    const sessionMeta = { title: null };
+    const messageWithSpecialChars = '改！@#￥%……&*（）成深蓝色';
+    
+    autoTitle(sessionMeta, messageWithSpecialChars);
+    
+    expect(sessionMeta.title).toBe('改！@#￥%……&*（）成深蓝色');
+    expect(sessionMeta.title.length).toBeLessThanOrEqual(20);
+  });
+  
+  test('包含换行符的消息正确处理', () => {
+    const sessionMeta = { title: null };
+    const messageWithNewline = '第一行\n第二行内容继续';
+    
+    autoTitle(sessionMeta, messageWithNewline);
+    
+    // slice 会保留换行符
+    expect(sessionMeta.title).toBe('第一行\n第二行内容继续');
+  });
+  
+  test('多次调用不影响已有标题', () => {
+    const sessionMeta = { title: null };
+    const message1 = '第一次消息';
+    const message2 = '第二次消息';
+    
+    autoTitle(sessionMeta, message1);
+    const firstTitle = sessionMeta.title;
+    
+    // 再次调用
+    autoTitle(sessionMeta, message2);
+    
+    expect(sessionMeta.title).toBe(firstTitle);
   });
 });

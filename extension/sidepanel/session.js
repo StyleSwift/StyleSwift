@@ -552,6 +552,45 @@ async function saveSessionMeta(domain, sessionId, meta) {
 }
 
 // ============================================================================
+// 会话标题自动生成
+// ============================================================================
+
+/**
+ * 自动生成会话标题
+ * 
+ * 如果会话元数据中没有标题，则从首条用户消息中截取前 20 个字符作为标题。
+ * 如果已有标题，则不做修改。
+ * 
+ * @param {Object} sessionMeta - 会话元数据对象
+ * @param {string|null} [sessionMeta.title] - 会话标题
+ * @param {string} firstUserMessage - 首条用户消息内容
+ * @returns {void} 直接修改 sessionMeta 对象
+ * 
+ * @example
+ * // 无标题时自动生成
+ * const meta = { title: null, created_at: Date.now(), message_count: 0 };
+ * autoTitle(meta, '把背景改成深蓝色');
+ * console.log(meta.title); // '把背景改成深蓝色'
+ * 
+ * @example
+ * // 已有标题时不覆盖
+ * const meta = { title: '我的样式调整', created_at: Date.now() };
+ * autoTitle(meta, '把背景改成深蓝色');
+ * console.log(meta.title); // '我的样式调整'（保持不变）
+ * 
+ * @example
+ * // 消息超过 20 字时截断
+ * const meta = { title: null };
+ * autoTitle(meta, '这是一条超过二十个字的用户消息内容会被截断');
+ * console.log(meta.title); // '这是一条超过二十个字的用户消息'（20字）
+ */
+function autoTitle(sessionMeta, firstUserMessage) {
+  if (!sessionMeta.title) {
+    sessionMeta.title = firstUserMessage.slice(0, 20);
+  }
+}
+
+// ============================================================================
 // 会话删除
 // ============================================================================
 
@@ -775,6 +814,7 @@ export { cleanupStorage, cleanupStyleSkills, getStorageUsage };
 export { getOrCreateSession, deleteSession };
 export { loadSessionMeta, saveSessionMeta };
 export { loadAndPrepareHistory };
+export { autoTitle };
 
 // 导出 SessionContext 类和当前会话变量
 export { SessionContext, currentSession };

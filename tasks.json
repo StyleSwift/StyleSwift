@@ -492,7 +492,7 @@
           "id": "T084",
           "title": "实现会话标题自动生成（autoTitle）",
           "description": "autoTitle(sessionMeta, firstUserMessage): 无标题时取首条消息前 20 字",
-          "status": "pending",
+          "status": "completed",
           "priority": "low",
           "dependencies": [
             "T081"
