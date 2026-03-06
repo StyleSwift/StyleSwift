@@ -51,12 +51,59 @@ const mockStorage = {
   }
 };
 
-// Mock crypto.randomUUID
-let uuidCounter = 0;
-const mockRandomUUID = () => {
-  uuidCounter++;
-  return `test-uuid-${uuidCounter}`;
+// Mock IndexedDB
+const mockIndexedDB = {
+  store: {},
+  
+  open(dbName, version) {
+    return {
+      result: {
+        name: dbName,
+        version: version,
+        objectStoreNames: {
+          contains: () => true
+        },
+        createObjectStore: () => {}
+      },
+      onupgradeneeded: null,
+      onsuccess: null,
+      onerror: null
+    };
+  }
 };
+
+// Mock IDBTransaction
+class MockIDBTransaction {
+  constructor(db, storeNames, mode) {
+    this.db = db;
+    this.mode = mode;
+    this.objectStore = () => new MockObjectStore(mockIndexedDB.store);
+    this.oncomplete = null;
+    this.onerror = null;
+    this.error = null;
+  }
+}
+
+// Mock IDBObjectStore
+class MockObjectStore {
+  constructor(store) {
+    this.store = store;
+  }
+  
+  put(value, key) {
+    this.store[key] = value;
+    return { result: key };
+  }
+  
+  get(key) {
+    return { result: this.store[key] || null };
+  }
+  
+  delete(key) {
+    delete this.store[key];
+    return { result: undefined };
+  }
+}
 
 // Setup mocks before importing the module
 vi.stubGlobal('chrome', {
@@ -65,12 +112,61 @@ vi.stubGlobal('chrome', {
   }
 });
 
+vi.stubGlobal('indexedDB', {
+  open: (dbName, version) => {
+    const mockDB = {
+      name: dbName,
+      version: version,
+      objectStoreNames: {
+        contains: () => true
+      },
+      createObjectStore: () => {},
+      transaction: (storeName, mode) => {
+        const tx = {
+          objectStore: () => new MockObjectStore(mockIndexedDB.store),
+          oncomplete: null,
+          onerror: null,
+          error: null
+        };
+        
+        // Simulate async transaction completion
+        setTimeout(() => {
+          if (tx.oncomplete) tx.oncomplete();
+        }, 0);
+        
+        return tx;
+      }
+    };
+    
+    const request = {
+      result: mockDB,
+      onupgradeneeded: null,
+      onsuccess: null,
+      onerror: null
+    };
+    
+    // Simulate async success
+    setTimeout(() => {
+      if (request.onsuccess) request.onsuccess({ target: request });
+    }, 0);
+    
+    return request;
+  }
+});
+
+// Mock crypto.randomUUID
+let uuidCounter = 0;
+const mockRandomUUID = () => {
+  uuidCounter++;
+  return `test-uuid-${uuidCounter}`;
+};
+
 vi.stubGlobal('crypto', {
   randomUUID: mockRandomUUID
 });
 
 // Import function under test
-const { getOrCreateSession, loadSessionMeta, saveSessionMeta } = await import('../sidepanel/session.js');
+const { getOrCreateSession, loadSessionMeta, saveSessionMeta, deleteSession } = await import('../sidepanel/session.js');
 
 describe('getOrCreateSession', () => {
   beforeEach(() => {
@@ -391,5 +487,207 @@ describe('saveSessionMeta', () => {
     
     // 恢复原方法
     mockStorage.set = originalSet;
+  });
+});
+
+describe('deleteSession', () => {
+  beforeEach(() => {
+    mockStorage.clear();
+    mockIndexedDB.store = {}; // 清理 IndexedDB store
+    uuidCounter = 0;
+  });
+  
+  test('删除普通会话（非最后一个）', async () => {
+    const domain = 'github.com';
+    const indexKey = `sessions:${domain}:index`;
+    
+    // 预设多个会话
+    const now = Date.now();
+    const sessions = [
+      { id: 'session-1', created_at: now - 2000 },
+      { id: 'session-2', created_at: now - 1000 },
+      { id: 'session-3', created_at: now }
+    ];
+    await mockStorage.set({ [indexKey]: sessions });
+    
+    // 预设会话的 meta 和 styles 数据
+    await mockStorage.set({
+      'sessions:github.com:session-2:meta': { title: '会话 2', created_at: now - 1000 },
+      'sessions:github.com:session-2:styles': 'body { background: red; }'
+    });
+    
+    // 删除 session-2
+    const result = await deleteSession(domain, 'session-2');
+    
+    // 验证返回值
+    expect(result.lastSession).toBe(false);
+    
+    // 验证索引已更新
+    const { [indexKey]: index } = await mockStorage.get(indexKey);
+    expect(index.length).toBe(2);
+    expect(index.find(s => s.id === 'session-2')).toBeUndefined();
+    expect(index.find(s => s.id === 'session-1')).toBeDefined();
+    expect(index.find(s => s.id === 'session-3')).toBeDefined();
+    
+    // 验证 storage 数据已删除
+    const metaKey = 'sessions:github.com:session-2:meta';
+    const stylesKey = 'sessions:github.com:session-2:styles';
+    const { [metaKey]: meta, [stylesKey]: styles } = await mockStorage.get([metaKey, stylesKey]);
+    expect(meta).toBeUndefined();
+    expect(styles).toBeUndefined();
+  });
+  
+  test('删除最后一个会话返回正确标识', async () => {
+    const domain = 'example.com';
+    const indexKey = `sessions:${domain}:index`;
+    
+    // 预设一个会话
+    const session = { id: 'last-session', created_at: Date.now() };
+    await mockStorage.set({ [indexKey]: [session] });
+    
+    // 预设会话数据
+    await mockStorage.set({
+      'sessions:example.com:last-session:meta': { title: '最后一个会话' },
+      'sessions:example.com:last-session:styles': 'body { color: blue; }'
+    });
+    
+    // 删除最后一个会话
+    const result = await deleteSession(domain, 'last-session');
+    
+    // 验证返回值
+    expect(result.lastSession).toBe(true);
+    expect(result.domain).toBe(domain);
+    
+    // 验证索引为空
+    const { [indexKey]: index } = await mockStorage.get(indexKey);
+    expect(index.length).toBe(0);
+    
+    // 验证 storage 数据已删除
+    const metaKey = 'sessions:example.com:last-session:meta';
+    const stylesKey = 'sessions:example.com:last-session:styles';
+    const { [metaKey]: meta, [stylesKey]: styles } = await mockStorage.get([metaKey, stylesKey]);
+    expect(meta).toBeUndefined();
+    expect(styles).toBeUndefined();
+  });
+  
+  test('删除不存在的会话', async () => {
+    const domain = 'test.com';
+    const indexKey = `sessions:${domain}:index`;
+    
+    // 预设会话
+    const sessions = [
+      { id: 'session-1', created_at: Date.now() }
+    ];
+    await mockStorage.set({ [indexKey]: sessions });
+    
+    // 尝试删除不存在的会话
+    const result = await deleteSession(domain, 'non-existent-session');
+    
+    // 验证返回值
+    expect(result.lastSession).toBe(false);
+    
+    // 验证索引未改变
+    const { [indexKey]: index } = await mockStorage.get(indexKey);
+    expect(index.length).toBe(1);
+    expect(index[0].id).toBe('session-1');
+  });
+  
+  test('删除后其他会话数据保持不变', async () => {
+    const domain = 'multi-session.com';
+    const indexKey = `sessions:${domain}:index`;
+    
+    // 预设多个会话
+    const now = Date.now();
+    const sessions = [
+      { id: 'keep-session', created_at: now - 1000 },
+      { id: 'delete-session', created_at: now }
+    ];
+    await mockStorage.set({ [indexKey]: sessions });
+    
+    // 预设多个会话的数据
+    await mockStorage.set({
+      'sessions:multi-session.com:keep-session:meta': { title: '保留的会话' },
+      'sessions:multi-session.com:keep-session:styles': 'body { margin: 0; }',
+      'sessions:multi-session.com:delete-session:meta': { title: '要删除的会话' },
+      'sessions:multi-session.com:delete-session:styles': 'body { padding: 10px; }'
+    });
+    
+    // 删除其中一个会话
+    await deleteSession(domain, 'delete-session');
+    
+    // 验证其他会话数据保持不变
+    const keepMeta = await mockStorage.get('sessions:multi-session.com:keep-session:meta');
+    const keepStyles = await mockStorage.get('sessions:multi-session.com:keep-session:styles');
+    
+    expect(keepMeta['sessions:multi-session.com:keep-session:meta']).toEqual({ title: '保留的会话' });
+    expect(keepStyles['sessions:multi-session.com:keep-session:styles']).toBe('body { margin: 0; }');
+  });
+  
+  test('不同域名的会话独立删除', async () => {
+    const domain1 = 'github.com';
+    const domain2 = 'stackoverflow.com';
+    
+    const indexKey1 = `sessions:${domain1}:index`;
+    const indexKey2 = `sessions:${domain2}:index`;
+    
+    // 为两个域名预设会话
+    const now = Date.now();
+    await mockStorage.set({
+      [indexKey1]: [{ id: 'github-session', created_at: now }],
+      [indexKey2]: [{ id: 'stackoverflow-session', created_at: now }]
+    });
+    
+    // 删除 domain1 的会话
+    const result1 = await deleteSession(domain1, 'github-session');
+    expect(result1.lastSession).toBe(true);
+    expect(result1.domain).toBe(domain1);
+    
+    // 验证 domain2 的会话仍然存在
+    const { [indexKey2]: index2 } = await mockStorage.get(indexKey2);
+    expect(index2.length).toBe(1);
+    expect(index2[0].id).toBe('stackoverflow-session');
+  });
+  
+  test('删除会话后索引正确排序', async () => {
+    const domain = 'ordered-test.com';
+    const indexKey = `sessions:${domain}:index`;
+    
+    // 预设多个会话（乱序）
+    const now = Date.now();
+    const sessions = [
+      { id: 'session-3', created_at: now - 500 },
+      { id: 'session-1', created_at: now - 2000 },
+      { id: 'session-2', created_at: now - 1000 }
+    ];
+    await mockStorage.set({ [indexKey]: sessions });
+    
+    // 删除中间的会话
+    await deleteSession(domain, 'session-2');
+    
+    // 验证索引只移除了目标会话，其他保持原样
+    const { [indexKey]: index } = await mockStorage.get(indexKey);
+    expect(index.length).toBe(2);
+    expect(index.find(s => s.id === 'session-1')).toBeDefined();
+    expect(index.find(s => s.id === 'session-3')).toBeDefined();
+    expect(index.find(s => s.id === 'session-2')).toBeUndefined();
+  });
+  
+  test('错误处理：storage 操作失败', async () => {
+    const domain = 'error-test.com';
+    const sessionId = 'error-session';
+    
+    // 预设会话
+    const indexKey = `sessions:${domain}:index`;
+    await mockStorage.set({ [indexKey]: [{ id: sessionId, created_at: Date.now() }] });
+    
+    // 模拟 get 方法抛出错误
+    const originalGet = mockStorage.get;
+    mockStorage.get = vi.fn().mockRejectedValue(new Error('Storage error'));
+    
+    // 应抛出错误
+    await expect(deleteSession(domain, sessionId)).rejects.toThrow('Storage error');
+    
+    // 恢复原方法
+    mockStorage.get = originalGet;
   });
 });

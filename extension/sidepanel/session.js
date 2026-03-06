@@ -552,6 +552,75 @@ async function saveSessionMeta(domain, sessionId, meta) {
 }
 
 // ============================================================================
+// 会话删除
+// ============================================================================
+
+/**
+ * 删除会话
+ * 
+ * 从 chrome.storage.local 和 IndexedDB 中删除会话的所有相关数据：
+ * 1. 从索引中移除会话条目
+ * 2. 删除会话的 meta 和 styles 数据
+ * 3. 删除 IndexedDB 中的对话历史
+ * 
+ * 注意：permanent:{domain} 永久样式是域名级别的，不随会话删除。
+ * 仅当删除最后一个会话时，返回 lastSession: true，由 UI 询问用户是否一并清除。
+ * 
+ * @param {string} domain - 域名，如 'github.com'
+ * @param {string} sessionId - 会话 ID
+ * @returns {Promise<{lastSession: boolean, domain?: string}>} 返回删除结果，包含是否为最后会话的标识
+ * 
+ * @example
+ * // 删除普通会话
+ * const result = await deleteSession('github.com', 'abc123');
+ * // result: { lastSession: false }
+ * 
+ * // 删除最后一个会话
+ * const lastResult = await deleteSession('github.com', 'last-session-id');
+ * // lastResult: { lastSession: true, domain: 'github.com' }
+ */
+async function deleteSession(domain, sessionId) {
+  try {
+    // 1. 从索引中移除
+    const indexKey = `sessions:${domain}:index`;
+    const { [indexKey]: index = [] } = await chrome.storage.local.get(indexKey);
+    const filtered = index.filter(s => s.id !== sessionId);
+    
+    // 如果索引中没有该会话，直接返回
+    if (filtered.length === index.length) {
+      console.warn(`[Session] Session not found in index: ${sessionId}`);
+      return { lastSession: false };
+    }
+    
+    // 更新索引
+    await chrome.storage.local.set({ [indexKey]: filtered });
+    console.log(`[Session] Removed session ${sessionId} from index for domain: ${domain}`);
+    
+    // 2. 删除会话数据（meta 和 styles）
+    const metaKey = `sessions:${domain}:${sessionId}:meta`;
+    const stylesKey = `sessions:${domain}:${sessionId}:styles`;
+    await chrome.storage.local.remove([metaKey, stylesKey]);
+    console.log(`[Session] Removed storage keys: ${metaKey}, ${stylesKey}`);
+    
+    // 3. 删除 IndexedDB 中的对话历史
+    await deleteHistory(domain, sessionId);
+    console.log(`[Session] Removed IndexedDB history for session: ${sessionId}`);
+    
+    // 4. 如果是该域名最后一个会话，返回标识
+    if (filtered.length === 0) {
+      console.log(`[Session] Deleted last session for domain: ${domain}`);
+      return { lastSession: true, domain };
+    }
+    
+    return { lastSession: false };
+    
+  } catch (error) {
+    console.error('[Session] Failed to delete session:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
 // 存储清理策略
 // ============================================================================
 
@@ -703,7 +772,7 @@ export { MAX_SESSIONS_PER_DOMAIN, SESSION_EXPIRE_DAYS };
 // 导出函数
 export { openDB, closeDB, saveHistory, loadHistory, deleteHistory, checkAndMigrateStorage };
 export { cleanupStorage, cleanupStyleSkills, getStorageUsage };
-export { getOrCreateSession };
+export { getOrCreateSession, deleteSession };
 export { loadSessionMeta, saveSessionMeta };
 export { loadAndPrepareHistory };
 
