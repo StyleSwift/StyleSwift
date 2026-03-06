@@ -1072,11 +1072,11 @@
           "estimatedHours": 2,
           "files": ["extension/sidepanel/panel.js"]
         },
-        {
+{
           "id": "T133",
           "title": "实现状态管理器",
           "description": "实现简单的状态管理器（AppState 类或对象），集中管理全局状态：agentStatus(idle/running/error)、apiKeyStatus(valid/invalid/missing)、pageStatus(ready/restricted)、currentDomain、currentSession。提供 setState 和 subscribe 方法，状态变化时通知 UI 更新",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T004"
