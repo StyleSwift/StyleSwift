@@ -831,7 +831,7 @@
           "id": "T117",
           "title": "实现 cancelAgentLoop 取消机制",
           "description": "cancelAgentLoop(): 调用 AbortController.abort()，重置 isAgentRunning，解锁 Tab",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T116"
