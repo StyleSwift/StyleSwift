@@ -637,6 +637,165 @@ async function runSaveStyleSkill(name, mood, skillContent) {
 }
 
 // =============================================================================
+// §3.8 Side Panel 端：runListStyleSkills - 列出风格技能
+// =============================================================================
+
+/**
+ * 列出用户保存的所有风格技能
+ * 
+ * 返回格式化的技能列表，每个技能包含 ID、名称、描述、来源域名和创建日期。
+ * 
+ * @returns {Promise<string>} 格式化的技能列表，无技能时返回默认提示
+ * 
+ * @example
+ * // 有技能时
+ * const list = await runListStyleSkills();
+ * // → '- skill:a1b2c3d4「赛博朋克」— 深色背景+霓虹色调 (来自 github.com, 2026/3/4)'
+ * 
+ * @example
+ * // 无技能时
+ * const list = await runListStyleSkills();
+ * // → '(暂无保存的风格技能)'
+ */
+async function runListStyleSkills() {
+  const skills = await StyleSkillStore.list();
+  
+  // 空列表返回默认提示
+  if (skills.length === 0) {
+    return '(暂无保存的风格技能)';
+  }
+  
+  // 格式化输出
+  return skills.map(s =>
+    `- skill:${s.id}「${s.name}」${s.mood ? `— ${s.mood}` : ''} (来自 ${s.sourceDomain}, ${new Date(s.createdAt).toLocaleDateString()})`
+  ).join('\n');
+}
+
+// =============================================================================
+// §3.9 Side Panel 端：runDeleteStyleSkill - 删除风格技能
+// =============================================================================
+
+/**
+ * 删除一个用户保存的风格技能
+ * 
+ * @param {string} skillId - 要删除的技能 ID
+ * @returns {Promise<string>} 操作结果消息
+ * 
+ * @example
+ * // 删除成功
+ * const result = await runDeleteStyleSkill('a1b2c3d4');
+ * // → '已删除风格技能「赛博朋克」'
+ * 
+ * @example
+ * // 技能不存在
+ * const result = await runDeleteStyleSkill('notexist');
+ * // → '未找到技能: notexist'
+ */
+async function runDeleteStyleSkill(skillId) {
+  // 检查技能是否存在
+  const skills = await StyleSkillStore.list();
+  const target = skills.find(s => s.id === skillId);
+  
+  // 技能不存在时返回错误提示
+  if (!target) {
+    return `未找到技能: ${skillId}`;
+  }
+  
+  // 删除技能
+  await StyleSkillStore.remove(skillId);
+  
+  return `已删除风格技能「${target.name}」`;
+}
+
+// =============================================================================
+// §10.2 工具执行器 - executeTool 统一分派器
+// =============================================================================
+
+/**
+ * 工具执行器统一分派器
+ * 
+ * 根据 tool name 分发到对应的实现函数。
+ * 工具分为两类：
+ * 1. Content Script 工具 - 需要 DOM 操作，通过 sendToContentScript 发送消息
+ * 2. 本地工具 - 在 Side Panel 中直接执行
+ * 
+ * @param {string} name - 工具名称
+ * @param {object} args - 工具参数
+ * @returns {Promise<string>} 工具执行结果
+ * 
+ * @example
+ * // Content Script 工具
+ * const structure = await executeTool('get_page_structure', {});
+ * 
+ * @example
+ * // 本地工具
+ * const profile = await executeTool('get_user_profile', {});
+ * 
+ * @example
+ * // 未知工具
+ * const result = await executeTool('unknown_tool', {});
+ * // → '未知工具: unknown_tool'
+ */
+async function executeTool(name, args) {
+  switch (name) {
+    // —— 需要 Content Script 执行的工具（DOM 操作）——
+    case 'get_page_structure':
+      return await sendToContentScript({ tool: 'get_page_structure' });
+
+    case 'grep':
+      return await sendToContentScript({
+        tool: 'grep',
+        args: { 
+          query: args.query, 
+          scope: args.scope || 'children', 
+          maxResults: args.max_results || 5 
+        }
+      });
+
+    case 'apply_styles':
+      return await runApplyStyles(args.css || '', args.mode);
+
+    // —— Side Panel 本地执行的工具 ——
+    case 'get_user_profile':
+      // 动态导入避免循环依赖
+      const { runGetUserProfile } = await import('./profile.js');
+      return await runGetUserProfile();
+
+    case 'update_user_profile':
+      const { runUpdateUserProfile } = await import('./profile.js');
+      return await runUpdateUserProfile(args.content);
+
+    case 'load_skill':
+      return await runLoadSkill(args.skill_name);
+
+    case 'save_style_skill':
+      return await runSaveStyleSkill(args.name, args.mood, args.skill_content);
+
+    case 'list_style_skills':
+      return await runListStyleSkills();
+
+    case 'delete_style_skill':
+      return await runDeleteStyleSkill(args.skill_id);
+
+    case 'TodoWrite':
+      // TodoWrite 工具只是更新 UI 状态，不返回实际内容
+      return '任务列表已更新';
+
+    case 'Task':
+      // Task 工具需要调用子智能体执行器（将在 agent-loop.js 中实现）
+      // 这里返回提示信息，实际实现在 agent-loop.js 的 runTask 函数
+      const { runTask } = await import('./agent-loop.js').catch(() => ({ runTask: null }));
+      if (runTask) {
+        return await runTask(args.description, args.prompt, args.agent_type);
+      }
+      return '(子智能体功能尚未实现)';
+
+    default:
+      return `未知工具: ${name}`;
+  }
+}
+
+// =============================================================================
 // 导出函数
 // =============================================================================
 
@@ -648,5 +807,8 @@ export {
   sendToContentScript,
   runApplyStyles,
   runLoadSkill,
-  runSaveStyleSkill
+  runSaveStyleSkill,
+  runListStyleSkills,
+  runDeleteStyleSkill,
+  executeTool
 };

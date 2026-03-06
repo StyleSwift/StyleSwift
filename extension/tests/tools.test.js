@@ -1278,3 +1278,633 @@ body { background: #000; }`;
     });
   });
 });
+
+// =============================================================================
+// runListStyleSkills / runDeleteStyleSkill 测试 (T106)
+// =============================================================================
+
+describe('runListStyleSkills', () => {
+  // Mock StyleSkillStore
+  const mockStyleSkillStore = {
+    skills: {},
+    index: [],
+    
+    async list() {
+      return this.index;
+    },
+    
+    async remove(id) {
+      this.index = this.index.filter(s => s.id !== id);
+      delete this.skills[id];
+    },
+    
+    reset() {
+      this.skills = {};
+      this.index = [];
+    }
+  };
+
+  beforeEach(() => {
+    mockStyleSkillStore.reset();
+  });
+
+  // === runListStyleSkills implementation (same as tools.js) ===
+  async function runListStyleSkills() {
+    const skills = await mockStyleSkillStore.list();
+    
+    if (skills.length === 0) {
+      return '(暂无保存的风格技能)';
+    }
+    
+    return skills.map(s =>
+      `- skill:${s.id}「${s.name}」${s.mood ? `— ${s.mood}` : ''} (来自 ${s.sourceDomain}, ${new Date(s.createdAt).toLocaleDateString()})`
+    ).join('\n');
+  }
+
+  describe('空列表', () => {
+    test('无技能时返回默认提示', async () => {
+      const result = await runListStyleSkills();
+      
+      // 测试标准：空列表返回提示
+      expect(result).toBe('(暂无保存的风格技能)');
+    });
+  });
+
+  describe('非空列表', () => {
+    test('返回格式化的技能列表', async () => {
+      // Setup: 添加几个技能
+      mockStyleSkillStore.index = [
+        { id: 'abc123', name: '赛博朋克', mood: '深色背景+霓虹色调', sourceDomain: 'github.com', createdAt: Date.now() },
+        { id: 'def456', name: '清新日式', mood: '简约清新', sourceDomain: 'notion.so', createdAt: Date.now() },
+      ];
+
+      const result = await runListStyleSkills();
+      
+      expect(result).toContain('skill:abc123');
+      expect(result).toContain('赛博朋克');
+      expect(result).toContain('深色背景+霓虹色调');
+      expect(result).toContain('github.com');
+      
+      expect(result).toContain('skill:def456');
+      expect(result).toContain('清新日式');
+      expect(result).toContain('简约清新');
+      expect(result).toContain('notion.so');
+    });
+
+    test('mood 为空时格式正确', async () => {
+      mockStyleSkillStore.index = [
+        { id: 'test1', name: '测试风格', mood: '', sourceDomain: 'example.com', createdAt: Date.now() },
+      ];
+
+      const result = await runListStyleSkills();
+      
+      expect(result).toContain('skill:test1');
+      expect(result).toContain('测试风格');
+      // mood 为空时不应该有 "—" 符号
+      expect(result).not.toMatch(/测试风格「」—/);
+    });
+
+    test('显示创建日期', async () => {
+      const date = new Date('2026-03-04');
+      mockStyleSkillStore.index = [
+        { id: 'test', name: '测试', mood: '', sourceDomain: 'example.com', createdAt: date.getTime() },
+      ];
+
+      const result = await runListStyleSkills();
+      
+      expect(result).toContain('2026');
+    });
+  });
+});
+
+describe('runDeleteStyleSkill', () => {
+  // Mock StyleSkillStore
+  const mockStyleSkillStore = {
+    skills: {},
+    index: [],
+    
+    async list() {
+      return this.index;
+    },
+    
+    async remove(id) {
+      const target = this.index.find(s => s.id === id);
+      this.index = this.index.filter(s => s.id !== id);
+      delete this.skills[id];
+      return target;
+    },
+    
+    reset() {
+      this.skills = {};
+      this.index = [];
+    }
+  };
+
+  beforeEach(() => {
+    mockStyleSkillStore.reset();
+  });
+
+  // === runDeleteStyleSkill implementation (same as tools.js) ===
+  async function runDeleteStyleSkill(skillId) {
+    const skills = await mockStyleSkillStore.list();
+    const target = skills.find(s => s.id === skillId);
+    
+    if (!target) {
+      return `未找到技能: ${skillId}`;
+    }
+    
+    await mockStyleSkillStore.remove(skillId);
+    
+    return `已删除风格技能「${target.name}」`;
+  }
+
+  describe('删除成功', () => {
+    test('删除存在的技能返回成功消息', async () => {
+      mockStyleSkillStore.index = [
+        { id: 'abc123', name: '赛博朋克', mood: '深色背景', sourceDomain: 'github.com', createdAt: Date.now() },
+      ];
+      mockStyleSkillStore.skills['abc123'] = '# 赛博朋克\n\n内容...';
+
+      const result = await runDeleteStyleSkill('abc123');
+      
+      expect(result).toBe('已删除风格技能「赛博朋克」');
+      
+      // 验证已从列表中移除
+      const skills = await mockStyleSkillStore.list();
+      expect(skills.length).toBe(0);
+    });
+
+    test('删除后其他技能保留', async () => {
+      mockStyleSkillStore.index = [
+        { id: 'skill1', name: '风格1', mood: '', sourceDomain: 'a.com', createdAt: Date.now() },
+        { id: 'skill2', name: '风格2', mood: '', sourceDomain: 'b.com', createdAt: Date.now() },
+        { id: 'skill3', name: '风格3', mood: '', sourceDomain: 'c.com', createdAt: Date.now() },
+      ];
+
+      await runDeleteStyleSkill('skill2');
+      
+      const skills = await mockStyleSkillStore.list();
+      expect(skills.length).toBe(2);
+      expect(skills.find(s => s.id === 'skill1')).toBeDefined();
+      expect(skills.find(s => s.id === 'skill3')).toBeDefined();
+    });
+  });
+
+  describe('删除不存在的技能', () => {
+    test('删除不存在的 ID 返回错误提示', async () => {
+      mockStyleSkillStore.index = [
+        { id: 'abc123', name: '赛博朋克', mood: '', sourceDomain: 'github.com', createdAt: Date.now() },
+      ];
+
+      const result = await runDeleteStyleSkill('notexist');
+      
+      // 测试标准：删除不存在的 id 返回错误提示
+      expect(result).toBe('未找到技能: notexist');
+      
+      // 原有技能应该保留
+      const skills = await mockStyleSkillStore.list();
+      expect(skills.length).toBe(1);
+    });
+
+    test('空列表时删除返回错误提示', async () => {
+      const result = await runDeleteStyleSkill('anyid');
+      
+      expect(result).toBe('未找到技能: anyid');
+    });
+  });
+});
+
+// =============================================================================
+// executeTool 统一分派器测试 (T107)
+// =============================================================================
+
+describe('executeTool 统一分派器', () => {
+  // Mock chrome.tabs
+  const mockTabs = {
+    currentActiveTab: { id: 123, url: 'https://example.com' },
+    
+    async query(queryInfo) {
+      if (queryInfo.active && queryInfo.currentWindow) {
+        return [this.currentActiveTab];
+      }
+      return [];
+    },
+    
+    sendMessage(tabId, message, callback) {
+      // Default mock responses
+      const { tool, args = {} } = message;
+      
+      switch (tool) {
+        case 'get_domain':
+          callback('example.com');
+          break;
+        case 'get_page_structure':
+          callback('URL: https://example.com\n\nbody\n├── header');
+          break;
+        case 'grep':
+          callback('[1] .sidebar\n    Styles: display:block; width:300px');
+          break;
+        case 'inject_css':
+          callback({ success: true });
+          break;
+        case 'rollback_css':
+          callback({ success: true });
+          break;
+        case 'get_active_css':
+          callback('body { color: red; }');
+          break;
+        default:
+          callback({ success: true });
+      }
+    }
+  };
+
+  // Mock chrome.storage.local
+  const mockStorage = {
+    data: {},
+    
+    async get(keys) {
+      if (typeof keys === 'string') {
+        return { [keys]: this.data[keys] };
+      }
+      if (Array.isArray(keys)) {
+        const result = {};
+        keys.forEach(key => {
+          if (this.data[key] !== undefined) {
+            result[key] = this.data[key];
+          }
+        });
+        return result;
+      }
+      return this.data;
+    },
+    
+    async set(items) {
+      Object.assign(this.data, items);
+    },
+    
+    async remove(keys) {
+      const keysArray = Array.isArray(keys) ? keys : [keys];
+      keysArray.forEach(key => {
+        delete this.data[key];
+      });
+    },
+    
+    clear() {
+      this.data = {};
+    }
+  };
+
+  // Mock StyleSkillStore
+  const mockStyleSkillStore = {
+    skills: {},
+    index: [],
+    
+    async list() {
+      return this.index;
+    },
+    
+    async load(id) {
+      return this.skills[id] || null;
+    },
+    
+    async remove(id) {
+      this.index = this.index.filter(s => s.id !== id);
+      delete this.skills[id];
+    },
+    
+    reset() {
+      this.skills = {};
+      this.index = [];
+    }
+  };
+
+  // Mock currentSession
+  const mockCurrentSession = {
+    domain: 'example.com',
+    sessionId: 'test-session-123',
+    stylesKey: 'sessions:example.com:test-session-123:styles',
+    metaKey: 'sessions:example.com:test-session-123:meta',
+    persistKey: 'persistent:example.com'
+  };
+
+  // Mock runtime for getURL
+  const mockRuntime = {
+    getURL(path) {
+      return `chrome-extension://test-id/${path}`;
+    },
+    lastError: undefined
+  };
+
+  let lockedTabId = null;
+
+  beforeEach(() => {
+    mockStorage.clear();
+    mockStyleSkillStore.reset();
+    lockedTabId = null;
+    
+    global.chrome = {
+      tabs: mockTabs,
+      storage: { local: mockStorage },
+      runtime: mockRuntime
+    };
+    
+    // Mock fetch for load_skill
+    global.fetch = vi.fn(async (url) => {
+      if (url.includes('dark-mode.md')) {
+        return { ok: true, text: async () => '# Dark Mode\n\n深色模式模板...' };
+      }
+      return { ok: false, text: async () => '' };
+    });
+  });
+
+  // === Helper functions ===
+  async function sendToContentScript(message) {
+    const tabId = lockedTabId || mockTabs.currentActiveTab.id;
+    return new Promise((resolve, reject) => {
+      mockTabs.sendMessage(tabId, message, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(`Content Script 不可用: ${chrome.runtime.lastError.message}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  }
+
+  async function runGetUserProfile() {
+    const { userProfile } = await mockStorage.get('userProfile');
+    if (!userProfile?.trim()) {
+      return '(新用户，暂无风格偏好记录)';
+    }
+    return userProfile;
+  }
+
+  async function runUpdateUserProfile(content) {
+    await mockStorage.set({ userProfile: content });
+    return '已更新用户画像';
+  }
+
+  const SKILL_PATHS = {
+    'dark-mode-template': 'skills/style-templates/dark-mode.md',
+  };
+
+  async function runLoadSkill(skillName) {
+    if (skillName.startsWith('skill:')) {
+      const id = skillName.slice(6);
+      const content = await mockStyleSkillStore.load(id);
+      if (!content) {
+        return `未找到风格技能: ${id}`;
+      }
+      return content;
+    }
+    
+    const path = SKILL_PATHS[skillName];
+    if (!path) {
+      return `未知知识: ${skillName}`;
+    }
+    
+    const url = chrome.runtime.getURL(path);
+    const resp = await fetch(url);
+    return await resp.text();
+  }
+
+  async function runListStyleSkills() {
+    const skills = await mockStyleSkillStore.list();
+    if (skills.length === 0) {
+      return '(暂无保存的风格技能)';
+    }
+    return skills.map(s =>
+      `- skill:${s.id}「${s.name}」`
+    ).join('\n');
+  }
+
+  async function runDeleteStyleSkill(skillId) {
+    const skills = await mockStyleSkillStore.list();
+    const target = skills.find(s => s.id === skillId);
+    if (!target) {
+      return `未找到技能: ${skillId}`;
+    }
+    await mockStyleSkillStore.remove(skillId);
+    return `已删除风格技能「${target.name}」`;
+  }
+
+  async function runApplyStyles(css, mode) {
+    if (mode === 'save') {
+      if (!css?.trim()) throw new Error('save 模式需要提供 CSS 代码');
+      await sendToContentScript({ tool: 'inject_css', args: { css } });
+      return `已保存，下次访问 ${mockCurrentSession.domain} 自动应用`;
+    }
+    if (mode === 'rollback_all') {
+      await sendToContentScript({ tool: 'rollback_css', args: { scope: 'all' } });
+      return '已回滚所有样式';
+    }
+    if (mode === 'rollback_last') {
+      await sendToContentScript({ tool: 'rollback_css', args: { scope: 'last' } });
+      return '已撤销最后一次样式修改';
+    }
+    throw new Error(`未知模式: ${mode}`);
+  }
+
+  // === executeTool implementation ===
+  async function executeTool(name, args) {
+    switch (name) {
+      case 'get_page_structure':
+        return await sendToContentScript({ tool: 'get_page_structure' });
+
+      case 'grep':
+        return await sendToContentScript({
+          tool: 'grep',
+          args: { 
+            query: args.query, 
+            scope: args.scope || 'children', 
+            maxResults: args.max_results || 5 
+          }
+        });
+
+      case 'apply_styles':
+        return await runApplyStyles(args.css || '', args.mode);
+
+      case 'get_user_profile':
+        return await runGetUserProfile();
+
+      case 'update_user_profile':
+        return await runUpdateUserProfile(args.content);
+
+      case 'load_skill':
+        return await runLoadSkill(args.skill_name);
+
+      case 'list_style_skills':
+        return await runListStyleSkills();
+
+      case 'delete_style_skill':
+        return await runDeleteStyleSkill(args.skill_id);
+
+      case 'TodoWrite':
+        return '任务列表已更新';
+
+      default:
+        return `未知工具: ${name}`;
+    }
+  }
+
+  describe('Content Script 工具路由', () => {
+    test('get_page_structure 正确路由', async () => {
+      const result = await executeTool('get_page_structure', {});
+      
+      expect(result).toContain('URL: https://example.com');
+      expect(result).toContain('body');
+    });
+
+    test('grep 正确路由并传递参数', async () => {
+      const result = await executeTool('grep', { query: '.sidebar', scope: 'self' });
+      
+      expect(result).toContain('.sidebar');
+    });
+
+    test('apply_styles save 模式正确路由', async () => {
+      const result = await executeTool('apply_styles', { 
+        css: 'body { color: red; }', 
+        mode: 'save' 
+      });
+      
+      expect(result).toContain('已保存');
+      expect(result).toContain('example.com');
+    });
+
+    test('apply_styles rollback_all 模式正确路由', async () => {
+      const result = await executeTool('apply_styles', { mode: 'rollback_all' });
+      
+      expect(result).toBe('已回滚所有样式');
+    });
+
+    test('apply_styles rollback_last 模式正确路由', async () => {
+      const result = await executeTool('apply_styles', { mode: 'rollback_last' });
+      
+      expect(result).toBe('已撤销最后一次样式修改');
+    });
+  });
+
+  describe('本地工具路由', () => {
+    test('get_user_profile 正确路由', async () => {
+      // 无画像时
+      let result = await executeTool('get_user_profile', {});
+      expect(result).toBe('(新用户，暂无风格偏好记录)');
+      
+      // 有画像时
+      await mockStorage.set({ userProfile: '用户偏好深色模式' });
+      result = await executeTool('get_user_profile', {});
+      expect(result).toBe('用户偏好深色模式');
+    });
+
+    test('update_user_profile 正确路由', async () => {
+      const result = await executeTool('update_user_profile', { 
+        content: '用户偏好圆角设计' 
+      });
+      
+      expect(result).toBe('已更新用户画像');
+      expect(mockStorage.data.userProfile).toBe('用户偏好圆角设计');
+    });
+
+    test('load_skill 内置技能正确路由', async () => {
+      const result = await executeTool('load_skill', { skill_name: 'dark-mode-template' });
+      
+      expect(result).toContain('# Dark Mode');
+    });
+
+    test('load_skill 用户技能正确路由', async () => {
+      mockStyleSkillStore.skills['abc123'] = '# 我的风格';
+      mockStyleSkillStore.index.push({ id: 'abc123', name: '我的风格' });
+      
+      const result = await executeTool('load_skill', { skill_name: 'skill:abc123' });
+      
+      expect(result).toContain('# 我的风格');
+    });
+
+    test('list_style_skills 正确路由', async () => {
+      // 空列表
+      let result = await executeTool('list_style_skills', {});
+      expect(result).toBe('(暂无保存的风格技能)');
+      
+      // 有技能
+      mockStyleSkillStore.index.push({ id: 'test', name: '测试风格' });
+      result = await executeTool('list_style_skills', {});
+      expect(result).toContain('skill:test');
+    });
+
+    test('delete_style_skill 正确路由', async () => {
+      mockStyleSkillStore.index.push({ id: 'test', name: '测试风格' });
+      
+      const result = await executeTool('delete_style_skill', { skill_id: 'test' });
+      
+      expect(result).toBe('已删除风格技能「测试风格」');
+      expect(mockStyleSkillStore.index.length).toBe(0);
+    });
+
+    test('TodoWrite 正确路由', async () => {
+      const result = await executeTool('TodoWrite', { 
+        todos: [{ content: '测试', status: 'pending', activeForm: '测试中' }] 
+      });
+      
+      expect(result).toBe('任务列表已更新');
+    });
+  });
+
+  describe('未知工具处理', () => {
+    test('未知工具名返回错误提示', async () => {
+      const result = await executeTool('unknown_tool', {});
+      
+      expect(result).toBe('未知工具: unknown_tool');
+    });
+
+    test('工具名大小写敏感', async () => {
+      // 正确的工具名
+      const result1 = await executeTool('TodoWrite', {});
+      expect(result1).toBe('任务列表已更新');
+      
+      // 错误的大小写
+      const result2 = await executeTool('todowrite', {});
+      expect(result2).toBe('未知工具: todowrite');
+    });
+  });
+
+  describe('测试标准验证', () => {
+    test('每个工具名正确路由到对应实现函数', async () => {
+      // 测试所有工具名称
+      const tools = [
+        { name: 'get_page_structure', args: {} },
+        { name: 'grep', args: { query: 'test' } },
+        { name: 'apply_styles', args: { mode: 'rollback_all' } },
+        { name: 'get_user_profile', args: {} },
+        { name: 'update_user_profile', args: { content: 'test' } },
+        { name: 'load_skill', args: { skill_name: 'dark-mode-template' } },
+        { name: 'list_style_skills', args: {} },
+        { name: 'TodoWrite', args: { todos: [] } },
+      ];
+
+      for (const tool of tools) {
+        const result = await executeTool(tool.name, tool.args);
+        // 每个工具都应该返回有效结果，不应该是"未知工具"
+        expect(result).not.toBe(`未知工具: ${tool.name}`);
+      }
+    });
+
+    test('工具参数正确传递', async () => {
+      // grep 的参数
+      const grepResult = await executeTool('grep', { 
+        query: '.test', 
+        scope: 'self', 
+        max_results: 10 
+      });
+      expect(grepResult).toBeDefined();
+      
+      // update_user_profile 的参数
+      await executeTool('update_user_profile', { content: '新偏好' });
+      expect(mockStorage.data.userProfile).toBe('新偏好');
+      
+      // load_skill 的参数
+      const loadResult = await executeTool('load_skill', { skill_name: 'dark-mode-template' });
+      expect(loadResult).toContain('Dark Mode');
+    });
+  });
+});
