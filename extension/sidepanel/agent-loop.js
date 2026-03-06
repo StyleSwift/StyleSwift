@@ -139,6 +139,209 @@ function buildSessionContext(domain, sessionMeta, profileHint) {
 }
 
 // =============================================================================
+// §6.3 Layer 2 — 对话历史与 Token 预算控制
+// =============================================================================
+
+/**
+ * Token 预算上限
+ * 
+ * 当 lastInputTokens 超过此值时触发历史压缩。
+ * 设为 50000，为新的对话和工具结果留出充足空间。
+ * 
+ * Claude 模型的上下文窗口为 200k tokens，
+ * 预留 50k 给工具结果和输出，确保不会超出限制。
+ * 
+ * @type {number}
+ */
+const TOKEN_BUDGET = 50000;
+
+/**
+ * 检查并压缩对话历史
+ * 
+ * 基于 API 返回的 lastInputTokens 判断是否需要压缩。
+ * 如果超过 TOKEN_BUDGET，则：
+ * 1. 找到最近 10 轮对话的边界
+ * 2. 对边界之前的旧对话生成摘要
+ * 3. 用摘要替换旧对话
+ * 
+ * @param {Array} history - 对话历史数组
+ * @param {number} lastInputTokens - 上次 API 调用的 input_tokens
+ * @returns {Promise<Array>} 压缩后的对话历史（可能不变）
+ * 
+ * @example
+ * // 未超预算，不压缩
+ * const compressed = await checkAndCompressHistory(history, 30000);
+ * // compressed === history（同一引用）
+ * 
+ * @example
+ * // 超预算，压缩
+ * const compressed = await checkAndCompressHistory(history, 60000);
+ * // compressed[0] = { role: 'user', content: '[之前的对话摘要]\n...' }
+ * // compressed.slice(1) 包含最近 10 轮对话
+ */
+async function checkAndCompressHistory(history, lastInputTokens) {
+  // 未超预算，不压缩
+  if (lastInputTokens <= TOKEN_BUDGET) {
+    return history;
+  }
+
+  // 找到最近 10 轮对话的起始边界
+  const split = findTurnBoundary(history, 10);
+  
+  // 分割历史：旧对话和最近对话
+  const oldPart = history.slice(0, split);
+  const recentPart = history.slice(split);
+
+  // 如果没有旧对话可压缩，直接返回
+  if (oldPart.length === 0) {
+    return history;
+  }
+
+  // 异步生成摘要
+  const summary = await summarizeOldTurns(oldPart);
+
+  // 用摘要替换旧对话
+  return [
+    { role: 'user', content: `[之前的对话摘要]\n${summary}` },
+    ...recentPart
+  ];
+}
+
+/**
+ * 找到最近 N 轮对话的起始边界
+ * 
+ * 从后往前遍历历史，找到第 N 个用户消息的索引。
+ * "一轮对话"定义为：用户消息 + 可能的工具调用 + 助手回复
+ * 
+ * @param {Array} history - 对话历史数组
+ * @param {number} keepRecentTurns - 保留的最近轮数
+ * @returns {number} 最近 N 轮对话的起始索引（history 中的位置）
+ * 
+ * @example
+ * // 历史有 15 轮对话，保留最近 10 轮
+ * const index = findTurnBoundary(history, 10);
+ * // history.slice(index) 是最近 10 轮
+ * // history.slice(0, index) 是要压缩的旧对话
+ */
+function findTurnBoundary(history, keepRecentTurns) {
+  let turnCount = 0;
+  
+  // 从后往前遍历，统计用户消息数量
+  for (let i = history.length - 1; i >= 0; i--) {
+    // 一轮对话的开始标志：用户发送的文本消息
+    if (history[i].role === 'user' && typeof history[i].content === 'string') {
+      turnCount++;
+      // 找到第 N 个用户消息时，返回其索引
+      if (turnCount >= keepRecentTurns) {
+        return i;
+      }
+    }
+  }
+  
+  // 如果轮数不足 N，返回 0（保留全部）
+  return 0;
+}
+
+/**
+ * 使用 LLM 对早期对话生成摘要
+ * 
+ * 将旧对话历史压缩成一段简洁的摘要文本。
+ * 摘要重点保留：
+ * - 用户的风格偏好
+ * - 已应用的样式变更
+ * - 未完成的请求
+ * 
+ * 注意：此函数会调用 LLM API，产生 API 费用。
+ * 
+ * @param {Array} oldHistory - 要压缩的旧对话历史
+ * @returns {Promise<string>} 压缩后的摘要文本
+ * 
+ * @example
+ * const summary = await summarizeOldTurns([
+ *   { role: 'user', content: '改成深色模式' },
+ *   { role: 'assistant', content: [{ type: 'text', text: '好的' }, ...] },
+ *   ...
+ * ]);
+ * // summary 可能是: "用户偏好深色模式，已应用深蓝背景和白色文字..."
+ */
+async function summarizeOldTurns(oldHistory) {
+  // 将历史压缩成简化的文本格式
+  const condensed = oldHistory.map(msg => {
+    if (msg.role === 'user') {
+      // 用户消息
+      if (typeof msg.content === 'string') {
+        return `用户: ${msg.content}`;
+      }
+      // tool_result 消息（通常是工具调用结果）
+      return '用户: [工具调用结果]';
+    }
+    
+    if (msg.role === 'assistant') {
+      // 助手消息：提取文本和工具调用
+      const texts = (msg.content || [])
+        .filter(b => b.type === 'text')
+        .map(b => b.text.slice(0, 200)); // 截断过长的文本
+      
+      const tools = (msg.content || [])
+        .filter(b => b.type === 'tool_use')
+        .map(b => b.name);
+      
+      let summary = '';
+      if (texts.length) {
+        summary += `助手: ${texts.join(' ')}`;
+      }
+      if (tools.length) {
+        summary += ` [调用了: ${tools.join(', ')}]`;
+      }
+      return summary;
+    }
+    
+    return '';
+  }).filter(Boolean).join('\n');
+
+  // 如果压缩后的文本为空，返回默认消息
+  if (!condensed.trim()) {
+    return '(无历史记录)';
+  }
+
+  try {
+    // 动态导入 getSettings（避免循环依赖）
+    const { getSettings } = await import('./api.js');
+    const { apiKey, model, apiBase } = await getSettings();
+
+    // 调用 LLM 生成摘要
+    const resp = await fetch(`${apiBase}/v1/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model,
+        system: '用一段简洁的文字总结以下对话历史，重点保留：用户的风格偏好、已应用的样式变更、未完成的请求。不超过 300 字。',
+        messages: [{ role: 'user', content: condensed }],
+        max_tokens: 500,
+      })
+    });
+
+    if (!resp.ok) {
+      console.error('[History Compression] API error:', resp.status);
+      return '(历史摘要生成失败)';
+    }
+
+    const data = await resp.json();
+    const text = data.content?.[0]?.text;
+    return text || '(历史摘要生成失败)';
+    
+  } catch (err) {
+    console.error('[History Compression] Failed:', err);
+    return '(历史摘要生成失败)';
+  }
+}
+
+// =============================================================================
 // 导出常量和工具数组
 // =============================================================================
 
@@ -146,5 +349,9 @@ export {
   SYSTEM_BASE,
   BASE_TOOLS,
   ALL_TOOLS,
-  buildSessionContext
+  buildSessionContext,
+  TOKEN_BUDGET,
+  checkAndCompressHistory,
+  findTurnBoundary,
+  summarizeOldTurns
 };

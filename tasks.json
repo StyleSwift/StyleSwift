@@ -747,7 +747,7 @@
           "id": "T112",
           "title": "实现对话历史压缩（checkAndCompressHistory / summarizeOldTurns）",
           "description": "checkAndCompressHistory: 基于 lastInputTokens 和 TOKEN_BUDGET(50000) 判断是否压缩。findTurnBoundary: 保留最近 10 轮。summarizeOldTurns: 独立 LLM 调用生成摘要，替换旧历史为 [之前的对话摘要]",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T063"
