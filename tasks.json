@@ -545,7 +545,7 @@
           "id": "T091",
           "title": "实现 runUpdateUserProfile",
           "description": "将 content 写入 chrome.storage.local 的 userProfile key",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T004"
@@ -560,7 +560,7 @@
           "id": "T092",
           "title": "实现 getProfileOneLiner",
           "description": "读取画像的第一行（最多 100 字），用于 Session Context L1 注入",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T090"
