@@ -259,7 +259,7 @@
           "id": "T041",
           "title": "实现辅助函数：shortSelector / getDirectText / sameSignature",
           "description": "shortSelector(el): 生成最短选择器（tag#id > tag.className > tag）。getDirectText(el): 仅获取直接文本节点内容。sameSignature(a,b): tagName + className 相同判定",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T040"

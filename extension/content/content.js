@@ -85,5 +85,61 @@ const VISUAL_PROPS = new Set([
  */
 const SELECTOR_PATTERN = /[.#\[\]>+~:=]|^\w+\s+\w+/;
 
+// === 辅助函数 ===
+
+/**
+ * 生成元素的最短选择器
+ * 优先级：tag#id > tag.className > tag
+ * 
+ * @param {Element} el - DOM 元素
+ * @returns {string} 最短选择器字符串
+ */
+function shortSelector(el) {
+  const tag = el.tagName.toLowerCase();
+  
+  // 优先使用 ID（页面唯一）
+  if (el.id) {
+    return `${tag}#${el.id}`;
+  }
+  
+  // 其次使用第一个 class 名
+  if (el.className && typeof el.className === 'string') {
+    const firstClass = el.className.split(/\s+/)[0];
+    if (firstClass) {
+      return `${tag}.${firstClass}`;
+    }
+  }
+  
+  // 降级为纯标签名
+  return tag;
+}
+
+/**
+ * 获取元素的直接文本内容（不含子元素文本）
+ * 仅提取元素自身的文本节点内容
+ * 
+ * @param {Element} el - DOM 元素
+ * @returns {string} 直接文本内容
+ */
+function getDirectText(el) {
+  return Array.from(el.childNodes)
+    .filter(n => n.nodeType === Node.TEXT_NODE)
+    .map(n => n.textContent.trim())
+    .filter(Boolean)
+    .join(' ');
+}
+
+/**
+ * 判断两个元素是否具有相同签名（tagName + className）
+ * 用于相似元素分组
+ * 
+ * @param {Element} a - 第一个元素
+ * @param {Element} b - 第二个元素
+ * @returns {boolean} 签名是否相同
+ */
+function sameSignature(a, b) {
+  return a.tagName === b.tagName && a.className === b.className;
+}
+
 // === 后续功能实现区域 ===
-// T041-T053 任务将在此添加辅助函数、DOM 操作、CSS 注入等功能
+// T042-T053 任务将在此添加分组折叠、DOM 操作、CSS 注入等功能
