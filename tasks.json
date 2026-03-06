@@ -597,7 +597,7 @@
           "id": "T101",
           "title": "实现 Tab 锁定机制（getTargetTabId / lockTab / unlockTab）",
           "description": "lockedTabId 变量，getTargetTabId() 优先返回锁定 ID，lockTab/unlockTab 控制锁。getTargetDomain() 通过 Content Script 获取域名",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T004"
@@ -606,7 +606,7 @@
           "designRef": "§2.5 多 Tab 场景处理",
           "testCriteria": "锁定后切换 Tab 不影响通信目标，解锁后获取新的活跃 Tab",
           "estimatedHours": 1,
-          "files": ["extension/sidepanel/tools.js"]
+          "files": ["extension/sidepanel/tools.js", "extension/tests/tools.test.js"]
         },
         {
           "id": "T102",
