@@ -582,7 +582,7 @@
           "id": "T100",
           "title": "定义所有 Tool Schema",
           "description": "定义 GET_PAGE_STRUCTURE_TOOL、GREP_TOOL、APPLY_STYLES_TOOL、GET_USER_PROFILE_TOOL、UPDATE_USER_PROFILE_TOOL、LOAD_SKILL_TOOL、SAVE_STYLE_SKILL_TOOL、LIST_STYLE_SKILLS_TOOL、DELETE_STYLE_SKILL_TOOL、TODO_WRITE_TOOL、TASK_TOOL 的 JSON Schema",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T004"
