@@ -656,7 +656,7 @@
           "id": "T074",
           "title": "实现 CSS 解析错误处理和降级",
           "description": "为 parseRules 和 mergeCSS 添加 try-catch 错误处理。畸形 CSS（未闭合花括号、非法字符）时返回空 Map 或原始 CSS，记录警告日志但不中断流程",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T072"

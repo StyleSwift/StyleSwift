@@ -785,4 +785,129 @@ describe('mergeCSS', () => {
       expect(merged).toContain('background: #1a1a1a;');
     });
   });
+
+  // ============================================================================
+  // 错误处理测试（T074）
+  // ============================================================================
+
+  describe('错误处理与容错', () => {
+    describe('splitTopLevelBlocks 容错', () => {
+      test('未闭合的花括号不崩溃', () => {
+        const css = '.header { color: red; .footer { margin: 0; }';
+        // 应该不崩溃
+        const blocks = splitTopLevelBlocks(css);
+        // 至少应该解析出有效的块
+        expect(Array.isArray(blocks)).toBe(true);
+      });
+
+      test('多余的右括号不崩溃', () => {
+        const css = '.header { color: red; } } }';
+        // 应该不崩溃
+        const blocks = splitTopLevelBlocks(css);
+        expect(Array.isArray(blocks)).toBe(true);
+        // 至少解析出第一个有效块
+        expect(blocks.length).toBeGreaterThanOrEqual(1);
+      });
+
+      test('null 和 undefined 返回空数组', () => {
+        expect(splitTopLevelBlocks(null)).toEqual([]);
+        expect(splitTopLevelBlocks(undefined)).toEqual([]);
+      });
+
+      test('非字符串返回空数组', () => {
+        expect(splitTopLevelBlocks(123)).toEqual([]);
+        expect(splitTopLevelBlocks({})).toEqual([]);
+      });
+    });
+
+    describe('parseRules 容错', () => {
+      test('未闭合花括号的 CSS 不崩溃', () => {
+        const css = '.header { color: red; background: blue;';
+        // 应该不崩溃
+        const rules = parseRules(css);
+        expect(rules).toBeInstanceOf(Map);
+      });
+
+      test('非法字符的 CSS 不崩溃', () => {
+        const css = '.header { color: red; } @#$%^&*()';
+        // 应该不崩溃
+        const rules = parseRules(css);
+        expect(rules).toBeInstanceOf(Map);
+        // 有效部分应该被解析
+        expect(rules.has('.header')).toBe(true);
+      });
+
+      test('null 和 undefined 返回空 Map', () => {
+        expect(parseRules(null).size).toBe(0);
+        expect(parseRules(undefined).size).toBe(0);
+      });
+
+      test('非字符串返回空 Map', () => {
+        expect(parseRules(123).size).toBe(0);
+        expect(parseRules({}).size).toBe(0);
+      });
+
+      test('空选择器跳过不崩溃', () => {
+        const css = '{ color: red; } .valid { margin: 0; }';
+        const rules = parseRules(css);
+        expect(rules).toBeInstanceOf(Map);
+        // 有效规则应该被解析
+        expect(rules.has('.valid')).toBe(true);
+      });
+
+      test('缺少右花括号的规则不崩溃', () => {
+        const css = '.header { color: red; .footer { margin: 0; }';
+        const rules = parseRules(css);
+        expect(rules).toBeInstanceOf(Map);
+      });
+    });
+
+    describe('mergeCSS 降级处理', () => {
+      test('null 输入不崩溃', () => {
+        const result1 = mergeCSS(null, '.header { color: red; }');
+        expect(typeof result1).toBe('string');
+        
+        const result2 = mergeCSS('.header { color: red; }', null);
+        expect(typeof result2).toBe('string');
+        
+        const result3 = mergeCSS(null, null);
+        expect(result3).toBe('');
+      });
+
+      test('undefined 输入不崩溃', () => {
+        const result1 = mergeCSS(undefined, '.header { color: red; }');
+        expect(typeof result1).toBe('string');
+        
+        const result2 = mergeCSS('.header { color: red; }', undefined);
+        expect(typeof result2).toBe('string');
+        
+        const result3 = mergeCSS(undefined, undefined);
+        expect(result3).toBe('');
+      });
+
+      test('畸形 CSS 合并不崩溃', () => {
+        const existing = '.header { color: red; } } }';
+        const newCSS = '.footer { margin: 0; { {';
+        
+        // 应该不崩溃
+        const merged = mergeCSS(existing, newCSS);
+        expect(typeof merged).toBe('string');
+      });
+
+      test('非字符串输入降级处理', () => {
+        const result = mergeCSS(123, {});
+        expect(typeof result).toBe('string');
+      });
+    });
+
+    describe('serializeRules 容错', () => {
+      test('空 Map 返回空字符串', () => {
+        expect(serializeRules(new Map())).toBe('');
+      });
+
+      test('null 返回空字符串', () => {
+        expect(serializeRules(null)).toBe('');
+      });
+    });
+  });
 });
