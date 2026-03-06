@@ -251,5 +251,135 @@ function pickStylesForDisplay(tag, pairs) {
   return pairs.filter(([prop]) => VISUAL_PROPS.has(prop));
 }
 
+// === CSS 注入/回滚功能 ===
+
+/**
+ * 当前活动的样式元素
+ * 用于存储当前会话的 CSS，id 为 'styleswift-active'
+ * @type {HTMLStyleElement|null}
+ */
+let activeStyleEl = null;
+
+/**
+ * CSS 变更栈
+ * 用于支持撤销操作，每次 injectCSS 会 push 一条记录
+ * @type {string[]}
+ */
+const cssStack = [];
+
+/**
+ * 注入 CSS 到页面
+ * 
+ * 将 CSS 注入到页面的 <head> 中，创建 id 为 'styleswift-active' 的 <style> 元素。
+ * 支持多次注入，每次注入都会 push 到 cssStack 中，支持撤销。
+ * 
+ * @param {string} css - CSS 代码
+ * @returns {void}
+ */
+function injectCSS(css) {
+  // 如果样式元素不存在，创建并添加到 head
+  if (!activeStyleEl) {
+    activeStyleEl = document.createElement('style');
+    activeStyleEl.id = 'styleswift-active';
+    document.head.appendChild(activeStyleEl);
+  }
+  
+  // 将新 CSS 推入栈中
+  cssStack.push(css);
+  
+  // 更新样式元素内容（合并所有栈中的 CSS）
+  activeStyleEl.textContent = cssStack.join('\n');
+}
+
+/**
+ * 回滚 CSS
+ * 
+ * 根据 scope 参数决定回滚范围：
+ * - 'last': 撤销最后一次 CSS 修改（从 cssStack 中 pop）
+ * - 'all': 回滚所有 CSS 修改（清空 cssStack）
+ * 
+ * @param {string} [scope='last'] - 回滚范围：'last' 或 'all'
+ * @returns {void}
+ */
+function rollbackCSS(scope = 'last') {
+  if (scope === 'all') {
+    // 清空整个栈
+    cssStack.length = 0;
+  } else {
+    // 仅移除最后一条
+    cssStack.pop();
+  }
+  
+  // 更新样式元素内容（如果存在）
+  if (activeStyleEl) {
+    activeStyleEl.textContent = cssStack.join('\n');
+  }
+}
+
+/**
+ * 获取当前活动的 CSS
+ * 
+ * 返回 cssStack 中所有 CSS 的合并结果。
+ * 用于 Side Panel 在 rollback_last 后同步存储。
+ * 
+ * @returns {string} 合并后的 CSS 代码，如果栈为空则返回空字符串
+ */
+function getActiveCSS() {
+  return cssStack.join('\n');
+}
+
+// === 消息监听器 ===
+
+/**
+ * 监听来自 Side Panel 的消息
+ * 
+ * 支持的工具：
+ * - get_domain: 返回当前页面的域名
+ * - inject_css: 注入 CSS（args: { css }）
+ * - rollback_css: 回滚 CSS（args: { scope }）
+ * - get_active_css: 获取当前活动的 CSS
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const { tool, args = {} } = message;
+  
+  try {
+    switch (tool) {
+      case 'get_domain':
+        // 返回当前页面的域名
+        sendResponse(location.hostname || 'unknown');
+        break;
+        
+      case 'inject_css':
+        // 注入 CSS
+        injectCSS(args.css);
+        sendResponse({ success: true });
+        break;
+        
+      case 'rollback_css':
+        // 回滚 CSS
+        rollbackCSS(args.scope);
+        sendResponse({ success: true });
+        break;
+        
+      case 'get_active_css':
+        // 获取当前活动的 CSS
+        const css = getActiveCSS();
+        sendResponse(css || null);
+        break;
+        
+      default:
+        // 未知工具
+        console.warn(`[StyleSwift] Unknown tool: ${tool}`);
+        sendResponse({ error: `Unknown tool: ${tool}` });
+    }
+  } catch (error) {
+    console.error(`[StyleSwift] Tool execution error:`, error);
+    sendResponse({ error: error.message });
+  }
+  
+  // 返回 true 表示异步响应（虽然这里都是同步的，但保持一致性）
+  return true;
+});
+
 // === 后续功能实现区域 ===
 // T044-T053 任务将在此添加 DOM 操作、CSS 注入等功能

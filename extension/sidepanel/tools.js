@@ -3,6 +3,10 @@
  * 定义所有工具的 JSON Schema，供 Agent Loop 使用
  */
 
+// 导入依赖模块
+import { currentSession, updateStylesSummary } from './session.js';
+import { mergeCSS } from './css-merge.js';
+
 // =============================================================================
 // §3.1 get_page_structure - 获取页面结构
 // =============================================================================
@@ -373,4 +377,131 @@ async function sendToContentScript(message) {
       }
     });
   });
+}
+
+// =============================================================================
+// §3.3.2 Side Panel 端：runApplyStyles - 工具执行 + 持久化
+// =============================================================================
+
+/**
+ * 应用或回滚 CSS 样式
+ * 
+ * 跨 Side Panel 和 Content Script 两个执行环境的样式管理函数。
+ * 
+ * **模式说明：**
+ * - `save`: 注入 CSS 到页面并永久保存（下次访问该域名自动应用）
+ * - `rollback_last`: 撤销最后一次样式修改（保留之前的修改）
+ * - `rollback_all`: 回滚所有已应用的样式
+ * 
+ * **持久化策略：**
+ * - `stylesKey` (sessions:{domain}:{sessionId}:styles): 会话级样式，仅当前会话使用
+ * - `persistKey` (persistent:{domain}): 域名级永久样式，所有会话共享
+ * 
+ * @param {string} css - CSS 代码（save 模式必填，rollback 模式不需要）
+ * @param {string} mode - 模式：'save' | 'rollback_last' | 'rollback_all'
+ * @returns {Promise<string>} 操作结果消息
+ * @throws {Error} 当 Content Script 不可用或存储操作失败时抛出错误
+ * 
+ * @example
+ * // save 模式：注入并保存 CSS
+ * await runApplyStyles('body { background: #000 !important; }', 'save');
+ * // → '已保存，下次访问 github.com 自动应用'
+ * 
+ * @example
+ * // rollback_last 模式：撤销最后一次修改
+ * await runApplyStyles(null, 'rollback_last');
+ * // → '已撤销最后一次样式修改'
+ * 
+ * @example
+ * // rollback_all 模式：回滚所有样式
+ * await runApplyStyles(null, 'rollback_all');
+ * // → '已回滚所有样式'
+ */
+async function runApplyStyles(css, mode) {
+  // 检查是否有当前会话
+  if (!currentSession) {
+    throw new Error('[runApplyStyles] 没有活动的会话');
+  }
+  
+  try {
+    // === rollback_all 模式 ===
+    if (mode === 'rollback_all') {
+      // 1. 通知 Content Script 回滚所有 CSS
+      await sendToContentScript({ tool: 'rollback_css', args: { scope: 'all' } });
+      
+      // 2. 删除会话样式和永久样式
+      const sKey = currentSession.stylesKey;
+      const pKey = currentSession.persistKey;
+      await chrome.storage.local.remove([sKey, pKey]);
+      
+      // 3. 更新样式摘要
+      await updateStylesSummary();
+      
+      return '已回滚所有样式';
+    }
+    
+    // === rollback_last 模式 ===
+    if (mode === 'rollback_last') {
+      // 1. 通知 Content Script 回滚最后一条 CSS
+      await sendToContentScript({ tool: 'rollback_css', args: { scope: 'last' } });
+      
+      // 2. 从 Content Script 获取当前剩余的 CSS
+      const remainingCSS = await sendToContentScript({ tool: 'get_active_css' });
+      
+      // 3. 同步更新存储
+      const sKey = currentSession.stylesKey;
+      const pKey = currentSession.persistKey;
+      
+      if (remainingCSS && remainingCSS.trim()) {
+        // 如果还有剩余 CSS，更新存储
+        await chrome.storage.local.set({ 
+          [sKey]: remainingCSS, 
+          [pKey]: remainingCSS 
+        });
+      } else {
+        // 如果没有剩余 CSS，删除存储
+        await chrome.storage.local.remove([sKey, pKey]);
+      }
+      
+      // 4. 更新样式摘要
+      await updateStylesSummary();
+      
+      return '已撤销最后一次样式修改';
+    }
+    
+    // === save 模式 ===
+    if (mode === 'save') {
+      // 检查 CSS 参数
+      if (!css || !css.trim()) {
+        throw new Error('[runApplyStyles] save 模式需要提供 CSS 代码');
+      }
+      
+      // 1. 注入 CSS 到页面
+      await sendToContentScript({ tool: 'inject_css', args: { css } });
+      
+      // 2. 合并并写入会话样式
+      const sKey = currentSession.stylesKey;
+      const { [sKey]: existing = '' } = await chrome.storage.local.get(sKey);
+      const merged = mergeCSS(existing, css);
+      await chrome.storage.local.set({ [sKey]: merged });
+      
+      // 3. 合并并写入永久样式
+      const pKey = currentSession.persistKey;
+      const { [pKey]: existingP = '' } = await chrome.storage.local.get(pKey);
+      const mergedP = mergeCSS(existingP, css);
+      await chrome.storage.local.set({ [pKey]: mergedP });
+      
+      // 4. 更新样式摘要
+      await updateStylesSummary();
+      
+      return `已保存，下次访问 ${currentSession.domain} 自动应用`;
+    }
+    
+    // 未知模式
+    throw new Error(`[runApplyStyles] 未知模式: ${mode}`);
+    
+  } catch (error) {
+    console.error('[runApplyStyles] 执行失败:', error);
+    throw error;
+  }
 }

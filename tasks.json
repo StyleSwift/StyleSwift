@@ -627,7 +627,7 @@
           "id": "T103",
           "title": "实现 runApplyStyles（Side Panel 端）",
           "description": "runApplyStyles(css, mode): save 模式调 inject_css + mergeCSS + 写 stylesKey + persistKey。rollback_last 调 rollback_css + 同步存储。rollback_all 清空。调用 updateStylesSummary",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T072",

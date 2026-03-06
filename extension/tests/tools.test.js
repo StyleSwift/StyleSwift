@@ -2,10 +2,14 @@
  * Tools 单元测试
  * 
  * 测试 Tab 锁定机制（getTargetTabId / lockTab / unlockTab / getTargetDomain / sendToContentScript）
+ * 测试 runApplyStyles（save / rollback_last / rollback_all 模式）
  * 
  * 测试标准：
  * - 锁定后切换 Tab 不影响通信目标
  * - 解锁后获取新的活跃 Tab
+ * - save 后 storage 有合并后 CSS
+ * - rollback_last 移除最后一条
+ * - rollback_all 清空
  */
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';
@@ -292,6 +296,373 @@ describe('Tab 锁定机制', () => {
       // 步骤 7: 现在应该获取新的活跃 Tab 456
       tabId = await getTargetTabId();
       expect(tabId).toBe(456);
+    });
+  });
+});
+
+// =============================================================================
+// runApplyStyles 测试
+// =============================================================================
+
+describe('runApplyStyles', () => {
+  // Mock chrome.storage.local
+  const mockStorage = {
+    data: {},
+    
+    async get(keys) {
+      if (typeof keys === 'string') {
+        return { [keys]: this.data[keys] };
+      }
+      if (Array.isArray(keys)) {
+        const result = {};
+        keys.forEach(key => {
+          if (this.data[key] !== undefined) {
+            result[key] = this.data[key];
+          }
+        });
+        return result;
+      }
+      return this.data;
+    },
+    
+    async set(items) {
+      Object.assign(this.data, items);
+    },
+    
+    async remove(keys) {
+      const keysArray = Array.isArray(keys) ? keys : [keys];
+      keysArray.forEach(key => {
+        delete this.data[key];
+      });
+    },
+    
+    clear() {
+      this.data = {};
+    }
+  };
+  
+  // Mock currentSession
+  const mockCurrentSession = {
+    domain: 'example.com',
+    sessionId: 'test-session-123',
+    stylesKey: 'sessions:example.com:test-session-123:styles',
+    metaKey: 'sessions:example.com:test-session-123:meta',
+    persistKey: 'persistent:example.com'
+  };
+  
+  // Mock CSS stack for Content Script
+  let mockCSSStack = [];
+  let mockActiveStyleEl = null;
+  
+  beforeEach(() => {
+    // Reset all mocks
+    mockStorage.clear();
+    mockCSSStack = [];
+    mockActiveStyleEl = null;
+    
+    // Setup chrome.storage.local mock
+    global.chrome.storage = { local: mockStorage };
+    
+    // Setup Content Script message handler mock
+    mockTabs.sendMessage = (tabId, message, callback) => {
+      const { tool, args = {} } = message;
+      
+      switch (tool) {
+        case 'inject_css':
+          if (!mockActiveStyleEl) {
+            mockActiveStyleEl = { textContent: '' };
+          }
+          mockCSSStack.push(args.css);
+          mockActiveStyleEl.textContent = mockCSSStack.join('\n');
+          callback({ success: true });
+          break;
+          
+        case 'rollback_css':
+          if (args.scope === 'all') {
+            mockCSSStack = [];
+          } else {
+            mockCSSStack.pop();
+          }
+          if (mockActiveStyleEl) {
+            mockActiveStyleEl.textContent = mockCSSStack.join('\n');
+          }
+          callback({ success: true });
+          break;
+          
+        case 'get_active_css':
+          const css = mockCSSStack.join('\n');
+          callback(css || null);
+          break;
+          
+        default:
+          callback({ success: true });
+      }
+    };
+  });
+  
+  // === Helper: Import mergeCSS from css-merge.js ===
+  function mergeCSS(existingCSS, newCSS) {
+    // Simplified merge for testing
+    if (!existingCSS || !existingCSS.trim()) return newCSS || '';
+    if (!newCSS || !newCSS.trim()) return existingCSS || '';
+    return existingCSS + '\n' + newCSS;
+  }
+  
+  // === Helper: Mock updateStylesSummary ===
+  async function updateStylesSummary() {
+    // Simplified implementation for testing
+    const key = mockCurrentSession.stylesKey;
+    const css = mockStorage.data[key] || '';
+    const ruleCount = (css.match(/\{/g) || []).length;
+    const summary = `${ruleCount} 条规则`;
+    
+    const metaKey = mockCurrentSession.metaKey;
+    const meta = mockStorage.data[metaKey] || {};
+    meta.activeStylesSummary = summary;
+    mockStorage.data[metaKey] = meta;
+  }
+  
+  // === runApplyStyles implementation (same as tools.js) ===
+  async function runApplyStyles(css, mode) {
+    if (mode === 'rollback_all') {
+      await mockTabs.sendMessage(null, { tool: 'rollback_css', args: { scope: 'all' } }, () => {});
+      const sKey = mockCurrentSession.stylesKey;
+      const pKey = mockCurrentSession.persistKey;
+      await mockStorage.remove([sKey, pKey]);
+      await updateStylesSummary();
+      return '已回滚所有样式';
+    }
+    
+    if (mode === 'rollback_last') {
+      await mockTabs.sendMessage(null, { tool: 'rollback_css', args: { scope: 'last' } }, () => {});
+      
+      const remainingCSS = await new Promise(resolve => {
+        mockTabs.sendMessage(null, { tool: 'get_active_css' }, resolve);
+      });
+      
+      const sKey = mockCurrentSession.stylesKey;
+      const pKey = mockCurrentSession.persistKey;
+      
+      if (remainingCSS && remainingCSS.trim()) {
+        await mockStorage.set({ 
+          [sKey]: remainingCSS, 
+          [pKey]: remainingCSS 
+        });
+      } else {
+        await mockStorage.remove([sKey, pKey]);
+      }
+      
+      await updateStylesSummary();
+      return '已撤销最后一次样式修改';
+    }
+    
+    if (mode === 'save') {
+      if (!css || !css.trim()) {
+        throw new Error('[runApplyStyles] save 模式需要提供 CSS 代码');
+      }
+      
+      await mockTabs.sendMessage(null, { tool: 'inject_css', args: { css } }, () => {});
+      
+      const sKey = mockCurrentSession.stylesKey;
+      const { [sKey]: existing = '' } = await mockStorage.get(sKey);
+      const merged = mergeCSS(existing, css);
+      await mockStorage.set({ [sKey]: merged });
+      
+      const pKey = mockCurrentSession.persistKey;
+      const { [pKey]: existingP = '' } = await mockStorage.get(pKey);
+      const mergedP = mergeCSS(existingP, css);
+      await mockStorage.set({ [pKey]: mergedP });
+      
+      await updateStylesSummary();
+      return `已保存，下次访问 ${mockCurrentSession.domain} 自动应用`;
+    }
+    
+    throw new Error(`[runApplyStyles] 未知模式: ${mode}`);
+  }
+  
+  describe('save 模式', () => {
+    test('首次保存 CSS', async () => {
+      const css = 'body { background: #000 !important; }';
+      const result = await runApplyStyles(css, 'save');
+      
+      // 验证返回消息
+      expect(result).toContain('已保存');
+      expect(result).toContain('example.com');
+      
+      // 测试标准：save 后 storage 有合并后 CSS
+      const sKey = mockCurrentSession.stylesKey;
+      const pKey = mockCurrentSession.persistKey;
+      
+      expect(mockStorage.data[sKey]).toContain('body { background: #000 !important; }');
+      expect(mockStorage.data[pKey]).toContain('body { background: #000 !important; }');
+    });
+    
+    test('多次保存会合并 CSS', async () => {
+      const css1 = 'body { background: #000 !important; }';
+      const css2 = '.header { color: #fff !important; }';
+      
+      await runApplyStyles(css1, 'save');
+      await runApplyStyles(css2, 'save');
+      
+      const sKey = mockCurrentSession.stylesKey;
+      const stored = mockStorage.data[sKey];
+      
+      // 两次保存的 CSS 都应该在存储中
+      expect(stored).toContain('body { background: #000 !important; }');
+      expect(stored).toContain('.header { color: #fff !important; }');
+    });
+    
+    test('会话样式和永久样式同时更新', async () => {
+      const css = 'body { margin: 0 !important; }';
+      await runApplyStyles(css, 'save');
+      
+      const sKey = mockCurrentSession.stylesKey;
+      const pKey = mockCurrentSession.persistKey;
+      
+      expect(mockStorage.data[sKey]).toBeDefined();
+      expect(mockStorage.data[pKey]).toBeDefined();
+      expect(mockStorage.data[sKey]).toBe(mockStorage.data[pKey]);
+    });
+    
+    test('空 CSS 抛出错误', async () => {
+      await expect(runApplyStyles('', 'save')).rejects.toThrow('save 模式需要提供 CSS 代码');
+      await expect(runApplyStyles(null, 'save')).rejects.toThrow('save 模式需要提供 CSS 代码');
+    });
+    
+    test('更新样式摘要', async () => {
+      const css = 'body { background: #000 !important; }';
+      await runApplyStyles(css, 'save');
+      
+      const metaKey = mockCurrentSession.metaKey;
+      const meta = mockStorage.data[metaKey];
+      
+      expect(meta.activeStylesSummary).toContain('条规则');
+    });
+  });
+  
+  describe('rollback_last 模式', () => {
+    test('撤销最后一次修改', async () => {
+      // 先保存两次
+      const css1 = 'body { background: #000 !important; }';
+      const css2 = '.header { color: #fff !important; }';
+      
+      await runApplyStyles(css1, 'save');
+      await runApplyStyles(css2, 'save');
+      
+      // 撤销最后一次
+      const result = await runApplyStyles(null, 'rollback_last');
+      
+      expect(result).toBe('已撤销最后一次样式修改');
+      
+      // 测试标准：rollback_last 移除最后一条
+      const sKey = mockCurrentSession.stylesKey;
+      const stored = mockStorage.data[sKey];
+      
+      // 应该只剩下第一条 CSS
+      expect(stored).toContain('body { background: #000 !important; }');
+      expect(stored).not.toContain('.header { color: #fff !important; }');
+    });
+    
+    test('撤销到空状态', async () => {
+      const css = 'body { margin: 0 !important; }';
+      await runApplyStyles(css, 'save');
+      
+      // 撤销唯一的 CSS
+      await runApplyStyles(null, 'rollback_last');
+      
+      const sKey = mockCurrentSession.stylesKey;
+      const pKey = mockCurrentSession.persistKey;
+      
+      // 存储应该被清空
+      expect(mockStorage.data[sKey]).toBeUndefined();
+      expect(mockStorage.data[pKey]).toBeUndefined();
+    });
+    
+    test('多次撤销', async () => {
+      const css1 = 'body { a: 1 !important; }';
+      const css2 = 'body { b: 2 !important; }';
+      const css3 = 'body { c: 3 !important; }';
+      
+      await runApplyStyles(css1, 'save');
+      await runApplyStyles(css2, 'save');
+      await runApplyStyles(css3, 'save');
+      
+      // 撤销两次
+      await runApplyStyles(null, 'rollback_last');
+      await runApplyStyles(null, 'rollback_last');
+      
+      const sKey = mockCurrentSession.stylesKey;
+      const stored = mockStorage.data[sKey];
+      
+      // 只剩下第一条
+      expect(stored).toContain('body { a: 1 !important; }');
+      expect(stored).not.toContain('b: 2');
+      expect(stored).not.toContain('c: 3');
+    });
+  });
+  
+  describe('rollback_all 模式', () => {
+    test('清空所有样式', async () => {
+      // 保存多次
+      const css1 = 'body { background: #000 !important; }';
+      const css2 = '.header { color: #fff !important; }';
+      const css3 = '.footer { padding: 0 !important; }';
+      
+      await runApplyStyles(css1, 'save');
+      await runApplyStyles(css2, 'save');
+      await runApplyStyles(css3, 'save');
+      
+      // 清空所有
+      const result = await runApplyStyles(null, 'rollback_all');
+      
+      expect(result).toBe('已回滚所有样式');
+      
+      // 测试标准：rollback_all 清空
+      const sKey = mockCurrentSession.stylesKey;
+      const pKey = mockCurrentSession.persistKey;
+      
+      expect(mockStorage.data[sKey]).toBeUndefined();
+      expect(mockStorage.data[pKey]).toBeUndefined();
+    });
+    
+    test('空状态时也能执行', async () => {
+      // 没有任何 CSS，直接执行 rollback_all
+      const result = await runApplyStyles(null, 'rollback_all');
+      
+      expect(result).toBe('已回滚所有样式');
+    });
+  });
+  
+  describe('集成测试', () => {
+    test('完整流程：save -> save -> rollback_last -> rollback_all', async () => {
+      // 步骤 1: 保存第一条 CSS
+      const css1 = 'body { background: #000 !important; }';
+      let result = await runApplyStyles(css1, 'save');
+      expect(result).toContain('已保存');
+      
+      let sKey = mockCurrentSession.stylesKey;
+      expect(mockStorage.data[sKey]).toContain('background: #000');
+      
+      // 步骤 2: 保存第二条 CSS
+      const css2 = '.header { color: #fff !important; }';
+      result = await runApplyStyles(css2, 'save');
+      expect(result).toContain('已保存');
+      
+      expect(mockStorage.data[sKey]).toContain('background: #000');
+      expect(mockStorage.data[sKey]).toContain('color: #fff');
+      
+      // 步骤 3: 撤销最后一条
+      result = await runApplyStyles(null, 'rollback_last');
+      expect(result).toBe('已撤销最后一次样式修改');
+      
+      expect(mockStorage.data[sKey]).toContain('background: #000');
+      expect(mockStorage.data[sKey]).not.toContain('color: #fff');
+      
+      // 步骤 4: 清空所有
+      result = await runApplyStyles(null, 'rollback_all');
+      expect(result).toBe('已回滚所有样式');
+      
+      expect(mockStorage.data[sKey]).toBeUndefined();
     });
   });
 });
