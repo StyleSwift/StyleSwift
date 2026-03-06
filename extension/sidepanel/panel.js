@@ -84,27 +84,191 @@ const DOM = {
 // ============================================================================
 
 /**
- * 应用全局状态
+ * 应用全局状态定义
+ * 
+ * 设计参考：§16.5 全局状态联动
+ * 
+ * 状态说明：
+ * - agentStatus: Agent 运行状态
+ *   - 'idle': 空闲，等待用户输入
+ *   - 'running': 正在处理用户请求
+ *   - 'error': 出现错误
+ *   - 'restricted': 受限页面（chrome:// 等）
+ * 
+ * - apiKeyStatus: API Key 状态
+ *   - 'valid': 已验证有效
+ *   - 'invalid': 验证失败/过期
+ *   - 'missing': 未配置
+ * 
+ * - pageStatus: 页面状态
+ *   - 'ready': 正常页面，可操作
+ *   - 'restricted': 受限页面，不支持样式修改
+ * 
+ * - hasActiveStyles: 是否有样式生效
+ * 
+ * - storageWarning: 存储空间警告
+ *   - 'none': 无警告
+ *   - 'warning': 存储将满（>80%）
+ *   - 'critical': 存储严重不足（>95%）
  */
-const AppState = {
-  /** 当前视图: 'onboarding' | 'main' | 'settings' */
-  currentView: 'onboarding',
+
+/**
+ * 全局状态管理器类
+ * 实现状态变化通知机制，支持订阅/发布模式
+ */
+class GlobalStateManager {
+  constructor() {
+    /** @type {Object} 状态存储 */
+    this._state = {
+      /** 当前视图: 'onboarding' | 'main' | 'settings' */
+      currentView: 'onboarding',
+      
+      /** Agent 状态: 'idle' | 'running' | 'error' | 'restricted' */
+      agentStatus: 'idle',
+      
+      /** API Key 状态: 'valid' | 'invalid' | 'missing' */
+      apiKeyStatus: 'missing',
+      
+      /** 页面状态: 'ready' | 'restricted' */
+      pageStatus: 'ready',
+      
+      /** 当前域名 */
+      currentDomain: null,
+      
+      /** 当前会话 ID */
+      currentSessionId: null,
+      
+      /** 是否有样式生效 */
+      hasActiveStyles: false,
+      
+      /** 存储空间警告: 'none' | 'warning' | 'critical' */
+      storageWarning: 'none',
+      
+      /** 当前错误类型: null | 'API_KEY_INVALID' | 'NETWORK_ERROR' | 'API_ERROR' */
+      currentError: null,
+    };
+    
+    /** @type {Map<string, Set<Function>>} 状态变化监听器 */
+    this._listeners = new Map();
+    
+    /** @type {Set<Function>} 全局状态变化监听器 */
+    this._globalListeners = new Set();
+  }
   
-  /** Agent 状态: 'idle' | 'running' | 'error' | 'restricted' */
-  agentStatus: 'idle',
+  /**
+   * 获取状态值
+   * @param {string} key - 状态键名
+   * @returns {*} 状态值
+   */
+  get(key) {
+    return this._state[key];
+  }
   
-  /** API Key 状态: 'valid' | 'invalid' | 'missing' */
-  apiKeyStatus: 'missing',
+  /**
+   * 获取所有状态
+   * @returns {Object} 状态对象
+   */
+  getAll() {
+    return { ...this._state };
+  }
   
-  /** 页面状态: 'ready' | 'restricted' */
-  pageStatus: 'ready',
+  /**
+   * 设置状态值并触发监听器
+   * @param {string} key - 状态键名
+   * @param {*} value - 新值
+   */
+  set(key, value) {
+    const oldValue = this._state[key];
+    
+    if (oldValue === value) return; // 值未变化，不触发
+    
+    this._state[key] = value;
+    
+    // 触发特定键的监听器
+    const keyListeners = this._listeners.get(key);
+    if (keyListeners) {
+      keyListeners.forEach(listener => {
+        try {
+          listener(value, oldValue, key);
+        } catch (err) {
+          console.error('[StateManager] Listener error:', err);
+        }
+      });
+    }
+    
+    // 触发全局监听器
+    this._globalListeners.forEach(listener => {
+      try {
+        listener(key, value, oldValue);
+      } catch (err) {
+        console.error('[StateManager] Global listener error:', err);
+      }
+    });
+    
+    console.log(`[StateManager] State changed: ${key} = ${JSON.stringify(value)}`);
+  }
   
-  /** 当前域名 */
-  currentDomain: null,
+  /**
+   * 批量设置状态
+   * @param {Object} updates - 状态更新对象
+   */
+  setMultiple(updates) {
+    Object.entries(updates).forEach(([key, value]) => {
+      this.set(key, value);
+    });
+  }
   
-  /** 当前会话 ID */
-  currentSessionId: null,
-};
+  /**
+   * 订阅特定状态变化
+   * @param {string} key - 状态键名
+   * @param {Function} listener - 监听函数 (newValue, oldValue, key) => void
+   * @returns {Function} 取消订阅函数
+   */
+  subscribe(key, listener) {
+    if (!this._listeners.has(key)) {
+      this._listeners.set(key, new Set());
+    }
+    
+    this._listeners.get(key).add(listener);
+    
+    // 返回取消订阅函数
+    return () => {
+      const keyListeners = this._listeners.get(key);
+      if (keyListeners) {
+        keyListeners.delete(listener);
+      }
+    };
+  }
+  
+  /**
+   * 订阅所有状态变化
+   * @param {Function} listener - 监听函数 (key, newValue, oldValue) => void
+   * @returns {Function} 取消订阅函数
+   */
+  subscribeAll(listener) {
+    this._globalListeners.add(listener);
+    return () => this._globalListeners.delete(listener);
+  }
+}
+
+/**
+ * 全局状态管理器实例
+ */
+const stateManager = new GlobalStateManager();
+
+/**
+ * 兼容旧代码的 AppState 对象
+ * 通过 Proxy 实现与 stateManager 的双向同步
+ */
+const AppState = new Proxy({}, {
+  get(target, prop) {
+    return stateManager.get(prop);
+  },
+  set(target, prop, value) {
+    stateManager.set(prop, value);
+    return true;
+  }
+});
 
 // ============================================================================
 // 视图切换
@@ -172,6 +336,503 @@ function showError(message, duration = 5000) {
  */
 function hideError() {
   DOM.errorToast.classList.add('hidden');
+}
+
+// ============================================================================
+// 全局状态联动
+// ============================================================================
+
+/**
+ * 全局状态联动配置表
+ * 
+ * 设计参考：§16.5 全局状态联动
+ * 
+ * 定义各状态下各区域的表现
+ * 
+ * 区域定义：
+ * - topBar: 顶栏状态指示灯
+ * - chatArea: 对话区
+ * - inputArea: 输入区
+ * - skillArea: 技能快捷区
+ * - errorBanner: 错误横幅
+ */
+const GLOBAL_STATE_CONFIG = {
+  /**
+   * 就绪状态
+   * - 顶栏：🟢 绿色
+   * - 对话区：正常
+   * - 输入区：可输入，发送按钮
+   * - 技能区：正常
+   */
+  ready: {
+    topBar: { status: 'idle', showStyleBadge: false },
+    chatArea: { mode: 'normal' },
+    inputArea: { mode: 'idle' },
+    skillArea: { mode: 'normal' },
+    errorBanner: { show: false }
+  },
+  
+  /**
+   * 处理中状态
+   * - 顶栏：🟡 黄色 + 脉动动画
+   * - 对话区：流式输出 + 工具卡片
+   * - 输入区：禁用，停止按钮
+   * - 技能区：正常但不可点击
+   */
+  processing: {
+    topBar: { status: 'running', showStyleBadge: false },
+    chatArea: { mode: 'streaming' },
+    inputArea: { mode: 'processing' },
+    skillArea: { mode: 'disabled' },
+    errorBanner: { show: false }
+  },
+  
+  /**
+   * 有样式生效状态
+   * - 顶栏：🟢 绿色 + 小徽标
+   * - 对话区：正常
+   * - 输入区：正常 + 样式应用后浮层
+   * - 技能区：正常
+   */
+  hasStyles: {
+    topBar: { status: 'idle', showStyleBadge: true },
+    chatArea: { mode: 'normal' },
+    inputArea: { mode: 'idle' },
+    skillArea: { mode: 'normal' },
+    errorBanner: { show: false }
+  },
+  
+  /**
+   * API Key 缺失状态
+   * - 顶栏：🔴 红色
+   * - 其他区域：不显示（引导页）
+   */
+  apiKeyMissing: {
+    topBar: { status: 'error', showStyleBadge: false },
+    chatArea: { mode: 'hidden' },
+    inputArea: { mode: 'hidden' },
+    skillArea: { mode: 'hidden' },
+    errorBanner: { show: false }
+  },
+  
+  /**
+   * API Key 无效状态
+   * - 顶栏：🔴 红色
+   * - 对话区：顶部错误横幅
+   * - 输入区：可输入
+   * - 技能区：正常
+   */
+  apiKeyInvalid: {
+    topBar: { status: 'error', showStyleBadge: false },
+    chatArea: { mode: 'normal' },
+    inputArea: { mode: 'idle' },
+    skillArea: { mode: 'normal' },
+    errorBanner: { show: true, type: 'API_KEY_INVALID' }
+  },
+  
+  /**
+   * 网络错误状态
+   * - 顶栏：🔴 红色
+   * - 对话区：顶部错误横幅 + 重试按钮
+   * - 输入区：可输入
+   * - 技能区：正常
+   */
+  networkError: {
+    topBar: { status: 'error', showStyleBadge: false },
+    chatArea: { mode: 'normal' },
+    inputArea: { mode: 'idle' },
+    skillArea: { mode: 'normal' },
+    errorBanner: { show: true, type: 'NETWORK_ERROR' }
+  },
+  
+  /**
+   * API 错误状态
+   * - 顶栏：🔴 红色
+   * - 对话区：顶部错误横幅 + 重试按钮
+   * - 输入区：可输入
+   * - 技能区：正常
+   */
+  apiError: {
+    topBar: { status: 'error', showStyleBadge: false },
+    chatArea: { mode: 'normal' },
+    inputArea: { mode: 'idle' },
+    skillArea: { mode: 'normal' },
+    errorBanner: { show: true, type: 'API_ERROR' }
+  },
+  
+  /**
+   * 受限页面状态
+   * - 顶栏：⚪ 灰色
+   * - 对话区：居中提示
+   * - 输入区：整体置灰禁用
+   * - 技能区：整体置灰禁用
+   */
+  restricted: {
+    topBar: { status: 'restricted', showStyleBadge: false },
+    chatArea: { mode: 'restricted' },
+    inputArea: { mode: 'restricted' },
+    skillArea: { mode: 'disabled' },
+    errorBanner: { show: false }
+  },
+  
+  /**
+   * 存储将满状态（不单独作为主状态，叠加在其他状态上）
+   * - 顶栏：继承主状态
+   * - 其他区域：无影响，设置页内提醒
+   */
+  storageWarning: {
+    // 存储警告不改变主状态，仅作为叠加状态
+    topBar: { inherit: true },
+    chatArea: { inherit: true },
+    inputArea: { inherit: true },
+    skillArea: { inherit: true },
+    errorBanner: { inherit: true }
+  }
+};
+
+/**
+ * 计算当前全局状态
+ * 根据各子状态综合计算最终的全局状态
+ * @returns {string} 全局状态名称
+ */
+function computeGlobalState() {
+  const agentStatus = stateManager.get('agentStatus');
+  const apiKeyStatus = stateManager.get('apiKeyStatus');
+  const pageStatus = stateManager.get('pageStatus');
+  const hasActiveStyles = stateManager.get('hasActiveStyles');
+  const currentError = stateManager.get('currentError');
+  
+  // 优先级：受限页面 > API Key 缺失 > 处理中 > 错误 > 有样式 > 就绪
+  
+  // 1. 受限页面
+  if (pageStatus === 'restricted') {
+    return 'restricted';
+  }
+  
+  // 2. API Key 缺失（显示引导页）
+  if (apiKeyStatus === 'missing') {
+    return 'apiKeyMissing';
+  }
+  
+  // 3. 处理中
+  if (agentStatus === 'running') {
+    return 'processing';
+  }
+  
+  // 4. 错误状态
+  if (currentError) {
+    switch (currentError) {
+      case 'API_KEY_INVALID':
+        return 'apiKeyInvalid';
+      case 'NETWORK_ERROR':
+        return 'networkError';
+      case 'API_ERROR':
+        return 'apiError';
+    }
+  }
+  
+  // 5. 有样式生效
+  if (hasActiveStyles) {
+    return 'hasStyles';
+  }
+  
+  // 6. 就绪状态
+  return 'ready';
+}
+
+/**
+ * 应用全局状态到 UI
+ * 根据当前状态配置更新所有区域的显示
+ * @param {string} [forceState] - 强制指定的状态（可选，用于调试）
+ */
+function applyGlobalState(forceState) {
+  const globalState = forceState || computeGlobalState();
+  const config = GLOBAL_STATE_CONFIG[globalState];
+  
+  if (!config) {
+    console.error('[Panel] Unknown global state:', globalState);
+    return;
+  }
+  
+  console.log('[Panel] Applying global state:', globalState);
+  
+  // 1. 更新顶栏状态指示灯
+  applyTopBarState(config.topBar);
+  
+  // 2. 更新对话区状态
+  applyChatAreaState(config.chatArea);
+  
+  // 3. 更新输入区状态
+  applyInputAreaState(config.inputArea);
+  
+  // 4. 更新技能区状态
+  applySkillAreaState(config.skillArea);
+  
+  // 5. 更新错误横幅
+  applyErrorBannerState(config.errorBanner);
+}
+
+/**
+ * 应用顶栏状态
+ * @param {Object} config - 顶栏配置
+ */
+function applyTopBarState(config) {
+  if (!DOM.statusDot) return;
+  
+  const dot = DOM.statusDot.querySelector('.dot');
+  if (!dot) return;
+  
+  // 更新状态指示灯颜色
+  dot.classList.remove('ready', 'processing', 'error', 'restricted');
+  
+  switch (config.status) {
+    case 'idle':
+      dot.classList.add('ready');
+      break;
+    case 'running':
+      dot.classList.add('processing');
+      break;
+    case 'error':
+      dot.classList.add('error');
+      break;
+    case 'restricted':
+      dot.classList.add('restricted');
+      break;
+  }
+  
+  // 更新样式徽标
+  const existingBadge = DOM.statusDot.querySelector('.style-badge');
+  if (config.showStyleBadge && !existingBadge) {
+    // 添加样式徽标
+    const badge = document.createElement('span');
+    badge.className = 'style-badge';
+    badge.textContent = '✨';
+    badge.title = '当前页面有样式生效';
+    DOM.statusDot.appendChild(badge);
+  } else if (!config.showStyleBadge && existingBadge) {
+    // 移除样式徽标
+    existingBadge.remove();
+  }
+}
+
+/**
+ * 应用对话区状态
+ * @param {Object} config - 对话区配置
+ */
+function applyChatAreaState(config) {
+  if (!DOM.messagesContainer) return;
+  
+  // 移除所有状态类
+  DOM.messagesContainer.classList.remove('restricted-mode', 'hidden');
+  
+  switch (config.mode) {
+    case 'normal':
+      // 正常模式
+      // 移除受限提示（如果存在）
+      const restrictedTip = DOM.messagesContainer.querySelector('.restricted-tip');
+      if (restrictedTip) {
+        restrictedTip.remove();
+      }
+      break;
+      
+    case 'streaming':
+      // 流式输出模式（由 Agent Loop 控制）
+      break;
+      
+    case 'restricted':
+      // 受限页面模式：居中提示
+      DOM.messagesContainer.classList.add('restricted-mode');
+      
+      // 清空并显示受限提示
+      DOM.messagesContainer.innerHTML = '';
+      const tip = document.createElement('div');
+      tip.className = 'restricted-tip';
+      tip.innerHTML = `
+        <div class="restricted-icon">🔒</div>
+        <div class="restricted-title">此页面不支持样式修改</div>
+        <div class="restricted-desc">Chrome 扩展无法操作浏览器内部页面（chrome://、扩展商店等）</div>
+      `;
+      DOM.messagesContainer.appendChild(tip);
+      break;
+      
+    case 'hidden':
+      // 隐藏模式（引导页时）
+      DOM.messagesContainer.classList.add('hidden');
+      break;
+  }
+}
+
+/**
+ * 应用输入区状态
+ * @param {Object} config - 输入区配置
+ */
+function applyInputAreaState(config) {
+  if (!DOM.inputArea || !DOM.messageInput || !DOM.sendBtn || !DOM.stopBtn) return;
+  
+  // 移除所有状态类
+  DOM.inputArea.classList.remove('processing', 'restricted', 'hidden');
+  DOM.sendBtn.classList.remove('hidden');
+  DOM.stopBtn.classList.add('hidden');
+  
+  switch (config.mode) {
+    case 'idle':
+      // 空闲态：输入框可用 + 发送按钮
+      DOM.messageInput.disabled = false;
+      DOM.messageInput.placeholder = '描述你想要的风格...';
+      break;
+      
+    case 'processing':
+      // 处理中：输入框禁用 + 停止按钮
+      DOM.inputArea.classList.add('processing');
+      DOM.messageInput.disabled = true;
+      DOM.messageInput.placeholder = '正在处理中...';
+      DOM.sendBtn.classList.add('hidden');
+      DOM.stopBtn.classList.remove('hidden');
+      break;
+      
+    case 'restricted':
+      // 受限页面：整体置灰 + 提示
+      DOM.inputArea.classList.add('restricted');
+      DOM.messageInput.disabled = true;
+      DOM.messageInput.placeholder = '此页面不支持样式修改';
+      DOM.messageInput.value = '';
+      DOM.sendBtn.disabled = true;
+      break;
+      
+    case 'hidden':
+      // 隐藏模式（引导页时）
+      DOM.inputArea.classList.add('hidden');
+      break;
+  }
+}
+
+/**
+ * 应用技能区状态
+ * @param {Object} config - 技能区配置
+ */
+function applySkillAreaState(config) {
+  if (!DOM.skillArea) return;
+  
+  // 移除所有状态类
+  DOM.skillArea.classList.remove('disabled', 'hidden');
+  
+  switch (config.mode) {
+    case 'normal':
+      // 正常模式：可点击
+      DOM.skillArea.style.pointerEvents = '';
+      DOM.skillArea.style.opacity = '';
+      break;
+      
+    case 'disabled':
+      // 禁用模式：置灰不可点击
+      DOM.skillArea.classList.add('disabled');
+      DOM.skillArea.style.pointerEvents = 'none';
+      DOM.skillArea.style.opacity = '0.5';
+      break;
+      
+    case 'hidden':
+      // 隐藏模式
+      DOM.skillArea.classList.add('hidden');
+      break;
+  }
+}
+
+/**
+ * 应用错误横幅状态
+ * @param {Object} config - 错误横幅配置
+ */
+function applyErrorBannerState(config) {
+  if (!DOM.errorBanner) return;
+  
+  if (config.show) {
+    showErrorBanner(config.type);
+  } else {
+    hideErrorBanner();
+  }
+}
+
+/**
+ * 设置处理中状态（便捷方法）
+ * 自动更新 agentStatus 并应用全局状态
+ * @param {boolean} isProcessing - 是否处理中
+ */
+function setProcessingState(isProcessing) {
+  stateManager.set('agentStatus', isProcessing ? 'running' : 'idle');
+  stateManager.set('currentError', null); // 清除错误
+  applyGlobalState();
+}
+
+/**
+ * 设置受限页面状态（便捷方法）
+ * @param {boolean} isRestricted - 是否为受限页面
+ */
+function setRestrictedPageState(isRestricted) {
+  stateManager.set('pageStatus', isRestricted ? 'restricted' : 'ready');
+  applyGlobalState();
+}
+
+/**
+ * 设置错误状态（便捷方法）
+ * @param {string|null} errorType - 错误类型：'API_KEY_INVALID' | 'NETWORK_ERROR' | 'API_ERROR' | null
+ */
+function setErrorState(errorType) {
+  stateManager.set('currentError', errorType);
+  if (errorType) {
+    stateManager.set('agentStatus', 'error');
+  }
+  applyGlobalState();
+}
+
+/**
+ * 清除错误状态
+ */
+function clearErrorState() {
+  stateManager.set('currentError', null);
+  if (stateManager.get('agentStatus') === 'error') {
+    stateManager.set('agentStatus', 'idle');
+  }
+  applyGlobalState();
+}
+
+/**
+ * 设置样式生效状态
+ * @param {boolean} hasStyles - 是否有样式生效
+ */
+function setHasActiveStyles(hasStyles) {
+  stateManager.set('hasActiveStyles', hasStyles);
+  applyGlobalState();
+}
+
+/**
+ * 设置 API Key 状态
+ * @param {string} status - API Key 状态：'valid' | 'invalid' | 'missing'
+ */
+function setApiKeyStatus(status) {
+  stateManager.set('apiKeyStatus', status);
+  applyGlobalState();
+}
+
+/**
+ * 初始化状态联动
+ * 设置状态变化监听器
+ */
+function initStateSync() {
+  // 监听关键状态变化，自动应用全局状态
+  const watchedKeys = [
+    'agentStatus',
+    'apiKeyStatus',
+    'pageStatus',
+    'hasActiveStyles',
+    'currentError'
+  ];
+  
+  watchedKeys.forEach(key => {
+    stateManager.subscribe(key, () => {
+      applyGlobalState();
+    });
+  });
+  
+  console.log('[Panel] State sync initialized');
 }
 
 // ============================================================================
@@ -338,8 +999,18 @@ function initMainView() {
   DOM.errorBannerAction = document.getElementById('error-banner-action');
   DOM.errorBannerClose = document.getElementById('error-banner-close');
   
+  // 初始化状态同步系统
+  initStateSync();
+  
   // 设置初始状态
-  updateStatusIndicator('idle');
+  stateManager.set('agentStatus', 'idle');
+  stateManager.set('apiKeyStatus', 'valid'); // 进入主界面说明已有有效 Key
+  stateManager.set('pageStatus', 'ready');
+  
+  // 应用初始全局状态
+  applyGlobalState();
+  
+  // 更新顶栏显示
   updateTopBarDisplay('--', '新会话');
   
   // 绑定顶栏交互事件
@@ -399,6 +1070,7 @@ function initInputArea() {
 /**
  * 更新输入区状态
  * @param {'idle' | 'processing' | 'restricted'} state - 状态
+ * @deprecated 请使用 setProcessingState / setRestrictedPageState / applyGlobalState
  */
 function updateInputAreaState(state) {
   if (!DOM.inputArea || !DOM.messageInput || !DOM.sendBtn || !DOM.stopBtn) return;
@@ -509,38 +1181,6 @@ function handleInputKeydown(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
     handleSendClick();
-  }
-}
-
-/**
- * 设置受限页面状态
- * @param {boolean} isRestricted - 是否为受限页面
- */
-function setRestrictedPageState(isRestricted) {
-  AppState.pageStatus = isRestricted ? 'restricted' : 'ready';
-  
-  if (isRestricted) {
-    updateInputAreaState('restricted');
-    updateStatusIndicator('restricted');
-  } else {
-    updateInputAreaState('idle');
-    updateStatusIndicator('idle');
-  }
-}
-
-/**
- * 设置处理中状态
- * @param {boolean} isProcessing - 是否处理中
- */
-function setProcessingState(isProcessing) {
-  AppState.agentStatus = isProcessing ? 'running' : 'idle';
-  
-  if (isProcessing) {
-    updateInputAreaState('processing');
-    updateStatusIndicator('running');
-  } else {
-    updateInputAreaState('idle');
-    updateStatusIndicator('idle');
   }
 }
 
@@ -1248,12 +1888,15 @@ function updateTopBarDisplay(domain, title) {
 /**
  * 更新状态指示灯
  * @param {'idle' | 'running' | 'error' | 'restricted'} status - 状态
+ * @deprecated 请使用 setProcessingState / setErrorState / setRestrictedPageState
  */
 function updateStatusIndicator(status) {
+  // 兼容旧接口：仅更新 agentStatus
+  stateManager.set('agentStatus', status);
+  // 直接更新指示灯，不触发完整联动（避免循环）
   const dot = DOM.statusDot?.querySelector('.dot');
   if (!dot) return;
   
-  // 移除所有状态类
   dot.classList.remove('ready', 'processing', 'error', 'restricted');
   
   switch (status) {
@@ -1269,11 +1912,7 @@ function updateStatusIndicator(status) {
     case 'restricted':
       dot.classList.add('restricted');
       break;
-    default:
-      dot.classList.add('ready');
   }
-  
-  AppState.agentStatus = status;
 }
 
 // ============================================================================
@@ -2756,12 +3395,20 @@ function initErrorBanner() {
 
 export {
   AppState, 
+  stateManager,
   switchView, 
   showError, 
   updateStatusIndicator,
   updateInputAreaState,
   setRestrictedPageState,
   setProcessingState,
+  setErrorState,
+  clearErrorState,
+  setHasActiveStyles,
+  setApiKeyStatus,
+  applyGlobalState,
+  computeGlobalState,
+  initStateSync,
   renderUserMessage,
   renderAssistantMessageContainer,
   addMessageToContainer,

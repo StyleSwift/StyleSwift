@@ -1058,7 +1058,7 @@
           "id": "T132",
           "title": "实现全局状态联动",
           "description": "统一的状态管理：就绪/处理中/有样式/API Key 缺失/无效/网络错误/受限页面 等状态下，顶栏/对话区/输入区/技能区的联动行为。参照状态联动表实现",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T122",

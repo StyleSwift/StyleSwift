@@ -2921,3 +2921,208 @@ pre code {
     font-size: var(--font-size-xs);
   }
 }
+
+/* ============================================================
+   12. 全局状态联动样式
+   ============================================================ */
+
+/* ---------- 状态指示灯样式 ---------- */
+
+.status-dot {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  position: relative;
+}
+
+.status-dot .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-status-ready);
+  transition: background-color var(--duration-normal) var(--easing-default);
+}
+
+.status-dot .dot.ready {
+  background-color: var(--color-status-ready);
+}
+
+.status-dot .dot.processing {
+  background-color: var(--color-status-processing);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-dot .dot.error {
+  background-color: var(--color-status-error);
+}
+
+.status-dot .dot.restricted {
+  background-color: var(--color-status-restricted);
+}
+
+/* 处理中脉动动画 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+}
+
+/* 样式生效徽标 */
+.status-dot .style-badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  font-size: 10px;
+  line-height: 1;
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+/* ---------- 对话区受限模式 ---------- */
+
+#messages-container.restricted-mode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+.restricted-tip {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  color: var(--color-text-secondary);
+}
+
+.restricted-tip .restricted-icon {
+  font-size: 48px;
+  margin-bottom: var(--spacing-lg);
+  opacity: 0.8;
+}
+
+.restricted-tip .restricted-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.restricted-tip .restricted-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  line-height: var(--line-height-relaxed);
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+/* ---------- 输入区状态 ---------- */
+
+#input-area.processing {
+  background-color: var(--color-bg-tertiary);
+}
+
+#input-area.processing #message-input {
+  background-color: var(--color-bg-secondary);
+}
+
+#input-area.restricted {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+#input-area.restricted #message-input {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-tertiary);
+}
+
+/* ---------- 技能区状态 ---------- */
+
+#skill-area.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+#skill-area.disabled .skill-chip {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ---------- 错误横幅状态增强 ---------- */
+
+#error-banner {
+  transition: all var(--duration-normal) var(--easing-default);
+}
+
+#error-banner.showing {
+  animation: slideDown var(--duration-normal) var(--easing-default);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#error-banner.fade-out {
+  animation: fadeOut var(--duration-fast) var(--easing-default) forwards;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* ---------- 确认浮层状态 ---------- */
+
+.confirmation-overlay {
+  animation: slideUp var(--duration-normal) var(--easing-default);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.confirmation-overlay.fade-out {
+  animation: fadeOutSlideDown var(--duration-fast) var(--easing-default) forwards;
+}
+
+@keyframes fadeOutSlideDown {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
