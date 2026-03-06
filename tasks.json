@@ -458,9 +458,9 @@
         },
         {
           "id": "T082",
-          "title": "实现会话历史加载（loadAndPrepareHistory）",
+          "title": "实现会话历史加载",
           "description": "loadAndPrepareHistory(domain, sessionId): 从 IndexedDB 加载对话历史，确保返回数组",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T021"

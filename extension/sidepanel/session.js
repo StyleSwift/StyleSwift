@@ -281,6 +281,30 @@ async function loadHistory(domain, sessionId) {
 }
 
 /**
+ * 加载并准备对话历史
+ * 
+ * 从 IndexedDB 加载对话历史，确保返回数组格式。
+ * 这是 Agent Loop 中使用的辅助函数，对 loadHistory 进行了类型安全包装。
+ * 
+ * @param {string} domain - 域名，如 'github.com'
+ * @param {string} sessionId - 会话 ID
+ * @returns {Promise<Array>} 对话历史数组，格式为 Anthropic Messages API 的 messages 数组
+ * 
+ * @example
+ * // 加载已有历史
+ * const history = await loadAndPrepareHistory('github.com', 'abc123');
+ * // history: [{ role: 'user', content: '...' }, { role: 'assistant', content: [...] }]
+ * 
+ * // 无历史时返回空数组
+ * const emptyHistory = await loadAndPrepareHistory('github.com', 'new-session');
+ * // emptyHistory: []
+ */
+async function loadAndPrepareHistory(domain, sessionId) {
+  const history = await loadHistory(domain, sessionId);
+  return Array.isArray(history) ? history : [];
+}
+
+/**
  * 从 IndexedDB 删除对话历史
  * 
  * 从 conversations Object Store 中删除对话历史，
@@ -681,6 +705,7 @@ export { openDB, closeDB, saveHistory, loadHistory, deleteHistory, checkAndMigra
 export { cleanupStorage, cleanupStyleSkills, getStorageUsage };
 export { getOrCreateSession };
 export { loadSessionMeta, saveSessionMeta };
+export { loadAndPrepareHistory };
 
 // 导出 SessionContext 类和当前会话变量
 export { SessionContext, currentSession };
