@@ -883,7 +883,7 @@
           "id": "T121",
           "title": "实现首次引导页视图",
           "description": "检测无 API Key 时展示引导页：Logo + 标语 + API Key 输入框 + API 地址输入框(可选) + 开始按钮 + 教程链接。保存后验证连接，成功则切换到主界面",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T120",
