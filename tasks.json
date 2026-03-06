@@ -777,7 +777,7 @@
           "id": "T114",
           "title": "定义 AGENT_TYPES 注册表",
           "description": "定义 StyleGenerator 子智能体配置：description、tools 列表、prompt 模板",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T100"
