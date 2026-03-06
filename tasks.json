@@ -612,7 +612,7 @@
           "id": "T102",
           "title": "实现 sendToContentScript 通信桥",
           "description": "sendToContentScript(message): 通过 chrome.tabs.sendMessage 发送到锁定的 Tab，Promise 包装，处理 chrome.runtime.lastError",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T101"
