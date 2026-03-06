@@ -788,11 +788,11 @@
           "estimatedHours": 0.5,
           "files": ["extension/sidepanel/agent-loop.js"]
         },
-        {
+{
           "id": "T115",
           "title": "实现 Subagent 执行（runTask）",
           "description": "runTask(description, prompt, agentType): 构建独立 system/tools/messages，在 SUB_MAX_ITERATIONS=10 内执行 tool-use 循环，返回最终文本摘要",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T063",
@@ -809,7 +809,7 @@
           "id": "T116",
           "title": "实现 agentLoop 主循环",
           "description": "agentLoop(prompt, uiCallbacks): 完整流程包括——并发保护(isAgentRunning)、Tab 锁定、域名获取、会话加载/创建、system prompt 构建(L0+L1)、流式 API 循环(MAX_ITERATIONS=20)、工具执行、取消支持(AbortController)、历史持久化、自动标题",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T064",
@@ -1417,14 +1417,14 @@
       ]
     }
   ],
-  "summary": {
+"summary": {
     "totalPhases": 15,
     "totalTasks": 99,
     "estimatedTotalHours": 144.0,
     "tasksByStatus": {
-      "pending": 98,
+      "pending": 96,
       "in_progress": 0,
-      "completed": 1,
+      "completed": 3,
       "blocked": 0,
       "testing": 0
     },

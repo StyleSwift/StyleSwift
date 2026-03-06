@@ -471,6 +471,473 @@ async function checkPageAccess(tabId) {
 }
 
 // =============================================================================
+// §10.1 LLM API 调用（Streaming）
+// =============================================================================
+
+/**
+ * 调用 Anthropic Streaming API
+ * 
+ * 从 Side Panel 直接调用 Anthropic Streaming API，实现逐步输出。
+ * 支持 SSE（Server-Sent Events）流式解析。
+ * 
+ * @param {string} system - 系统提示词
+ * @param {Array} messages - 消息历史
+ * @param {Array} tools - 工具定义数组
+ * @param {Object} callbacks - 回调函数对象
+ * @param {Function} [callbacks.onText] - 文本增量回调 (delta: string) => void
+ * @param {Function} [callbacks.onToolCall] - 工具调用回调 (block: object) => void
+ * @param {AbortSignal} abortSignal - 取消信号
+ * @returns {Promise<{content: Array, stop_reason: string|null, usage: object|null}>}
+ * 
+ * @example
+ * const result = await callAnthropicStream(
+ *   'You are a helpful assistant',
+ *   [{ role: 'user', content: 'Hello' }],
+ *   ALL_TOOLS,
+ *   { onText: (delta) => console.log(delta) },
+ *   abortController.signal
+ * );
+ */
+async function callAnthropicStream(system, messages, tools, callbacks, abortSignal) {
+  // 动态导入 getSettings 避免循环依赖
+  const { getSettings } = await import('./api.js');
+  const { apiKey, model, apiBase } = await getSettings();
+
+  const resp = await fetch(`${apiBase}/v1/messages`, {
+    signal: abortSignal,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model,
+      system,
+      messages,
+      tools,
+      max_tokens: 8000,
+      stream: true,
+    })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(`API 错误: ${err.error?.message || resp.statusText}`);
+  }
+
+  // SSE 流式解析
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  const result = { content: [], stop_reason: null, usage: null };
+  let currentBlock = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (raw === '[DONE]' || !raw) continue;
+
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        console.warn('[SSE] JSON parse failed:', raw);
+        continue;
+      }
+
+      switch (data.type) {
+        case 'content_block_start':
+          currentBlock = data.content_block;
+          if (currentBlock.type === 'text') currentBlock.text = '';
+          if (currentBlock.type === 'tool_use') currentBlock.input = '';
+          result.content.push(currentBlock);
+          break;
+
+        case 'content_block_delta':
+          if (data.delta.type === 'text_delta') {
+            currentBlock.text += data.delta.text;
+            callbacks.onText?.(data.delta.text);       // 流式文本回调
+          }
+          if (data.delta.type === 'input_json_delta') {
+            currentBlock.input += data.delta.partial_json;
+          }
+          break;
+
+        case 'content_block_stop':
+          if (currentBlock?.type === 'tool_use') {
+            try {
+              currentBlock.input = JSON.parse(currentBlock.input);
+            } catch (e) {
+              console.warn('[SSE] Failed to parse tool input:', e);
+              currentBlock.input = {};
+            }
+            callbacks.onToolCall?.(currentBlock);       // 工具调用回调
+          }
+          break;
+
+        case 'message_delta':
+          result.stop_reason = data.delta?.stop_reason;
+          result.usage = data.usage;
+          break;
+
+        case 'message_start':
+          result.usage = data.message?.usage;
+          break;
+      }
+    }
+  }
+
+  return result;
+}
+
+// =============================================================================
+// §10.4 主循环常量与状态
+// =============================================================================
+
+/**
+ * Agent Loop 最大迭代次数
+ * 防止死循环，超过此次数自动停止
+ * @type {number}
+ */
+const MAX_ITERATIONS = 20;
+
+/**
+ * 子智能体最大迭代次数
+ * @type {number}
+ */
+const SUB_MAX_ITERATIONS = 10;
+
+/**
+ * 当前 AbortController 实例
+ * 用于取消正在进行的 API 请求
+ * @type {AbortController|null}
+ */
+let currentAbortController = null;
+
+/**
+ * Agent 运行状态标志
+ * 用于并发保护，防止重复请求
+ * @type {boolean}
+ */
+let isAgentRunning = false;
+
+// =============================================================================
+// §4.3 Subagent 执行
+// =============================================================================
+
+/**
+ * 执行子智能体任务
+ * 
+ * 子智能体在隔离上下文中运行，不会污染主对话历史。
+ * 执行环境在 Side Panel 中，共享同一个 API Key 和模型配置。
+ * 
+ * @param {string} description - 任务简短描述（3-5字）
+ * @param {string} prompt - 详细的任务指令
+ * @param {string} agentType - 子智能体类型（目前支持 'StyleGenerator'）
+ * @returns {Promise<string>} 子智能体返回的结果摘要
+ * 
+ * @example
+ * const result = await runTask(
+ *   '生成样式',
+ *   '为页面生成深色模式的 CSS',
+ *   'StyleGenerator'
+ * );
+ */
+async function runTask(description, prompt, agentType) {
+  const config = AGENT_TYPES[agentType];
+  
+  if (!config) {
+    return `未知子智能体类型: ${agentType}`;
+  }
+
+  // 构建子智能体的系统提示词
+  const subSystem = `${config.prompt}\n\n完成任务后返回清晰、简洁的摘要。`;
+  
+  // 筛选子智能体可用的工具
+  const subTools = config.tools === '*'
+    ? BASE_TOOLS
+    : BASE_TOOLS.filter(t => config.tools.includes(t.name));
+
+  // 子智能体的消息历史（隔离上下文）
+  const subMessages = [{ role: 'user', content: prompt }];
+  let iterations = 0;
+
+  // 动态导入 executeTool 避免循环依赖
+  const { executeTool } = await import('./tools.js');
+
+  while (iterations++ < SUB_MAX_ITERATIONS) {
+    try {
+      const response = await callAnthropicStream(
+        subSystem, 
+        subMessages, 
+        subTools, 
+        {
+          onText: () => {}, // 子智能体不流式输出到 UI
+          onToolCall: () => {}
+        },
+        null // 子智能体不支持取消
+      );
+
+      // 如果不是工具调用，返回最终文本
+      if (response.stop_reason !== 'tool_use') {
+        const textBlock = response.content.find(b => b.type === 'text');
+        return textBlock?.text || '(子智能体无输出)';
+      }
+
+      // 处理工具调用
+      const results = [];
+      for (const block of response.content) {
+        if (block.type === 'tool_use') {
+          const output = await executeTool(block.name, block.input);
+          results.push({ type: 'tool_result', tool_use_id: block.id, content: output });
+        }
+      }
+
+      // 追加助手消息和工具结果
+      subMessages.push({ role: 'assistant', content: response.content });
+      subMessages.push({ role: 'user', content: results });
+
+    } catch (error) {
+      console.error('[Subagent] Error:', error);
+      return `(子智能体执行失败: ${error.message})`;
+    }
+  }
+
+  return '(子智能体达到最大迭代次数，返回已有结果)';
+}
+
+// =============================================================================
+// §10.4 agentLoop 主循环
+// =============================================================================
+
+/**
+ * Agent 主循环
+ * 
+ * 完整流程包括：
+ * 1. 并发保护 (isAgentRunning)
+ * 2. Tab 锁定
+ * 3. 域名获取
+ * 4. 会话加载/创建
+ * 5. System prompt 构建 (L0+L1)
+ * 6. 流式 API 循环 (MAX_ITERATIONS=20)
+ * 7. 工具执行
+ * 8. 取消支持 (AbortController)
+ * 9. 历史持久化
+ * 10. 自动标题
+ * 
+ * @param {string} prompt - 用户输入的提示词
+ * @param {Object} uiCallbacks - UI 回调函数对象
+ * @param {Function} [uiCallbacks.appendText] - 追加文本回调 (delta: string) => void
+ * @param {Function} [uiCallbacks.showToolCall] - 显示工具调用回调 (block: object) => void
+ * @param {Function} [uiCallbacks.showToolExecuting] - 显示工具执行中回调 (name: string) => void
+ * @param {Function} [uiCallbacks.showToolResult] - 显示工具结果回调 (id: string, output: string) => void
+ * @returns {Promise<string|undefined>} 返回最终文本回复，取消时返回 undefined
+ * 
+ * @example
+ * const response = await agentLoop('把背景改成深蓝色', {
+ *   appendText: (delta) => console.log(delta),
+ *   showToolCall: (block) => console.log('Tool call:', block.name),
+ *   showToolExecuting: (name) => console.log('Executing:', name),
+ *   showToolResult: (id, output) => console.log('Result:', output)
+ * });
+ */
+async function agentLoop(prompt, uiCallbacks) {
+  // —— 并发保护：拒绝重复请求 ——
+  if (isAgentRunning) {
+    uiCallbacks.appendText?.('(正在处理中，请等待当前请求完成)');
+    return;
+  }
+
+  isAgentRunning = true;
+  currentAbortController = new AbortController();
+  const { signal } = currentAbortController;
+
+  // 动态导入所需模块
+  const { 
+    getTargetTabId, 
+    lockTab, 
+    unlockTab, 
+    getTargetDomain,
+    executeTool 
+  } = await import('./tools.js');
+  const { 
+    getOrCreateSession, 
+    loadAndPrepareHistory, 
+    saveHistory, 
+    loadSessionMeta, 
+    saveSessionMeta,
+    SessionContext,
+    setCurrentSession,
+    currentSession
+  } = await import('./session.js');
+  const { getProfileOneLiner } = await import('./profile.js');
+
+  try {
+    // 0. 锁定当前 Tab 并获取域名
+    const tabId = await getTargetTabId();
+    lockTab(tabId);
+    const domain = await getTargetDomain();
+    
+    // 创建或获取会话
+    const sessionId = await getOrCreateSession(domain);
+    const session = new SessionContext(domain, sessionId);
+    setCurrentSession(session);
+
+    // 1. 加载历史
+    let history = await loadAndPrepareHistory(domain, sessionId);
+
+    // 2. 构建 system prompt = L0 + L1
+    const sessionMeta = await loadSessionMeta(domain, sessionId);
+    const profileHint = await getProfileOneLiner();
+    const system = SYSTEM_BASE + buildSessionContext(domain, sessionMeta, profileHint);
+
+    // 3. Agent Loop（流式 + 迭代上限 + 取消支持）
+    history.push({ role: 'user', content: prompt });
+    let lastInputTokens = 0;
+    let response;
+    let iterations = 0;
+
+    while (iterations++ < MAX_ITERATIONS) {
+      // 检查取消信号
+      if (signal.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
+
+      // 调用流式 API
+      response = await callAnthropicStream(system, history, ALL_TOOLS, {
+        onText: (delta) => uiCallbacks.appendText?.(delta),
+        onToolCall: (block) => uiCallbacks.showToolCall?.(block),
+      }, signal);
+
+      // 更新 token 统计
+      lastInputTokens = response.usage?.input_tokens || 0;
+      
+      // 追加助手消息到历史
+      history.push({ role: 'assistant', content: response.content });
+
+      // 如果不是工具调用，跳出循环
+      if (response.stop_reason !== 'tool_use') {
+        break;
+      }
+
+      // 处理工具调用
+      const results = [];
+      for (const block of response.content) {
+        // 检查取消信号
+        if (signal.aborted) {
+          throw new DOMException('Aborted', 'AbortError');
+        }
+
+        if (block.type === 'tool_use') {
+          uiCallbacks.showToolExecuting?.(block.name);
+          const output = await executeTool(block.name, block.input);
+          results.push({ type: 'tool_result', tool_use_id: block.id, content: output });
+          uiCallbacks.showToolResult?.(block.id, output);
+        }
+      }
+
+      // 追加工具结果到历史
+      history.push({ role: 'user', content: results });
+
+      // 检查是否需要压缩历史
+      if (lastInputTokens > TOKEN_BUDGET) {
+        history = await checkAndCompressHistory(history, lastInputTokens);
+      }
+    }
+
+    // 达到最大迭代次数时提示
+    if (iterations >= MAX_ITERATIONS) {
+      uiCallbacks.appendText?.('\n(已达到最大处理轮次，自动停止)');
+    }
+
+    // 4. 持久化历史
+    await saveHistory(domain, sessionId, history);
+
+    // 5. 首轮自动标题
+    if (!sessionMeta.title) {
+      sessionMeta.title = prompt.slice(0, 20);
+      await saveSessionMeta(domain, sessionId, sessionMeta);
+    }
+
+    // 返回最终文本回复
+    const textParts = response.content.filter(b => b.type === 'text').map(b => b.text);
+    return textParts.join('');
+
+  } catch (err) {
+    // 处理取消
+    if (err.name === 'AbortError') {
+      uiCallbacks.appendText?.('\n(已取消)');
+      return;
+    }
+    
+    // 其他错误向上抛出
+    throw err;
+    
+  } finally {
+    // 清理状态
+    isAgentRunning = false;
+    currentAbortController = null;
+    unlockTab();
+  }
+}
+
+// =============================================================================
+// §10.4 cancelAgentLoop 取消机制
+// =============================================================================
+
+/**
+ * 取消当前正在执行的 Agent Loop
+ * 
+ * 调用 AbortController.abort()，重置运行状态，解锁 Tab。
+ * 已应用的样式会保留，用户可通过对话要求 rollback。
+ */
+function cancelAgentLoop() {
+  if (currentAbortController) {
+    currentAbortController.abort();
+    currentAbortController = null;
+  }
+  isAgentRunning = false;
+  
+  // 动态导入 unlockTab 避免循环依赖
+  import('./tools.js').then(({ unlockTab }) => {
+    unlockTab();
+  }).catch(err => {
+    console.error('[Agent] Failed to unlock tab:', err);
+  });
+}
+
+// =============================================================================
+// 状态获取函数
+// =============================================================================
+
+/**
+ * 获取 Agent 运行状态
+ * @returns {boolean} true 表示正在运行
+ */
+function getIsAgentRunning() {
+  return isAgentRunning;
+}
+
+/**
+ * 获取当前 AbortController
+ * @returns {AbortController|null}
+ */
+function getCurrentAbortController() {
+  return currentAbortController;
+}
+
+// =============================================================================
 // 导出常量和工具数组
 // =============================================================================
 
@@ -486,5 +953,14 @@ export {
   summarizeOldTurns,
   RESTRICTED_PATTERNS,
   isRestrictedPage,
-  checkPageAccess
+  checkPageAccess,
+  // 新增导出
+  MAX_ITERATIONS,
+  SUB_MAX_ITERATIONS,
+  callAnthropicStream,
+  agentLoop,
+  cancelAgentLoop,
+  runTask,
+  getIsAgentRunning,
+  getCurrentAbortController
 };
