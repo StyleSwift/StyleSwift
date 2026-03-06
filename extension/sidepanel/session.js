@@ -444,6 +444,90 @@ async function getOrCreateSession(domain) {
 }
 
 // ============================================================================
+// 会话元数据读写
+// ============================================================================
+
+/**
+ * 加载会话元数据
+ * 
+ * 从 chrome.storage.local 读取会话的元数据信息。
+ * 如果元数据不存在，返回默认的元数据对象。
+ * 
+ * @param {string} domain - 域名，如 'github.com'
+ * @param {string} sessionId - 会话 ID
+ * @returns {Promise<Object>} 返回会话元数据对象
+ * 
+ * @example
+ * // 加载已存在的元数据
+ * const meta = await loadSessionMeta('github.com', 'abc123');
+ * // meta: { title: '我的样式调整', created_at: 1234567890, message_count: 5 }
+ * 
+ * // 加载不存在的元数据（返回默认值）
+ * const newMeta = await loadSessionMeta('github.com', 'new-session-id');
+ * // newMeta: { title: null, created_at: Date.now(), message_count: 0 }
+ */
+async function loadSessionMeta(domain, sessionId) {
+  const key = `sessions:${domain}:${sessionId}:meta`;
+  
+  try {
+    const result = await chrome.storage.local.get(key);
+    
+    // 如果存在元数据，返回它
+    if (result[key]) {
+      return result[key];
+    }
+    
+    // 如果不存在，返回默认元数据
+    return {
+      title: null,
+      created_at: Date.now(),
+      message_count: 0
+    };
+    
+  } catch (error) {
+    console.error('[Session] Failed to load session meta:', error);
+    // 出错时也返回默认值，避免中断流程
+    return {
+      title: null,
+      created_at: Date.now(),
+      message_count: 0
+    };
+  }
+}
+
+/**
+ * 保存会话元数据
+ * 
+ * 将会话元数据写入 chrome.storage.local。
+ * 
+ * @param {string} domain - 域名，如 'github.com'
+ * @param {string} sessionId - 会话 ID
+ * @param {Object} meta - 会话元数据对象
+ * @param {string|null} [meta.title] - 会话标题
+ * @param {number} [meta.created_at] - 创建时间戳
+ * @param {number} [meta.message_count] - 消息计数
+ * @returns {Promise<void>}
+ * 
+ * @example
+ * await saveSessionMeta('github.com', 'abc123', {
+ *   title: '深色模式调整',
+ *   created_at: Date.now(),
+ *   message_count: 3,
+ *   activeStylesSummary: '5 条规则，涉及 body, .header 等'
+ * });
+ */
+async function saveSessionMeta(domain, sessionId, meta) {
+  const key = `sessions:${domain}:${sessionId}:meta`;
+  
+  try {
+    await chrome.storage.local.set({ [key]: meta });
+  } catch (error) {
+    console.error('[Session] Failed to save session meta:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
 // 存储清理策略
 // ============================================================================
 
@@ -596,6 +680,7 @@ export { MAX_SESSIONS_PER_DOMAIN, SESSION_EXPIRE_DAYS };
 export { openDB, closeDB, saveHistory, loadHistory, deleteHistory, checkAndMigrateStorage };
 export { cleanupStorage, cleanupStyleSkills, getStorageUsage };
 export { getOrCreateSession };
+export { loadSessionMeta, saveSessionMeta };
 
 // 导出 SessionContext 类和当前会话变量
 export { SessionContext, currentSession };

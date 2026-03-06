@@ -70,7 +70,7 @@ vi.stubGlobal('crypto', {
 });
 
 // Import function under test
-const { getOrCreateSession } = await import('../sidepanel/session.js');
+const { getOrCreateSession, loadSessionMeta, saveSessionMeta } = await import('../sidepanel/session.js');
 
 describe('getOrCreateSession', () => {
   beforeEach(() => {
@@ -194,5 +194,202 @@ describe('getOrCreateSession', () => {
     expect(index[0].id).toBe(sessionId);
     expect(index[0].created_at).toBeGreaterThanOrEqual(beforeCreate);
     expect(index[0].created_at).toBeLessThanOrEqual(afterCreate);
+  });
+});
+
+describe('loadSessionMeta', () => {
+  beforeEach(() => {
+    mockStorage.clear();
+  });
+  
+  test('无 meta 时返回默认值', async () => {
+    const domain = 'github.com';
+    const sessionId = 'test-session-123';
+    const beforeLoad = Date.now();
+    
+    const meta = await loadSessionMeta(domain, sessionId);
+    const afterLoad = Date.now();
+    
+    // 应返回默认元数据
+    expect(meta).toBeDefined();
+    expect(meta.title).toBeNull();
+    expect(meta.message_count).toBe(0);
+    expect(meta.created_at).toBeGreaterThanOrEqual(beforeLoad);
+    expect(meta.created_at).toBeLessThanOrEqual(afterLoad);
+  });
+  
+  test('加载已存在的 meta', async () => {
+    const domain = 'example.com';
+    const sessionId = 'existing-session';
+    const key = `sessions:${domain}:${sessionId}:meta`;
+    
+    // 预设元数据
+    const existingMeta = {
+      title: '我的样式调整',
+      created_at: 1234567890,
+      message_count: 5,
+      activeStylesSummary: '3 条规则，涉及 body, header, footer 等'
+    };
+    await mockStorage.set({ [key]: existingMeta });
+    
+    // 加载元数据
+    const meta = await loadSessionMeta(domain, sessionId);
+    
+    // 应返回已存在的元数据
+    expect(meta).toEqual(existingMeta);
+    expect(meta.title).toBe('我的样式调整');
+    expect(meta.message_count).toBe(5);
+    expect(meta.activeStylesSummary).toBe('3 条规则，涉及 body, header, footer 等');
+  });
+  
+  test('不同会话的 meta 独立', async () => {
+    const domain = 'test.com';
+    const sessionId1 = 'session-1';
+    const sessionId2 = 'session-2';
+    
+    const key1 = `sessions:${domain}:${sessionId1}:meta`;
+    const key2 = `sessions:${domain}:${sessionId2}:meta`;
+    
+    // 设置不同的元数据
+    await mockStorage.set({
+      [key1]: { title: '会话 1', created_at: 1000, message_count: 1 },
+      [key2]: { title: '会话 2', created_at: 2000, message_count: 2 }
+    });
+    
+    // 加载并验证独立性
+    const meta1 = await loadSessionMeta(domain, sessionId1);
+    const meta2 = await loadSessionMeta(domain, sessionId2);
+    
+    expect(meta1.title).toBe('会话 1');
+    expect(meta1.message_count).toBe(1);
+    
+    expect(meta2.title).toBe('会话 2');
+    expect(meta2.message_count).toBe(2);
+  });
+  
+  test('错误时返回默认值', async () => {
+    const domain = 'error-test.com';
+    const sessionId = 'error-session';
+    
+    // 模拟 get 方法抛出错误
+    const originalGet = mockStorage.get;
+    mockStorage.get = vi.fn().mockRejectedValue(new Error('Storage error'));
+    
+    // 应返回默认值而不抛出错误
+    const meta = await loadSessionMeta(domain, sessionId);
+    expect(meta.title).toBeNull();
+    expect(meta.message_count).toBe(0);
+    
+    // 恢复原方法
+    mockStorage.get = originalGet;
+  });
+});
+
+describe('saveSessionMeta', () => {
+  beforeEach(() => {
+    mockStorage.clear();
+  });
+  
+  test('保存会话元数据', async () => {
+    const domain = 'github.com';
+    const sessionId = 'test-session-456';
+    const key = `sessions:${domain}:${sessionId}:meta`;
+    
+    const meta = {
+      title: '深色模式调整',
+      created_at: Date.now(),
+      message_count: 3,
+      activeStylesSummary: '5 条规则，涉及 body, .header 等'
+    };
+    
+    await saveSessionMeta(domain, sessionId, meta);
+    
+    // 验证保存成功
+    const { [key]: savedMeta } = await mockStorage.get(key);
+    expect(savedMeta).toEqual(meta);
+    expect(savedMeta.title).toBe('深色模式调整');
+    expect(savedMeta.message_count).toBe(3);
+  });
+  
+  test('覆盖已存在的元数据', async () => {
+    const domain = 'example.com';
+    const sessionId = 'overwrite-session';
+    const key = `sessions:${domain}:${sessionId}:meta`;
+    
+    // 设置初始元数据
+    const initialMeta = {
+      title: '初始标题',
+      created_at: 1000,
+      message_count: 1
+    };
+    await mockStorage.set({ [key]: initialMeta });
+    
+    // 更新元数据
+    const updatedMeta = {
+      title: '更新后的标题',
+      created_at: 1000,
+      message_count: 5,
+      activeStylesSummary: '10 条规则'
+    };
+    await saveSessionMeta(domain, sessionId, updatedMeta);
+    
+    // 验证已覆盖
+    const { [key]: savedMeta } = await mockStorage.get(key);
+    expect(savedMeta.title).toBe('更新后的标题');
+    expect(savedMeta.message_count).toBe(5);
+    expect(savedMeta.activeStylesSummary).toBe('10 条规则');
+  });
+  
+  test('保存后读取一致', async () => {
+    const domain = 'consistency-test.com';
+    const sessionId = 'consistency-session';
+    
+    const originalMeta = {
+      title: '测试标题',
+      created_at: 9876543210,
+      message_count: 7,
+      activeStylesSummary: '2 条规则，涉及 .button 等'
+    };
+    
+    // 保存
+    await saveSessionMeta(domain, sessionId, originalMeta);
+    
+    // 读取
+    const loadedMeta = await loadSessionMeta(domain, sessionId);
+    
+    // 验证一致性
+    expect(loadedMeta).toEqual(originalMeta);
+    expect(loadedMeta.title).toBe(originalMeta.title);
+    expect(loadedMeta.created_at).toBe(originalMeta.created_at);
+    expect(loadedMeta.message_count).toBe(originalMeta.message_count);
+    expect(loadedMeta.activeStylesSummary).toBe(originalMeta.activeStylesSummary);
+  });
+  
+  test('保存空对象', async () => {
+    const domain = 'empty-test.com';
+    const sessionId = 'empty-session';
+    const key = `sessions:${domain}:${sessionId}:meta`;
+    
+    const emptyMeta = {};
+    await saveSessionMeta(domain, sessionId, emptyMeta);
+    
+    const { [key]: savedMeta } = await mockStorage.get(key);
+    expect(savedMeta).toEqual({});
+  });
+  
+  test('错误时抛出异常', async () => {
+    const domain = 'error-save.com';
+    const sessionId = 'error-session';
+    const meta = { title: '测试', created_at: Date.now(), message_count: 0 };
+    
+    // 模拟 set 方法抛出错误
+    const originalSet = mockStorage.set;
+    mockStorage.set = vi.fn().mockRejectedValue(new Error('Save failed'));
+    
+    // 应抛出错误
+    await expect(saveSessionMeta(domain, sessionId, meta)).rejects.toThrow('Save failed');
+    
+    // 恢复原方法
+    mockStorage.set = originalSet;
   });
 });

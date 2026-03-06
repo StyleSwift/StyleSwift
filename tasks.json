@@ -445,7 +445,7 @@
           "id": "T081",
           "title": "实现会话元数据读写（loadSessionMeta / saveSessionMeta）",
           "description": "loadSessionMeta: 读取 sessions:{domain}:{id}:meta，默认返回 { title: null, created_at: Date.now(), message_count: 0 }。saveSessionMeta: 写入 meta",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T022"
