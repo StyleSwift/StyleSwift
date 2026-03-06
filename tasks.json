@@ -868,7 +868,7 @@
           "id": "T120",
           "title": "实现 panel.css 基础样式与布局系统",
           "description": "CSS 变量（颜色、间距、字体）、Side Panel 整体布局（360-420px 单列纵向流）、基础组件样式（按钮、输入框、卡片）、暗色/亮色主题变量",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T004"
