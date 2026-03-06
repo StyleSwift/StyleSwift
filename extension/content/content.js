@@ -261,8 +261,21 @@ function pickStylesForDisplay(tag, pairs) {
 let activeStyleEl = null;
 
 /**
- * CSS 变更栈
- * 用于支持撤销操作，每次 injectCSS 会 push 一条记录
+ * CSS 变更栈（内存中的会话状态）
+ * 
+ * 用于跟踪当前页面会话中应用的 CSS 规则，支持增量应用和回滚功能。
+ * 
+ * 生命周期：
+ * - 页面加载时为空
+ * - 每次 injectCSS 调用 push 一条 CSS 记录
+ * - rollbackCSS 可 pop 最后一条或清空全部
+ * - 页面刷新/关闭后丢失
+ * 
+ * 持久化说明：
+ * - 本变量不持久化，仅存在于当前页面会话
+ * - 持久化由 Side Panel 通过 chrome.storage.local 管理
+ * - 页面刷新后，持久化的 CSS（存储在 persistent:{domain}）由 early-inject.js 在 document_start 阶段重新注入
+ * 
  * @type {string[]}
  */
 const cssStack = [];
