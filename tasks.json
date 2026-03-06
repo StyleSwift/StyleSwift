@@ -976,7 +976,7 @@
           "id": "T127",
           "title": "实现操作确认浮层",
           "description": "Agent 轮次结束后若有 apply_styles(save)，在输入框上方淡入确认/撤销按钮。单次：[✓确认] [↶撤销]。多次：[✓全部确认] [↶撤销最后一步▾]（展开可选全部撤销）。60s 超时自动淡出",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T120",

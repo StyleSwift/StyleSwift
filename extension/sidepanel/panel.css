@@ -602,13 +602,32 @@ pre code {
   padding: var(--spacing-2xl);
 }
 
-/* 操作确认浮层 */
+/* ============================================================
+   操作确认浮层
+   ============================================================ */
+
 .confirmation-overlay {
   flex-shrink: 0;
   padding: var(--spacing-sm) var(--spacing-md);
   background-color: var(--color-bg-secondary);
   border-top: 1px solid var(--color-border-light);
   animation: slideUp var(--duration-normal) var(--easing-default);
+}
+
+/* 淡出动画 */
+.confirmation-overlay.fade-out {
+  animation: fadeOut var(--duration-normal) var(--easing-default) forwards;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
 }
 
 @keyframes slideUp {
@@ -620,6 +639,180 @@ pre code {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* 浮层内容容器 */
+.confirmation-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+/* 确认按钮组 */
+.confirmation-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* 确认按钮 */
+.confirmation-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--easing-default);
+  white-space: nowrap;
+}
+
+.confirmation-btn:active {
+  transform: scale(0.95);
+}
+
+/* 确认按钮 - Primary */
+.confirmation-btn.primary {
+  background-color: var(--color-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-primary);
+}
+
+.confirmation-btn.primary:hover {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+/* 确认按钮 - Secondary */
+.confirmation-btn.secondary {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.confirmation-btn.secondary:hover {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-border-strong);
+}
+
+/* 下拉触发按钮 */
+.confirmation-dropdown-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--easing-default);
+}
+
+.confirmation-dropdown-trigger:hover {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-border-strong);
+}
+
+.confirmation-dropdown-trigger .arrow {
+  font-size: var(--font-size-xs);
+  transition: transform var(--duration-fast) var(--easing-default);
+}
+
+.confirmation-dropdown-trigger.open .arrow {
+  transform: rotate(180deg);
+}
+
+/* 下拉菜单 */
+.confirmation-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: var(--spacing-xs);
+  min-width: 160px;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-dropdown);
+  animation: scaleIn var(--duration-fast) var(--easing-default);
+  transform-origin: bottom left;
+  overflow: hidden;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scaleY(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+.confirmation-dropdown.hidden {
+  display: none;
+}
+
+/* 下拉菜单项 */
+.confirmation-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--easing-default);
+  text-align: left;
+}
+
+.confirmation-dropdown-item:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.confirmation-dropdown-item.danger {
+  color: var(--color-error);
+}
+
+.confirmation-dropdown-item.danger:hover {
+  background-color: var(--color-error-bg);
+}
+
+/* 确认提示文字 */
+.confirmation-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  margin-left: auto;
+}
+
+/* 超时进度条 */
+.confirmation-timeout {
+  height: 2px;
+  background-color: var(--color-primary-light);
+  margin-top: var(--spacing-xs);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.confirmation-timeout-bar {
+  height: 100%;
+  background-color: var(--color-primary);
+  transition: width 1s linear;
 }
 
 /* 输入区 */
