@@ -1098,7 +1098,7 @@
           "id": "T140",
           "title": "实现发送消息流程",
           "description": "输入框 Enter/点击发送 → 添加用户消息气泡 → 切换为处理中状态 → 调用 agentLoop(prompt, uiCallbacks) → uiCallbacks 驱动流式文本/工具卡片渲染 → 完成后恢复就绪",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T116",
@@ -1117,7 +1117,7 @@
           "id": "T141",
           "title": "实现停止/取消操作",
           "description": "处理中点击停止按钮 → cancelAgentLoop() → UI 恢复就绪态 → 已应用样式保留",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T117",

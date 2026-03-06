@@ -1118,8 +1118,18 @@ function updateInputAreaState(state) {
 
 /**
  * 处理发送按钮点击
+ * 
+ * 完整流程：
+ * 1. 清空输入框
+ * 2. 渲染用户消息气泡
+ * 3. 隐藏空状态（如果有）
+ * 4. 切换为处理中状态
+ * 5. 创建助手消息容器和流式渲染器
+ * 6. 调用 agentLoop 并传入 UI 回调
+ * 7. 完成后恢复就绪态
+ * 8. 显示确认浮层（如果有样式应用）
  */
-function handleSendClick() {
+async function handleSendClick() {
   const message = DOM.messageInput?.value?.trim();
   
   if (!message) {
@@ -1141,35 +1151,193 @@ function handleSendClick() {
   
   console.log('[Panel] Sending message:', message);
   
-  // TODO: 触发 Agent Loop 发送消息
-  // 这里需要后续任务 T140 实现完整的消息发送流程
-  // 目前先清空输入框并切换到处理中状态（演示用）
+  // 清空输入框
   DOM.messageInput.value = '';
   
-  // 演示：切换到处理中状态
-  // updateInputAreaState('processing');
-  // updateStatusIndicator('running');
+  // 隐藏确认浮层（如果有）- 用户发新消息视为隐式确认上一步
+  if (isConfirmationOverlayVisible()) {
+    hideConfirmationOverlay(false);
+  }
   
-  // 演示：3秒后恢复空闲态
-  // setTimeout(() => {
-  //   updateInputAreaState('idle');
-  //   updateStatusIndicator('idle');
-  // }, 3000);
+  // 移除空状态提示（如果存在）
+  const emptyState = DOM.messagesContainer?.querySelector('.chat-area-empty');
+  if (emptyState) {
+    emptyState.remove();
+  }
+  
+  // 渲染用户消息气泡
+  const userMessageEl = renderUserMessage(message);
+  addMessageToContainer(userMessageEl);
+  
+  // 切换为处理中状态
+  setProcessingState(true);
+  
+  // 创建助手消息容器（用于流式输出）
+  const assistantMessageEl = renderAssistantMessageContainer();
+  const assistantBubble = assistantMessageEl.querySelector('.message-bubble');
+  addMessageToContainer(assistantMessageEl);
+  
+  // 创建流式文本渲染器
+  const streamingRenderer = createStreamingRenderer(assistantBubble);
+  
+  // 样式应用计数器（用于确认浮层）
+  let applyStylesCount = 0;
+  
+  // 动态导入 agent-loop 模块
+  try {
+    const { agentLoop, cancelAgentLoop } = await import('./agent-loop.js');
+    
+    // UI 回调函数
+    const uiCallbacks = {
+      /**
+       * 追加流式文本
+       * @param {string} delta - 文本增量
+       */
+      appendText: (delta) => {
+        streamingRenderer.appendText(delta);
+      },
+      
+      /**
+       * 显示工具调用（开始时）
+       * @param {Object} block - 工具调用块
+       */
+      showToolCall: (block) => {
+        if (block.type === 'tool_use') {
+          createToolCard(block.id, block.name);
+        }
+      },
+      
+      /**
+       * 显示工具执行中状态
+       * @param {string} toolName - 工具名称
+       */
+      showToolExecuting: (toolName) => {
+        // 卡片已经在 showToolCall 时创建，这里可以更新状态
+        console.log('[Panel] Tool executing:', toolName);
+      },
+      
+      /**
+       * 显示工具执行结果
+       * @param {string} toolId - 工具调用 ID
+       * @param {string} output - 工具输出
+       */
+      showToolResult: (toolId, output) => {
+        completeToolCard(toolId, null, null, output);
+        
+        // 检测是否为 apply_styles 工具
+        // 从工具卡片管理器获取工具名称
+        const card = toolCardManager.cardMap.get(toolId);
+        if (card && card.dataset.toolName === 'apply_styles') {
+          applyStylesCount++;
+        }
+      }
+    };
+    
+    // 调用 Agent Loop
+    const response = await agentLoop(message, uiCallbacks);
+    
+    // 完成流式输出
+    streamingRenderer.finish();
+    
+    // 结束工具卡片组
+    finalizeToolCardGroup();
+    
+    // 恢复就绪状态
+    setProcessingState(false);
+    
+    // 如果有样式应用，显示确认浮层
+    if (applyStylesCount > 0) {
+      showConfirmationOverlay({
+        applyCount: applyStylesCount,
+        onConfirm: () => {
+          console.log('[Panel] 样式已确认');
+        },
+        onUndo: async () => {
+          // 撤销最后一步
+          console.log('[Panel] 撤销最后一步样式');
+          // 发送撤销消息
+          DOM.messageInput.value = '撤销最后一次样式修改';
+          handleSendClick();
+        },
+        onUndoAll: async () => {
+          // 全部撤销
+          console.log('[Panel] 撤销所有样式');
+          DOM.messageInput.value = '撤销所有样式修改';
+          handleSendClick();
+        }
+      });
+    }
+    
+    console.log('[Panel] Agent response:', response);
+    
+  } catch (error) {
+    console.error('[Panel] Agent loop error:', error);
+    
+    // 完成流式输出
+    streamingRenderer.finish();
+    
+    // 结束工具卡片组
+    finalizeToolCardGroup();
+    
+    // 恢复就绪状态
+    setProcessingState(false);
+    
+    // 处理错误类型
+    if (error.message?.includes('401') || error.message?.includes('API Key')) {
+      setErrorState('API_KEY_INVALID');
+      showErrorBanner('API_KEY_INVALID');
+    } else if (error.message?.includes('network') || error.message?.includes('Network') || error instanceof TypeError) {
+      setErrorState('NETWORK_ERROR');
+      showErrorBanner('NETWORK_ERROR', {
+        onRetry: () => {
+          // 重新发送消息
+          DOM.messageInput.value = message;
+          handleSendClick();
+        }
+      });
+    } else {
+      setErrorState('API_ERROR');
+      showErrorBanner('API_ERROR', {
+        customMessage: error.message || 'API 调用失败',
+        onRetry: () => {
+          DOM.messageInput.value = message;
+          handleSendClick();
+        }
+      });
+    }
+  }
 }
 
 /**
  * 处理停止按钮点击
+ * 
+ * 调用 cancelAgentLoop 取消当前处理
+ * 已应用的样式保留
  */
-function handleStopClick() {
+async function handleStopClick() {
   console.log('[Panel] Stop button clicked');
   
-  // TODO: 调用 cancelAgentLoop 取消当前处理
-  // 这里需要后续任务 T141 实现
-  // cancelAgentLoop();
-  
-  // 演示：立即恢复空闲态
-  updateInputAreaState('idle');
-  updateStatusIndicator('idle');
+  try {
+    // 动态导入 agent-loop 模块
+    const { cancelAgentLoop } = await import('./agent-loop.js');
+    
+    // 取消 Agent Loop
+    cancelAgentLoop();
+    
+    // 结束工具卡片组
+    finalizeToolCardGroup();
+    
+    // 恢复空闲态
+    setProcessingState(false);
+    
+    console.log('[Panel] Agent loop cancelled');
+    
+  } catch (error) {
+    console.error('[Panel] Failed to cancel agent loop:', error);
+    
+    // 即使出错也要恢复空闲态
+    setProcessingState(false);
+  }
 }
 
 /**
