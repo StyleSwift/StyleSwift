@@ -166,7 +166,7 @@ vi.stubGlobal('crypto', {
 });
 
 // Import function under test
-const { getOrCreateSession, loadSessionMeta, saveSessionMeta, deleteSession, autoTitle } = await import('../sidepanel/session.js');
+const { getOrCreateSession, loadSessionMeta, saveSessionMeta, deleteSession, autoTitle, updateStylesSummary, SessionContext, setCurrentSession } = await import('../sidepanel/session.js');
 
 describe('getOrCreateSession', () => {
   beforeEach(() => {
@@ -804,5 +804,207 @@ describe('autoTitle', () => {
     autoTitle(sessionMeta, message2);
     
     expect(sessionMeta.title).toBe(firstTitle);
+  });
+});
+
+describe('updateStylesSummary', () => {
+  beforeEach(() => {
+    mockStorage.clear();
+  });
+  
+  test('无当前会话时不执行操作', async () => {
+    // currentSession 为 null
+    await updateStylesSummary();
+    
+    // 不应抛出错误，正常返回
+    // 验证 storage 没有被写入
+    expect(Object.keys(mockStorage.data).length).toBe(0);
+  });
+  
+  test('无 CSS 样式时不生成摘要', async () => {
+    const domain = 'github.com';
+    const sessionId = 'test-session';
+    
+    // 设置 currentSession
+    const sessionCtx = new SessionContext(domain, sessionId);
+    setCurrentSession(sessionCtx);
+    
+    // 无 CSS
+    await updateStylesSummary();
+    
+    // meta 不应被写入
+    const metaKey = sessionCtx.metaKey;
+    const { [metaKey]: meta } = await mockStorage.get(metaKey);
+    expect(meta).toBeUndefined();
+  });
+  
+  test('生成样式摘要（规则数和选择器）', async () => {
+    const domain = 'example.com';
+    const sessionId = 'test-session';
+    
+    // 设置 currentSession
+    const sessionCtx = new SessionContext(domain, sessionId);
+    setCurrentSession(sessionCtx);
+    
+    // 预设 CSS 样式
+    const css = `body { background: #000; }
+.header { color: #fff; }
+.footer { padding: 10px; }
+.main { margin: 20px; }`;
+    
+    await mockStorage.set({ [sessionCtx.stylesKey]: css });
+    
+    // 更新摘要
+    await updateStylesSummary();
+    
+    // 验证摘要已写入 meta
+    const metaKey = sessionCtx.metaKey;
+    const { [metaKey]: meta } = await mockStorage.get(metaKey);
+    
+    expect(meta).toBeDefined();
+    expect(meta.activeStylesSummary).toBeDefined();
+    expect(meta.activeStylesSummary).toBe('4 条规则，涉及 body, .header, .footer 等');
+  });
+  
+  test('少于 3 个选择器时正确处理', async () => {
+    const domain = 'test.com';
+    const sessionId = 'test-session';
+    
+    const sessionCtx = new SessionContext(domain, sessionId);
+    setCurrentSession(sessionCtx);
+    
+    // 只有一个选择器
+    const css = 'body { background: #fff; }';
+    await mockStorage.set({ [sessionCtx.stylesKey]: css });
+    
+    await updateStylesSummary();
+    
+    const metaKey = sessionCtx.metaKey;
+    const { [metaKey]: meta } = await mockStorage.get(metaKey);
+    
+    expect(meta.activeStylesSummary).toBe('1 条规则，涉及 body 等');
+  });
+  
+  test('保留已有 meta 字段，只更新 activeStylesSummary', async () => {
+    const domain = 'github.com';
+    const sessionId = 'existing-meta-session';
+    
+    const sessionCtx = new SessionContext(domain, sessionId);
+    setCurrentSession(sessionCtx);
+    
+    // 预设已有 meta
+    const metaKey = sessionCtx.metaKey;
+    const existingMeta = {
+      title: '已有标题',
+      created_at: 1234567890,
+      message_count: 5
+    };
+    await mockStorage.set({ [metaKey]: existingMeta });
+    
+    // 预设 CSS
+    const css = 'body { margin: 0; }';
+    await mockStorage.set({ [sessionCtx.stylesKey]: css });
+    
+    await updateStylesSummary();
+    
+    const { [metaKey]: meta } = await mockStorage.get(metaKey);
+    
+    // 验证原有字段保留
+    expect(meta.title).toBe('已有标题');
+    expect(meta.created_at).toBe(1234567890);
+    expect(meta.message_count).toBe(5);
+    // 验证新字段添加
+    expect(meta.activeStylesSummary).toBe('1 条规则，涉及 body 等');
+  });
+  
+  test('正确统计规则数（包含嵌套规则）', async () => {
+    const domain = 'nested-test.com';
+    const sessionId = 'test-session';
+    
+    const sessionCtx = new SessionContext(domain, sessionId);
+    setCurrentSession(sessionCtx);
+    
+    // 包含 @media 嵌套的 CSS
+    const css = `body { background: #fff; }
+@media screen and (max-width: 600px) {
+  body { background: #000; }
+  .container { padding: 10px; }
+}
+.header { margin: 0; }`;
+    
+    await mockStorage.set({ [sessionCtx.stylesKey]: css });
+    
+    await updateStylesSummary();
+    
+    const metaKey = sessionCtx.metaKey;
+    const { [metaKey]: meta } = await mockStorage.get(metaKey);
+    
+    // 规则数应该统计所有 {
+    // body { ... } (1) + @media ... { (1) + body { (1) + .container { (1) + .header { (1) = 5
+    expect(meta.activeStylesSummary).toContain('5 条规则');
+  });
+  
+  test('空 CSS（空白字符）时不生成摘要', async () => {
+    const domain = 'empty-css.com';
+    const sessionId = 'test-session';
+    
+    const sessionCtx = new SessionContext(domain, sessionId);
+    setCurrentSession(sessionCtx);
+    
+    // 只有空白字符的 CSS
+    const css = '   \n\t  \n  ';
+    await mockStorage.set({ [sessionCtx.stylesKey]: css });
+    
+    await updateStylesSummary();
+    
+    const metaKey = sessionCtx.metaKey;
+    const { [metaKey]: meta } = await mockStorage.get(metaKey);
+    
+    expect(meta).toBeUndefined();
+  });
+  
+  test('错误处理：storage 操作失败时不中断流程', async () => {
+    const domain = 'error-test.com';
+    const sessionId = 'test-session';
+    
+    const sessionCtx = new SessionContext(domain, sessionId);
+    setCurrentSession(sessionCtx);
+    
+    // 预设 CSS
+    const css = 'body { margin: 0; }';
+    await mockStorage.set({ [sessionCtx.stylesKey]: css });
+    
+    // 模拟 get 方法抛出错误
+    const originalGet = mockStorage.get;
+    mockStorage.get = vi.fn().mockRejectedValue(new Error('Storage error'));
+    
+    // 应不抛出错误，正常返回
+    await expect(updateStylesSummary()).resolves.not.toThrow();
+    
+    // 恢复原方法
+    mockStorage.get = originalGet;
+  });
+  
+  test('选择器包含空白字符时正确提取', async () => {
+    const domain = 'whitespace-test.com';
+    const sessionId = 'test-session';
+    
+    const sessionCtx = new SessionContext(domain, sessionId);
+    setCurrentSession(sessionCtx);
+    
+    // 选择器包含各种空白字符
+    const css = `body   { margin: 0; }
+.header .nav   { padding: 10px; }
+  .footer   { color: #333; }`;
+    
+    await mockStorage.set({ [sessionCtx.stylesKey]: css });
+    
+    await updateStylesSummary();
+    
+    const metaKey = sessionCtx.metaKey;
+    const { [metaKey]: meta } = await mockStorage.get(metaKey);
+    
+    // 选择器应被 trim
+    expect(meta.activeStylesSummary).toBe('3 条规则，涉及 body, .header .nav, .footer 等');
   });
 });

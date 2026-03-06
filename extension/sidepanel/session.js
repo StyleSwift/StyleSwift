@@ -407,6 +407,30 @@ class SessionContext {
  */
 let currentSession = null;
 
+/**
+ * 设置当前会话
+ * 
+ * 用于在会话切换或创建时更新 currentSession。
+ * 
+ * @param {SessionContext|null} session - 会话上下文实例
+ * 
+ * @example
+ * const session = new SessionContext('github.com', 'session-id');
+ * setCurrentSession(session);
+ */
+function setCurrentSession(session) {
+  currentSession = session;
+}
+
+/**
+ * 获取当前会话
+ * 
+ * @returns {SessionContext|null} 当前会话上下文实例
+ */
+function getCurrentSession() {
+  return currentSession;
+}
+
 // ============================================================================
 // 会话索引管理
 // ============================================================================
@@ -801,6 +825,68 @@ async function getStorageUsage() {
 }
 
 // ============================================================================
+// 样式摘要更新
+// ============================================================================
+
+/**
+ * 更新样式摘要
+ * 
+ * 读取当前会话的 CSS，统计规则数和前 3 个选择器，写入 meta.activeStylesSummary。
+ * 用于 Session Context 注入，帮助 LLM 了解当前已应用的样式情况。
+ * 
+ * @returns {Promise<void>}
+ * 
+ * @example
+ * // 当前会话有 CSS 样式时
+ * // CSS: "body { background: #000; } .header { color: #fff; }"
+ * // 生成摘要: "2 条规则，涉及 body, .header 等"
+ * await updateStylesSummary();
+ * 
+ * // 当前会话无 CSS 样式时
+ * // 不生成摘要，直接返回
+ */
+async function updateStylesSummary() {
+  // 检查是否有当前会话
+  if (!currentSession) {
+    console.warn('[Session] updateStylesSummary called without active session');
+    return;
+  }
+
+  try {
+    // 读取当前会话样式
+    const key = currentSession.stylesKey;
+    const { [key]: css = '' } = await chrome.storage.local.get(key);
+    
+    // 如果没有样式，不生成摘要
+    if (!css.trim()) return;
+
+    // 统计规则数（通过匹配 { 的数量）
+    const ruleCount = (css.match(/\{/g) || []).length;
+    
+    // 提取前 3 个选择器
+    // 匹配模式：选择器后面跟着 {
+    const selectorMatches = css.match(/([^{}]+)\{/g);
+    const selectors = selectorMatches
+      ?.map(s => s.replace('{', '').trim())
+      .filter(s => s.length > 0)  // 过滤空字符串
+      .slice(0, 3);
+    
+    // 生成摘要
+    const summary = `${ruleCount} 条规则，涉及 ${selectors?.join(', ') || '未知'} 等`;
+
+    // 写入 meta.activeStylesSummary
+    const metaKey = currentSession.metaKey;
+    const { [metaKey]: meta = {} } = await chrome.storage.local.get(metaKey);
+    meta.activeStylesSummary = summary;
+    await chrome.storage.local.set({ [metaKey]: meta });
+    
+  } catch (error) {
+    console.error('[Session] Failed to update styles summary:', error);
+    // 不抛出错误，避免中断流程
+  }
+}
+
+// ============================================================================
 // 导出
 // ============================================================================
 
@@ -815,6 +901,8 @@ export { getOrCreateSession, deleteSession };
 export { loadSessionMeta, saveSessionMeta };
 export { loadAndPrepareHistory };
 export { autoTitle };
+export { updateStylesSummary };
+export { setCurrentSession, getCurrentSession };
 
 // 导出 SessionContext 类和当前会话变量
 export { SessionContext, currentSession };
