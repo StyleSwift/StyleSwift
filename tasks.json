@@ -946,7 +946,7 @@
           "id": "T125",
           "title": "实现对话区 — Agent 文本流式展示",
           "description": "左对齐文本区域，支持流式逐字追加（打字机效果），支持基础 markdown 渲染（加粗、代码块等）",
-          "status": "pending",
+          "status": "completed",
           "priority": "high",
           "dependencies": [
             "T120"

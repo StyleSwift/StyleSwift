@@ -826,10 +826,192 @@ function renderAssistantMessageContainer() {
   messageDiv.className = 'message message-assistant';
   
   const bubbleDiv = document.createElement('div');
-  bubbleDiv.className = 'message-bubble';
+  bubbleDiv.className = 'message-bubble streaming-text';
   
   messageDiv.appendChild(bubbleDiv);
   return messageDiv;
+}
+
+// ============================================================================
+// 流式文本渲染器
+// ============================================================================
+
+/**
+ * 流式文本渲染器类
+ * 支持逐字追加、Markdown 基础渲染、打字机光标效果
+ */
+class StreamingTextRenderer {
+  /**
+   * @param {HTMLElement} container - 目标容器元素
+   * @param {Object} options - 配置选项
+   */
+  constructor(container, options = {}) {
+    this.container = container;
+    this.buffer = '';              // 原始文本缓冲
+    this.renderedHTML = '';        // 已渲染的 HTML
+    this.cursor = null;            // 光标元素
+    this.isStreaming = false;      // 是否正在流式输出
+    
+    // 配置选项
+    this.options = {
+      showCursor: options.showCursor !== false,  // 默认显示光标
+      autoScroll: options.autoScroll !== false,  // 默认自动滚动
+      scrollContainer: options.scrollContainer || null,  // 滚动容器
+    };
+    
+    // 初始化光标
+    if (this.options.showCursor) {
+      this._initCursor();
+    }
+  }
+  
+  /**
+   * 初始化光标元素
+   * @private
+   */
+  _initCursor() {
+    this.cursor = document.createElement('span');
+    this.cursor.className = 'typing-cursor';
+    this.container.appendChild(this.cursor);
+  }
+  
+  /**
+   * 追加文本（流式）
+   * @param {string} text - 要追加的文本
+   */
+  appendText(text) {
+    if (!text) return;
+    
+    this.buffer += text;
+    this.isStreaming = true;
+    
+    // 渲染 Markdown 并更新 DOM
+    const html = this._renderMarkdown(this.buffer);
+    
+    // 保留光标元素
+    if (this.cursor && this.cursor.parentNode === this.container) {
+      this.container.removeChild(this.cursor);
+    }
+    
+    this.container.innerHTML = html;
+    
+    // 重新添加光标
+    if (this.options.showCursor && this.isStreaming) {
+      this.container.appendChild(this.cursor);
+    }
+    
+    // 自动滚动
+    if (this.options.autoScroll) {
+      this._scrollToBottom();
+    }
+  }
+  
+  /**
+   * 完成流式输出
+   */
+  finish() {
+    this.isStreaming = false;
+    
+    // 移除光标
+    if (this.cursor && this.cursor.parentNode === this.container) {
+      this.container.removeChild(this.cursor);
+    }
+    
+    // 最终渲染
+    const html = this._renderMarkdown(this.buffer);
+    this.container.innerHTML = html;
+    
+    // 确保滚动到底部
+    if (this.options.autoScroll) {
+      this._scrollToBottom();
+    }
+  }
+  
+  /**
+   * 清空内容
+   */
+  clear() {
+    this.buffer = '';
+    this.renderedHTML = '';
+    this.container.innerHTML = '';
+    
+    // 重新添加光标
+    if (this.options.showCursor && this.cursor) {
+      this.container.appendChild(this.cursor);
+    }
+  }
+  
+  /**
+   * 渲染基础 Markdown
+   * @param {string} text - 原始文本
+   * @returns {string} - 渲染后的 HTML
+   * @private
+   */
+  _renderMarkdown(text) {
+    if (!text) return '';
+    
+    let html = this._escapeHtml(text);
+    
+    // 代码块（``` ... ```）
+    html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
+      const langAttr = lang ? ` class="language-${lang}"` : '';
+      return `<pre><code${langAttr}>${code.trim()}</code></pre>`;
+    });
+    
+    // 行内代码（`code`）
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // 加粗（**text** 或 __text__）
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+    
+    // 斜体（*text* 或 _text_）
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+    
+    // 删除线（~~text~~）
+    html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    
+    // 链接（[text](url)）
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    
+    // 换行处理
+    html = html.replace(/\n\n/g, '</p><p>');
+    html = html.replace(/\n/g, '<br>');
+    
+    // 包裹段落
+    if (!html.startsWith('<pre>')) {
+      html = `<p>${html}</p>`;
+    }
+    
+    return html;
+  }
+  
+  /**
+   * 转义 HTML 特殊字符
+   * @param {string} text - 原始文本
+   * @returns {string} - 转义后的文本
+   * @private
+   */
+  _escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  /**
+   * 滚动到底部
+   * @private
+   */
+  _scrollToBottom() {
+    const scrollContainer = this.options.scrollContainer || DOM.messagesContainer;
+    if (scrollContainer) {
+      // 使用 requestAnimationFrame 确保平滑滚动
+      requestAnimationFrame(() => {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      });
+    }
+  }
 }
 
 /**
@@ -854,12 +1036,36 @@ function clearMessages() {
 }
 
 /**
- * 滚动对话区到底部
+ * 滚动对话区到底部（平滑滚动）
  */
 function scrollToBottom() {
   if (DOM.messagesContainer) {
-    DOM.messagesContainer.scrollTop = DOM.messagesContainer.scrollHeight;
+    // 使用 requestAnimationFrame 确保平滑滚动
+    requestAnimationFrame(() => {
+      DOM.messagesContainer.scrollTo({
+        top: DOM.messagesContainer.scrollHeight,
+        behavior: 'smooth'
+      });
+    });
   }
+}
+
+/**
+ * 创建流式文本渲染器实例
+ * @param {HTMLElement} container - 目标容器元素
+ * @param {Object} options - 配置选项
+ * @returns {StreamingTextRenderer} - 渲染器实例
+ */
+function createStreamingRenderer(container, options = {}) {
+  // 默认配置：自动滚动，使用 messagesContainer 作为滚动容器
+  const defaultOptions = {
+    showCursor: true,
+    autoScroll: true,
+    scrollContainer: DOM.messagesContainer,
+    ...options
+  };
+  
+  return new StreamingTextRenderer(container, defaultOptions);
 }
 
 /**
@@ -893,5 +1099,7 @@ export {
   addMessageToContainer,
   clearMessages,
   scrollToBottom,
-  showEmptyState
+  showEmptyState,
+  StreamingTextRenderer,
+  createStreamingRenderer
 };
