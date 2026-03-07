@@ -1259,10 +1259,10 @@
           "files": ["tests/css-merge.test.js"]
         },
         {
-          "id": "T162",
+"id": "T162",
           "title": "编写 Content Script 纯函数单元测试",
           "description": "覆盖：shortSelector、getDirectText、sameSignature、groupSimilar、summarizeChildren、formatTree/formatTreeNode/formatNodeDecoration、estimateTokens、elementSignature（mock DOM）",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T160",

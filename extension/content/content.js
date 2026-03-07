@@ -104,9 +104,10 @@ function shortSelector(el) {
   
   // 其次使用第一个 class 名
   if (el.className && typeof el.className === 'string') {
-    const firstClass = el.className.split(/\s+/)[0];
-    if (firstClass) {
-      return `${tag}.${firstClass}`;
+    // split 可能产生空字符串（如多余空格），需要过滤
+    const classes = el.className.split(/\s+/).filter(Boolean);
+    if (classes.length > 0) {
+      return `${tag}.${classes[0]}`;
     }
   }
   
@@ -249,6 +250,141 @@ function pickStylesForDisplay(tag, pairs) {
   
   // 其他元素：只返回视觉属性
   return pairs.filter(([prop]) => VISUAL_PROPS.has(prop));
+}
+
+// === Token 估算 ===
+
+/**
+ * 估算文本的 token 数量
+ * 使用简单的字符数除以平均字符/token 比率估算
+ * 
+ * @param {string} text - 要估算的文本
+ * @returns {number} 估算的 token 数量
+ */
+function estimateTokens(text) {
+  return Math.ceil(text.length / 3.5);
+}
+
+// === 格式化输出 ===
+
+/**
+ * 格式化树节点装饰信息
+ * 
+ * @param {Object} node - 节点对象
+ * @param {boolean} [compact=false] - 是否紧凑模式（隐藏样式）
+ * @returns {string} 装饰字符串
+ */
+function formatNodeDecoration(node, compact = false) {
+  let deco = '';
+  
+  // 样式信息（非紧凑模式时显示）
+  if (!compact && node.styles?.length) {
+    deco += ` [${node.styles.map(([p, v]) => `${p}:${v}`).join('; ')}]`;
+  }
+  
+  // 折叠计数
+  if (node.count) {
+    deco += ` × ${node.count}`;
+  }
+  
+  // 文本内容
+  if (node.text) {
+    deco += ` "${node.text}"`;
+  }
+  
+  // 子元素摘要
+  if (node.summary) {
+    deco += ` — ${node.summary}`;
+  }
+  
+  return deco;
+}
+
+/**
+ * 格式化树节点（子节点）
+ * 
+ * @param {Object} node - 节点对象
+ * @param {string} indent - 当前缩进
+ * @param {boolean} isLast - 是否为同级最后一个节点
+ * @param {number} maxDepth - 最大深度
+ * @param {boolean} [compact=false] - 是否紧凑模式
+ * @returns {string} 格式化后的字符串
+ */
+function formatTreeNode(node, indent, isLast, maxDepth, compact = false) {
+  // maxDepth <= 0 时不再渲染（maxDepth 表示还能递归的层数）
+  if (!node || maxDepth <= 0) return '';
+  
+  const prefix = isLast ? '└── ' : '├── ';
+  const childIndent = indent + (isLast ? '    ' : '│   ');
+  
+  let line = indent + prefix + node.selector;
+  line += formatNodeDecoration(node, compact);
+  let result = line + '\n';
+  
+  // 递归处理子节点
+  if (node.children) {
+    for (let i = 0; i < node.children.length; i++) {
+      result += formatTreeNode(
+        node.children[i],
+        childIndent,
+        i === node.children.length - 1,
+        maxDepth - 1,
+        compact
+      );
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * 格式化树结构（根节点）
+ * 
+ * @param {Object} node - 根节点对象
+ * @param {string} indent - 缩进
+ * @param {boolean} isLast - 是否为最后一个节点
+ * @param {number} maxDepth - 最大深度
+ * @param {boolean} [compact=false] - 是否紧凑模式
+ * @returns {string} 格式化后的字符串
+ */
+function formatTree(node, indent, isLast, maxDepth, compact = false) {
+  if (!node) return '';
+  
+  // 根节点：无前缀，直接输出选择器
+  let line = node.selector;
+  line += formatNodeDecoration(node, compact);
+  let result = line + '\n';
+  
+  // 处理子节点
+  if (node.children) {
+    for (let i = 0; i < node.children.length; i++) {
+      result += formatTreeNode(
+        node.children[i],
+        indent,
+        i === node.children.length - 1,
+        maxDepth - 1,
+        compact
+      );
+    }
+  }
+  
+  return result;
+}
+
+// === 元素签名 ===
+
+/**
+ * 生成元素的签名（用于相似元素判断）
+ * 签名包含：tagName.className + 子元素签名
+ * 
+ * @param {Element} el - DOM 元素
+ * @returns {string} 元素签名
+ */
+function elementSignature(el) {
+  const childSig = Array.from(el.children)
+    .map(c => `${c.tagName.toLowerCase()}.${c.className || ''}`)
+    .join('|');
+  return `${el.tagName.toLowerCase()}.${el.className || ''}[${childSig}]`;
 }
 
 // === CSS 注入/回滚功能 ===
