@@ -1166,7 +1166,7 @@
           "id": "T144",
           "title": "实现风格技能 chip 点击交互",
           "description": "点击 chip → 自动填入 '应用 [技能名] 风格' → 自动发送消息。用户技能长按弹出菜单（应用/查看详情/删除）",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T123",
