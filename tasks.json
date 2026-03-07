@@ -1228,19 +1228,19 @@
       "description": "单元测试、集成测试框架搭建与用例编写",
       "tasks": [
         {
-          "id": "T160",
-          "title": "搭建测试框架（Vitest）",
-          "description": "安装配置 Vitest，mock chrome.storage.local API、indexedDB API、DOM API。设置测试脚本",
-          "status": "pending",
-          "priority": "medium",
-          "dependencies": [
-            "T004"
-          ],
-          "module": "testing",
-          "designRef": "§14.1 单元测试",
-          "testCriteria": "vitest 可正常运行，mock API 可用",
-          "estimatedHours": 2,
-          "files": ["package.json", "vitest.config.js", "tests/setup.js"]
+           "id": "T160",
+           "title": "搭建测试框架（Vitest）",
+           "description": "安装配置 Vitest，mock chrome.storage.local API、indexedDB API、DOM API。设置测试脚本",
+           "status": "completed",
+           "priority": "medium",
+           "dependencies": [
+             "T004"
+           ],
+           "module": "testing",
+           "designRef": "§14.1 单元测试",
+           "testCriteria": "vitest 可正常运行，mock API 可用",
+           "estimatedHours": 2,
+           "files": ["package.json", "vitest.config.js", "tests/setup.js"]
         },
         {
           "id": "T161",
