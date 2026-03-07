@@ -807,6 +807,157 @@ describe('autoTitle', () => {
   });
 });
 
+describe('SessionContext', () => {
+  test('stylesKey 返回正确格式', () => {
+    const ctx = new SessionContext('github.com', 'abc123');
+    expect(ctx.stylesKey).toBe('sessions:github.com:abc123:styles');
+  });
+  
+  test('metaKey 返回正确格式', () => {
+    const ctx = new SessionContext('github.com', 'abc123');
+    expect(ctx.metaKey).toBe('sessions:github.com:abc123:meta');
+  });
+  
+  test('historyKey 返回正确格式', () => {
+    const ctx = new SessionContext('github.com', 'abc123');
+    expect(ctx.historyKey).toBe('github.com:abc123');
+  });
+  
+  test('persistKey 返回正确格式', () => {
+    const ctx = new SessionContext('github.com', 'abc123');
+    expect(ctx.persistKey).toBe('persistent:github.com');
+  });
+  
+  test('sessionIndex 返回正确格式', () => {
+    const ctx = new SessionContext('github.com', 'abc123');
+    expect(ctx.sessionIndex).toBe('sessions:github.com:index');
+  });
+  
+  test('不同域名生成不同的 key', () => {
+    const ctx1 = new SessionContext('github.com', 'session-1');
+    const ctx2 = new SessionContext('stackoverflow.com', 'session-1');
+    
+    expect(ctx1.stylesKey).toBe('sessions:github.com:session-1:styles');
+    expect(ctx2.stylesKey).toBe('sessions:stackoverflow.com:session-1:styles');
+    expect(ctx1.stylesKey).not.toBe(ctx2.stylesKey);
+    
+    expect(ctx1.persistKey).toBe('persistent:github.com');
+    expect(ctx2.persistKey).toBe('persistent:stackoverflow.com');
+    expect(ctx1.persistKey).not.toBe(ctx2.persistKey);
+    
+    expect(ctx1.sessionIndex).toBe('sessions:github.com:index');
+    expect(ctx2.sessionIndex).toBe('sessions:stackoverflow.com:index');
+  });
+  
+  test('同一域名不同会话生成不同的 key', () => {
+    const ctx1 = new SessionContext('github.com', 'session-1');
+    const ctx2 = new SessionContext('github.com', 'session-2');
+    
+    // stylesKey 和 metaKey 应该不同（包含 sessionId）
+    expect(ctx1.stylesKey).toBe('sessions:github.com:session-1:styles');
+    expect(ctx2.stylesKey).toBe('sessions:github.com:session-2:styles');
+    expect(ctx1.stylesKey).not.toBe(ctx2.stylesKey);
+    
+    expect(ctx1.metaKey).toBe('sessions:github.com:session-1:meta');
+    expect(ctx2.metaKey).toBe('sessions:github.com:session-2:meta');
+    expect(ctx1.metaKey).not.toBe(ctx2.metaKey);
+    
+    expect(ctx1.historyKey).toBe('github.com:session-1');
+    expect(ctx2.historyKey).toBe('github.com:session-2');
+    expect(ctx1.historyKey).not.toBe(ctx2.historyKey);
+    
+    // persistKey 和 sessionIndex 应该相同（域名级别）
+    expect(ctx1.persistKey).toBe('persistent:github.com');
+    expect(ctx2.persistKey).toBe('persistent:github.com');
+    expect(ctx1.persistKey).toBe(ctx2.persistKey);
+    
+    expect(ctx1.sessionIndex).toBe('sessions:github.com:index');
+    expect(ctx2.sessionIndex).toBe('sessions:github.com:index');
+    expect(ctx1.sessionIndex).toBe(ctx2.sessionIndex);
+  });
+  
+  test('包含子域名的域名生成正确的 key', () => {
+    const ctx = new SessionContext('blog.github.com', 'abc123');
+    
+    expect(ctx.stylesKey).toBe('sessions:blog.github.com:abc123:styles');
+    expect(ctx.metaKey).toBe('sessions:blog.github.com:abc123:meta');
+    expect(ctx.historyKey).toBe('blog.github.com:abc123');
+    expect(ctx.persistKey).toBe('persistent:blog.github.com');
+    expect(ctx.sessionIndex).toBe('sessions:blog.github.com:index');
+  });
+  
+  test('包含端口号的域名生成正确的 key', () => {
+    const ctx = new SessionContext('localhost:3000', 'test-session');
+    
+    expect(ctx.stylesKey).toBe('sessions:localhost:3000:test-session:styles');
+    expect(ctx.metaKey).toBe('sessions:localhost:3000:test-session:meta');
+    expect(ctx.historyKey).toBe('localhost:3000:test-session');
+    expect(ctx.persistKey).toBe('persistent:localhost:3000');
+    expect(ctx.sessionIndex).toBe('sessions:localhost:3000:index');
+  });
+  
+  test('包含连字符的域名生成正确的 key', () => {
+    const ctx = new SessionContext('my-test-site.com', 'xyz789');
+    
+    expect(ctx.stylesKey).toBe('sessions:my-test-site.com:xyz789:styles');
+    expect(ctx.metaKey).toBe('sessions:my-test-site.com:xyz789:meta');
+    expect(ctx.historyKey).toBe('my-test-site.com:xyz789');
+    expect(ctx.persistKey).toBe('persistent:my-test-site.com');
+    expect(ctx.sessionIndex).toBe('sessions:my-test-site.com:index');
+  });
+  
+  test('UUID 格式的 sessionId 生成正确的 key', () => {
+    const sessionId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+    const ctx = new SessionContext('example.com', sessionId);
+    
+    expect(ctx.stylesKey).toBe(`sessions:example.com:${sessionId}:styles`);
+    expect(ctx.metaKey).toBe(`sessions:example.com:${sessionId}:meta`);
+    expect(ctx.historyKey).toBe(`example.com:${sessionId}`);
+  });
+  
+  test('实例属性 domain 和 sessionId 正确保存', () => {
+    const domain = 'github.com';
+    const sessionId = 'test-session-id';
+    const ctx = new SessionContext(domain, sessionId);
+    
+    expect(ctx.domain).toBe(domain);
+    expect(ctx.sessionId).toBe(sessionId);
+  });
+  
+  test('getter 每次调用返回新字符串（非缓存）', () => {
+    const ctx = new SessionContext('example.com', 'test');
+    
+    const key1 = ctx.stylesKey;
+    const key2 = ctx.stylesKey;
+    
+    // 值应该相同
+    expect(key1).toBe(key2);
+    // 但是是不同的字符串实例（getter 每次生成新字符串）
+    expect(key1).toEqual(key2);
+  });
+  
+  test('所有 getter 返回字符串类型', () => {
+    const ctx = new SessionContext('example.com', 'test-session');
+    
+    expect(typeof ctx.stylesKey).toBe('string');
+    expect(typeof ctx.metaKey).toBe('string');
+    expect(typeof ctx.historyKey).toBe('string');
+    expect(typeof ctx.persistKey).toBe('string');
+    expect(typeof ctx.sessionIndex).toBe('string');
+  });
+  
+  test('空字符串参数生成有效的 key', () => {
+    const ctx = new SessionContext('', '');
+    
+    // 空字符串也应该生成有效的 key（边界情况）
+    expect(ctx.stylesKey).toBe('sessions:::styles');
+    expect(ctx.metaKey).toBe('sessions:::meta');
+    expect(ctx.historyKey).toBe(':');
+    expect(ctx.persistKey).toBe('persistent:');
+    expect(ctx.sessionIndex).toBe('sessions::index');
+  });
+});
+
 describe('updateStylesSummary', () => {
   beforeEach(() => {
     mockStorage.clear();
