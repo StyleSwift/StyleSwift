@@ -10,6 +10,11 @@ export default defineConfig({
     globals: true,
     // 默认超时时间（集成测试可在测试文件中单独设置）
     testTimeout: 10000,
+    // 依赖处理
+    deps: {
+      // 内联 puppeteer 以便正确解析
+      inline: ['puppeteer'],
+    },
     // 注意：setupFiles 已移除，因为测试文件自己管理 mock
     // tests/setup.js 可作为独立的 mock 库导入使用
     // 覆盖率配置（可选）
@@ -48,6 +53,10 @@ export default defineConfig({
             forks: {
               singleFork: true,
             },
+          },
+          // 外部依赖配置
+          deps: {
+            external: [/node_modules/],
           },
         },
       },

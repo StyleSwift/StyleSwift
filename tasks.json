@@ -1341,7 +1341,7 @@
           "id": "T167",
           "title": "编写核心流程集成测试",
           "description": "覆盖：Side Panel ↔ Content Script 通信（get_domain/get_page_structure/grep/inject_css/rollback_css）、chrome.storage CRUD、永久样式注入验证",
-          "status": "pending",
+          "status": "completed",
           "priority": "low",
           "dependencies": [
             "T166",
