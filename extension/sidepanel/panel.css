@@ -3126,3 +3126,243 @@ pre code {
     transform: translateY(10px);
   }
 }
+
+/* ============================================================
+   技能上下文菜单
+   设计参考：§16.3 ② 长按/右键弹出菜单
+   ============================================================ */
+
+.skill-context-menu {
+  position: fixed;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 160px;
+  padding: var(--spacing-xs) 0;
+  z-index: 1000;
+  animation: contextMenuFadeIn var(--duration-fast) var(--easing-default);
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.skill-context-menu .context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--easing-default);
+  user-select: none;
+}
+
+.skill-context-menu .context-menu-item:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.skill-context-menu .context-menu-item.danger {
+  color: var(--color-error);
+}
+
+.skill-context-menu .context-menu-item.danger:hover {
+  background-color: var(--color-error-bg);
+}
+
+.skill-context-menu .menu-icon {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+}
+
+/* ============================================================
+   模态框（技能详情、删除确认）
+   ============================================================ */
+
+.skill-detail-modal,
+.skill-delete-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: modalFadeIn var(--duration-normal) var(--easing-default);
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.skill-detail-modal .modal-overlay,
+.skill-delete-modal .modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.skill-detail-modal .modal-content,
+.skill-delete-modal .modal-content {
+  position: relative;
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  max-width: 480px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: modalSlideIn var(--duration-normal) var(--easing-default);
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.skill-detail-modal .modal-header,
+.skill-delete-modal .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.skill-detail-modal .modal-header h3,
+.skill-delete-modal .modal-header h3 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.skill-detail-modal .modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  line-height: 1;
+  transition: color var(--duration-fast) var(--easing-default);
+}
+
+.skill-detail-modal .modal-close-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.skill-detail-modal .modal-body,
+.skill-delete-modal .modal-body {
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.skill-detail-modal .skill-meta {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.skill-detail-modal .skill-mood {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.skill-detail-modal .skill-content {
+  background-color: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  overflow-x: auto;
+}
+
+.skill-detail-modal .skill-content pre {
+  margin: 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: var(--color-text-primary);
+}
+
+.skill-delete-modal .modal-body p {
+  margin: 0 0 var(--spacing-sm) 0;
+  color: var(--color-text-primary);
+}
+
+.skill-delete-modal .modal-body .hint {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+.skill-delete-modal .modal-footer {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+  justify-content: flex-end;
+}
+
+.skill-delete-modal .btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--easing-default);
+  border: 1px solid transparent;
+}
+
+.skill-delete-modal .btn-cancel {
+  background: var(--color-bg-primary);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.skill-delete-modal .btn-cancel:hover {
+  background: var(--color-bg-hover);
+}
+
+.skill-delete-modal .btn-danger {
+  background: var(--color-error);
+  color: var(--color-text-inverse);
+}
+
+.skill-delete-modal .btn-danger:hover {
+  background: #dc2626;
+}
+

@@ -1448,6 +1448,7 @@ function createBuiltInChip(skill) {
 
 /**
  * Create a user skill chip (outlined style with source domain)
+ * Design ref: §16.3 ② - 用户技能支持长按弹出菜单：应用 / 查看详情 / 删除
  * @param {Object} skill - Skill object from StyleSkillStore
  * @returns {HTMLElement}
  */
@@ -1472,12 +1473,45 @@ function createUserSkillChip(skill) {
     <span class="skill-source">${displayDomain}</span>
   `;
   
+  // Click handler (short tap)
   chip.addEventListener('click', () => handleSkillChipClick({
     id: skill.id,
     name: skill.name,
     type: 'user',
     prompt
   }));
+  
+  // Long press handler for context menu
+  let longPressTimer = null;
+  let isLongPress = false;
+  
+  chip.addEventListener('mousedown', (e) => {
+    isLongPress = false;
+    longPressTimer = setTimeout(() => {
+      isLongPress = true;
+      showSkillContextMenu(e, skill);
+    }, 500); // 500ms threshold for long press
+  });
+  
+  chip.addEventListener('mouseup', () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  });
+  
+  chip.addEventListener('mouseleave', () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  });
+  
+  // Context menu (right-click)
+  chip.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    showSkillContextMenu(e, skill);
+  });
   
   return chip;
 }
@@ -1503,7 +1537,8 @@ function createEmptyActionChip() {
 
 /**
  * Handle skill chip click
- * Fills the input with skill prompt (user can edit before sending)
+ * Fills the input with skill prompt and auto-sends the message
+ * Design ref: §16.3 ② 点击行为 - 点击 chip → 自动填入"应用 [技能名] 风格" → 自动发送
  * @param {Object} skill - Skill object
  */
 function handleSkillChipClick(skill) {
@@ -1516,15 +1551,14 @@ function handleSkillChipClick(skill) {
   
   // Fill input with skill prompt
   DOM.messageInput.value = skill.prompt;
-  DOM.messageInput.focus();
-  
-  // Move cursor to end
-  DOM.messageInput.setSelectionRange(
-    DOM.messageInput.value.length,
-    DOM.messageInput.value.length
-  );
   
   console.log('[Panel] Skill chip clicked:', skill.name);
+  
+  // Auto-send the message
+  // Use setTimeout to ensure the input is filled before sending
+  setTimeout(() => {
+    handleSendClick();
+  }, 0);
 }
 
 /**
@@ -1544,6 +1578,238 @@ function handleEmptyActionClick() {
   DOM.messageInput.focus();
   
   console.log('[Panel] Empty action chip clicked');
+}
+
+// ============================================================================
+// 技能上下文菜单
+// ============================================================================
+
+/**
+ * Context menu instance for user skills
+ */
+let skillContextMenu = null;
+
+/**
+ * Show context menu for user skill
+ * Design ref: §16.3 ② - 长按/右键弹出菜单：应用 / 查看详情 / 删除
+ * @param {Event} e - Mouse event
+ * @param {Object} skill - Skill object
+ */
+function showSkillContextMenu(e, skill) {
+  // Remove existing menu if any
+  hideSkillContextMenu();
+  
+  // Create context menu
+  const menu = document.createElement('div');
+  menu.className = 'skill-context-menu';
+  menu.innerHTML = `
+    <div class="context-menu-item" data-action="apply">
+      <span class="menu-icon">✨</span>
+      <span>应用</span>
+    </div>
+    <div class="context-menu-item" data-action="view">
+      <span class="menu-icon">📄</span>
+      <span>查看详情</span>
+    </div>
+    <div class="context-menu-item danger" data-action="delete">
+      <span class="menu-icon">🗑️</span>
+      <span>删除</span>
+    </div>
+  `;
+  
+  // Position the menu
+  const rect = e.target.getBoundingClientRect();
+  menu.style.position = 'fixed';
+  menu.style.left = `${rect.left}px`;
+  menu.style.top = `${rect.bottom + 4}px`;
+  menu.style.zIndex = '1000';
+  
+  // Add event listeners for menu items
+  menu.querySelectorAll('.context-menu-item').forEach(item => {
+    item.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const action = item.dataset.action;
+      handleContextMenuAction(action, skill);
+      hideSkillContextMenu();
+    });
+  });
+  
+  // Append to body
+  document.body.appendChild(menu);
+  skillContextMenu = menu;
+  
+  // Close menu when clicking outside
+  setTimeout(() => {
+    document.addEventListener('click', handleContextMenuOutsideClick);
+  }, 0);
+}
+
+/**
+ * Hide context menu
+ */
+function hideSkillContextMenu() {
+  if (skillContextMenu) {
+    skillContextMenu.remove();
+    skillContextMenu = null;
+    document.removeEventListener('click', handleContextMenuOutsideClick);
+  }
+}
+
+/**
+ * Handle click outside context menu
+ * @param {Event} e - Mouse event
+ */
+function handleContextMenuOutsideClick(e) {
+  if (skillContextMenu && !skillContextMenu.contains(e.target)) {
+    hideSkillContextMenu();
+  }
+}
+
+/**
+ * Handle context menu action
+ * @param {string} action - Action name: 'apply' | 'view' | 'delete'
+ * @param {Object} skill - Skill object
+ */
+async function handleContextMenuAction(action, skill) {
+  switch (action) {
+    case 'apply':
+      // Apply the skill
+      handleSkillChipClick({
+        id: skill.id,
+        name: skill.name,
+        type: 'user',
+        prompt: `Apply my "${skill.name}" style`
+      });
+      break;
+      
+    case 'view':
+      // View skill details in a modal
+      await viewSkillDetails(skill);
+      break;
+      
+    case 'delete':
+      // Delete skill with confirmation
+      await deleteSkillWithConfirmation(skill);
+      break;
+  }
+}
+
+/**
+ * View skill details
+ * @param {Object} skill - Skill object
+ */
+async function viewSkillDetails(skill) {
+  try {
+    // Load skill content
+    const content = await StyleSkillStore.load(skill.id);
+    
+    if (!content) {
+      showError('无法加载技能详情');
+      return;
+    }
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'skill-detail-modal';
+    modal.innerHTML = `
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>${escapeHtml(skill.name)}</h3>
+          <button class="modal-close-btn">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="skill-meta">
+            <span class="skill-source">来源: ${escapeHtml(skill.sourceDomain || 'unknown')}</span>
+            <span class="skill-date">创建于: ${new Date(skill.createdAt).toLocaleDateString('zh-CN')}</span>
+          </div>
+          ${skill.mood ? `<div class="skill-mood">风格: ${escapeHtml(skill.mood)}</div>` : ''}
+          <div class="skill-content">
+            <pre>${escapeHtml(content)}</pre>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add event listeners
+    const closeBtn = modal.querySelector('.modal-close-btn');
+    const overlay = modal.querySelector('.modal-overlay');
+    
+    const closeModal = () => {
+      modal.remove();
+    };
+    
+    closeBtn.addEventListener('click', closeModal);
+    overlay.addEventListener('click', closeModal);
+    
+    // Append to body
+    document.body.appendChild(modal);
+    
+  } catch (err) {
+    console.error('[Panel] Failed to view skill details:', err);
+    showError('加载技能详情失败');
+  }
+}
+
+/**
+ * Delete skill with confirmation
+ * @param {Object} skill - Skill object
+ */
+async function deleteSkillWithConfirmation(skill) {
+  // Create confirmation modal
+  const modal = document.createElement('div');
+  modal.className = 'skill-delete-modal';
+  modal.innerHTML = `
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>确认删除</h3>
+      </div>
+      <div class="modal-body">
+        <p>确定要删除风格技能「${escapeHtml(skill.name)}」吗？</p>
+        <p class="hint">删除后无法恢复</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-cancel">取消</button>
+        <button class="btn btn-danger">删除</button>
+      </div>
+    </div>
+  `;
+  
+  // Add event listeners
+  const cancelBtn = modal.querySelector('.btn-cancel');
+  const deleteBtn = modal.querySelector('.btn-danger');
+  const overlay = modal.querySelector('.modal-overlay');
+  
+  const closeModal = () => {
+    modal.remove();
+  };
+  
+  cancelBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', closeModal);
+  
+  deleteBtn.addEventListener('click', async () => {
+    try {
+      // Delete skill
+      await StyleSkillStore.remove(skill.id);
+      
+      // Close modal
+      closeModal();
+      
+      // Refresh skill chips
+      await renderSkillChips();
+      
+      // Show success message
+      console.log('[Panel] Skill deleted:', skill.name);
+      
+    } catch (err) {
+      console.error('[Panel] Failed to delete skill:', err);
+      showError('删除技能失败');
+    }
+  });
+  
+  // Append to body
+  document.body.appendChild(modal);
 }
 
 /**
