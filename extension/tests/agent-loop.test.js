@@ -352,7 +352,7 @@ describe('summarizeOldTurns 函数', () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        content: [{ text: mockSummary }]
+        choices: [{ message: { content: mockSummary } }]
       })
     });
     
@@ -366,13 +366,13 @@ describe('summarizeOldTurns 函数', () => {
     // 应该返回摘要
     expect(summary).toBe(mockSummary);
     
-    // 验证调用了正确的 API
+    // 验证调用了正确的 API（OpenAI 兼容格式）
     expect(fetch).toHaveBeenCalledWith(
-      'https://api.anthropic.com/v1/messages',
+      'https://api.ppio.com/openai/v1/chat/completions',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
-          'x-api-key': 'test-api-key'
+          'Authorization': 'Bearer test-api-key'
         })
       })
     );
@@ -384,7 +384,7 @@ describe('summarizeOldTurns 函数', () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        content: [{ text: mockSummary }]
+        choices: [{ message: { content: mockSummary } }]
       })
     });
     

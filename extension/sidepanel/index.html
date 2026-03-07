@@ -32,7 +32,13 @@
             <input type="text" id="api-base-input" placeholder="https://api.anthropic.com" autocomplete="off">
             <p class="hint">默认使用 Anthropic 官方地址</p>
           </div>
-          
+
+          <div class="form-group">
+            <label for="model-input">模型 (可选)</label>
+            <input type="text" id="model-input" placeholder="claude-sonnet-4-20250514" autocomplete="off">
+            <p class="hint">默认使用 deepseek/deepseek-r1</p>
+          </div>
+
           <button id="start-btn" class="btn-primary" disabled>开始使用</button>
           
           <div id="setup-error" class="error-message hidden"></div>
@@ -167,11 +173,7 @@
           </div>
           <div class="form-group">
             <label for="settings-model">模型</label>
-            <select id="settings-model">
-              <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
-              <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
-              <option value="claude-3-opus-20240229">Claude 3 Opus</option>
-            </select>
+            <input type="text" id="settings-model" placeholder="deepseek/deepseek-r1">
           </div>
           <button id="verify-connection-btn" class="btn-secondary">验证连接</button>
           <div id="connection-status" class="status-message hidden"></div>

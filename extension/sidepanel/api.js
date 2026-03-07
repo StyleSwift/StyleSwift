@@ -13,18 +13,42 @@
 // ============================================================================
 
 /**
+ * 规范化 API 基础地址
+ * 
+ * 移除尾部斜杠和常见的路径前缀（如 /anthropic, /v1, /api），
+ * 确保最终拼接正确。
+ * 
+ * @param {string} apiBase - 用户输入的 API 地址
+ * @returns {string} 规范化后的基础地址
+ */
+function normalizeApiBase(apiBase) {
+  try {
+    const url = new URL(apiBase);
+    // 移除常见的路径前缀
+    let pathname = url.pathname
+      .replace(/\/+$/, '') // 移除尾部斜杠
+      .replace(/\/(v1|anthropic|api)(\/|$)/gi, '/') // 移除 /v1, /anthropic, /api 前缀
+      .replace(/\/+$/, ''); // 再次移除尾部斜杠
+    
+    return url.origin + pathname;
+  } catch {
+    return apiBase;
+  }
+}
+
+/**
  * 默认 API 基础地址
- * Anthropic API 的默认端点
+ * OpenAI 兼容 API 的默认端点
  * @type {string}
  */
-const DEFAULT_API_BASE = 'https://api.anthropic.com';
+const DEFAULT_API_BASE = 'https://api.ppio.com/openai';
 
 /**
  * 默认模型
- * 当前使用的默认 Claude 模型
+ * 当前使用的默认模型
  * @type {string}
  */
-const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
+const DEFAULT_MODEL = 'deepseek/deepseek-r1';
 
 /**
  * 设置存储 key
@@ -61,10 +85,14 @@ async function getSettings() {
     throw new Error('请先在设置中配置 API Key');
   }
   
+  // 规范化 apiBase，移除多余路径
+  const rawApiBase = settings.apiBase || DEFAULT_API_BASE;
+  const apiBase = normalizeApiBase(rawApiBase);
+  
   return {
     apiKey: settings.apiKey,
     model: settings.model || DEFAULT_MODEL,
-    apiBase: settings.apiBase || DEFAULT_API_BASE,
+    apiBase,
   };
 }
 
@@ -107,10 +135,14 @@ async function saveSettings({ apiKey, apiBase, model }) {
     };
   }
   
+  // 规范化 apiBase，移除多余路径
+  const rawApiBase = apiBase ?? current.apiBase ?? DEFAULT_API_BASE;
+  const normalizedApiBase = normalizeApiBase(rawApiBase);
+  
   // 合并新旧设置
   const newSettings = {
     apiKey: apiKey ?? current.apiKey,
-    apiBase: apiBase ?? current.apiBase ?? DEFAULT_API_BASE,
+    apiBase: normalizedApiBase,
     model: model ?? current.model ?? DEFAULT_MODEL,
   };
   
@@ -173,37 +205,37 @@ async function ensureApiPermission(apiBase) {
 /**
  * 验证 API 连接有效性
  * 
- * 向 apiBase/v1/messages 发送最小测试请求，
+ * 向 apiBase/v1/chat/completions 发送最小测试请求（OpenAI 格式），
  * 验证 API Key 和连接是否正常。
  * 
  * @param {string} apiKey - API Key
  * @param {string} apiBase - API 基础地址
+ * @param {string} model - 模型名称
  * @returns {Promise<{ok: boolean, status?: number, error?: string}>}
  * 
  * @example
- * const result = await validateConnection('sk-ant-xxx', 'https://api.anthropic.com');
+ * const result = await validateConnection('sk-xxx', 'https://api.ppio.com/openai', 'deepseek/deepseek-r1');
  * if (result.ok) {
  *   console.log('连接成功');
  * } else {
  *   console.error('连接失败:', result.error || `HTTP ${result.status}`);
  * }
  */
-async function validateConnection(apiKey, apiBase) {
-  const url = `${apiBase}/v1/messages`;
+async function validateConnection(apiKey, apiBase, model = DEFAULT_MODEL) {
+  const url = `${apiBase}/v1/chat/completions`;
   
   try {
     const resp = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: DEFAULT_MODEL,
+        model: model,
         messages: [{ role: 'user', content: 'Hi' }],
-        max_tokens: 1,
+        max_tokens: 10,
+        stream: false,
       }),
     });
     
@@ -249,6 +281,7 @@ export {
   DEFAULT_API_BASE,
   DEFAULT_MODEL,
   SETTINGS_KEY,
+  normalizeApiBase,
   getSettings,
   saveSettings,
   ensureApiPermission,

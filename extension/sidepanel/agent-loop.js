@@ -350,19 +350,22 @@ async function summarizeOldTurns(oldHistory) {
     const { getSettings } = await import('./api.js');
     const { apiKey, model, apiBase } = await getSettings();
 
-    // 调用 LLM 生成摘要
-    const resp = await fetch(`${apiBase}/v1/messages`, {
+    // 调用 LLM 生成摘要（OpenAI 兼容格式）
+    const resp = await fetch(`${apiBase}/v1/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model,
-        system: '用一段简洁的文字总结以下对话历史，重点保留：用户的风格偏好、已应用的样式变更、未完成的请求。不超过 300 字。',
-        messages: [{ role: 'user', content: condensed }],
+        messages: [
+          {
+            role: 'system',
+            content: '用一段简洁的文字总结以下对话历史，重点保留：用户的风格偏好、已应用的样式变更、未完成的请求。不超过 300 字。'
+          },
+          { role: 'user', content: condensed }
+        ],
         max_tokens: 500,
       })
     });
@@ -373,7 +376,7 @@ async function summarizeOldTurns(oldHistory) {
     }
 
     const data = await resp.json();
-    const text = data.content?.[0]?.text;
+    const text = data.choices?.[0]?.message?.content;
     return text || '(历史摘要生成失败)';
     
   } catch (err) {
@@ -475,10 +478,10 @@ async function checkPageAccess(tabId) {
 // =============================================================================
 
 /**
- * 调用 Anthropic Streaming API
+ * 调用 Anthropic Streaming API (使用官方 SDK)
  * 
- * 从 Side Panel 直接调用 Anthropic Streaming API，实现逐步输出。
- * 支持 SSE（Server-Sent Events）流式解析。
+ * 使用 Anthropic 官方 SDK 调用 API，提供更好的错误处理和浏览器兼容性。
+ * 支持流式输出和工具调用。
  * 
  * @param {string} system - 系统提示词
  * @param {Array} messages - 消息历史
@@ -499,106 +502,214 @@ async function checkPageAccess(tabId) {
  * );
  */
 async function callAnthropicStream(system, messages, tools, callbacks, abortSignal) {
-  // 动态导入 getSettings 避免循环依赖
+  // 动态导入依赖
   const { getSettings } = await import('./api.js');
+  
   const { apiKey, model, apiBase } = await getSettings();
 
-  const resp = await fetch(`${apiBase}/v1/messages`, {
-    signal: abortSignal,
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model,
-      system,
-      messages,
-      tools,
-      max_tokens: 8000,
-      stream: true,
-    })
-  });
-
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(`API 错误: ${err.error?.message || resp.statusText}`);
+  // 转换为 OpenAI 格式的消息
+  const openaiMessages = [];
+  
+  // 添加系统消息
+  if (system) {
+    openaiMessages.push({ role: 'system', content: system });
   }
-
-  // SSE 流式解析
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  const result = { content: [], stop_reason: null, usage: null };
-  let currentBlock = null;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop();
-
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const raw = line.slice(6).trim();
-      if (raw === '[DONE]' || !raw) continue;
-
-      let data;
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        console.warn('[SSE] JSON parse failed:', raw);
-        continue;
-      }
-
-      switch (data.type) {
-        case 'content_block_start':
-          currentBlock = data.content_block;
-          if (currentBlock.type === 'text') currentBlock.text = '';
-          if (currentBlock.type === 'tool_use') currentBlock.input = '';
-          result.content.push(currentBlock);
-          break;
-
-        case 'content_block_delta':
-          if (data.delta.type === 'text_delta') {
-            currentBlock.text += data.delta.text;
-            callbacks.onText?.(data.delta.text);       // 流式文本回调
-          }
-          if (data.delta.type === 'input_json_delta') {
-            currentBlock.input += data.delta.partial_json;
-          }
-          break;
-
-        case 'content_block_stop':
-          if (currentBlock?.type === 'tool_use') {
-            try {
-              currentBlock.input = JSON.parse(currentBlock.input);
-            } catch (e) {
-              console.warn('[SSE] Failed to parse tool input:', e);
-              currentBlock.input = {};
+  
+  // 转换消息格式
+  for (const msg of messages) {
+    if (msg.role === 'user') {
+      // 用户消息
+      if (typeof msg.content === 'string') {
+        openaiMessages.push({ role: 'user', content: msg.content });
+      } else if (Array.isArray(msg.content)) {
+        // 检查是否是工具结果
+        const hasToolResult = msg.content.some(c => c.type === 'tool_result');
+        if (hasToolResult) {
+          // 工具结果消息 - 转换为 OpenAI 格式
+          for (const item of msg.content) {
+            if (item.type === 'tool_result') {
+              openaiMessages.push({
+                role: 'tool',
+                tool_call_id: item.tool_use_id,
+                content: item.content,
+              });
             }
-            callbacks.onToolCall?.(currentBlock);       // 工具调用回调
           }
-          break;
-
-        case 'message_delta':
-          result.stop_reason = data.delta?.stop_reason;
-          result.usage = data.usage;
-          break;
-
-        case 'message_start':
-          result.usage = data.message?.usage;
-          break;
+        } else {
+          // 处理多模态内容
+          const textParts = msg.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+          if (textParts) {
+            openaiMessages.push({ role: 'user', content: textParts });
+          }
+        }
+      }
+    } else if (msg.role === 'assistant') {
+      // 助手消息
+      const textContent = msg.content?.find(c => c.type === 'text')?.text || '';
+      const toolCalls = msg.content?.filter(c => c.type === 'tool_use').map(c => ({
+        id: c.id,
+        type: 'function',
+        function: {
+          name: c.name,
+          arguments: JSON.stringify(c.input),
+        }
+      }));
+      
+      if (toolCalls && toolCalls.length > 0) {
+        openaiMessages.push({ 
+          role: 'assistant', 
+          content: textContent || null,
+          tool_calls: toolCalls 
+        });
+      } else {
+        openaiMessages.push({ role: 'assistant', content: textContent || '' });
       }
     }
   }
 
-  return result;
+  // 转换工具格式
+  const openaiTools = tools?.map(tool => ({
+    type: 'function',
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.input_schema,
+    }
+  }));
+
+  try {
+    const url = `${apiBase}/v1/chat/completions`;
+    const requestBody = {
+      model,
+      messages: openaiMessages,
+      max_tokens: 8000,
+      stream: true,
+    };
+    
+    if (openaiTools && openaiTools.length > 0) {
+      requestBody.tools = openaiTools;
+      requestBody.tool_choice = 'auto';
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+      signal: abortSignal,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API 错误 (${response.status}): ${errorText}`);
+    }
+
+    // 处理流式响应
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    
+    const result = { content: [], stop_reason: null, usage: null };
+    let currentText = '';
+    let currentToolCalls = [];
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.trim() || line.trim() === 'data: [DONE]') continue;
+        if (!line.startsWith('data: ')) continue;
+
+        try {
+          const data = JSON.parse(line.slice(6));
+          const choice = data.choices?.[0];
+          if (!choice) continue;
+
+          const delta = choice.delta;
+          
+          // 处理文本内容
+          if (delta.content) {
+            currentText += delta.content;
+            callbacks.onText?.(delta.content);
+          }
+          
+          // 处理工具调用
+          if (delta.tool_calls) {
+            for (const toolCall of delta.tool_calls) {
+              const index = toolCall.index;
+              if (!currentToolCalls[index]) {
+                currentToolCalls[index] = {
+                  id: toolCall.id || `call_${Date.now()}_${index}`,
+                  type: 'tool_use',
+                  name: toolCall.function?.name || '',
+                  input: '',
+                };
+              }
+              
+              if (toolCall.function?.name) {
+                currentToolCalls[index].name = toolCall.function.name;
+              }
+              
+              if (toolCall.function?.arguments) {
+                currentToolCalls[index].input += toolCall.function.arguments;
+              }
+            }
+          }
+          
+          // 处理结束原因
+          if (choice.finish_reason) {
+            result.stop_reason = choice.finish_reason === 'tool_calls' ? 'tool_use' : choice.finish_reason;
+          }
+          
+          // 处理使用统计
+          if (data.usage) {
+            result.usage = {
+              input_tokens: data.usage.prompt_tokens,
+              output_tokens: data.usage.completion_tokens,
+            };
+          }
+        } catch (e) {
+          console.warn('[Stream] Failed to parse SSE line:', line, e);
+        }
+      }
+    }
+
+    // 构建最终内容
+    if (currentText) {
+      result.content.push({ type: 'text', text: currentText });
+    }
+    
+    for (const toolCall of currentToolCalls) {
+      if (toolCall && toolCall.name) {
+        try {
+          toolCall.input = JSON.parse(toolCall.input);
+        } catch (e) {
+          console.warn('[Stream] Failed to parse tool input:', e);
+          toolCall.input = {};
+        }
+        callbacks.onToolCall?.(toolCall);
+        result.content.push(toolCall);
+      }
+    }
+
+    return result;
+    
+  } catch (error) {
+    // 处理取消
+    if (error.name === 'AbortError' || abortSignal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
+    
+    // 网络或其他错误
+    throw new Error(`API 调用失败: ${error.message || error}`);
+  }
 }
 
 // =============================================================================

@@ -14,12 +14,14 @@
 // Imports
 // ============================================================================
 
-import { 
-  checkFirstRun, 
-  saveSettings, 
+import {
+  checkFirstRun,
+  saveSettings,
   validateConnection,
   DEFAULT_API_BASE,
-  getSettings 
+  DEFAULT_MODEL,
+  getSettings,
+  normalizeApiBase
 } from './api.js';
 
 import { StyleSkillStore } from './style-skill.js';
@@ -41,6 +43,7 @@ const DOM = {
   // Onboarding elements
   apiKeyInput: null,
   apiBaseInput: null,
+  modelInput: null,
   startBtn: null,
   setupError: null,
   
@@ -616,6 +619,24 @@ function applyTopBarState(config) {
 }
 
 /**
+ * 更新顶栏显示
+ * @param {string} domain - 当前域名
+ * @param {string} title - 会话标题
+ */
+function updateTopBarDisplay(domain, title) {
+  const domainEl = document.getElementById('current-domain');
+  const titleEl = document.getElementById('session-title');
+  
+  if (domainEl) {
+    domainEl.textContent = domain || '--';
+  }
+  
+  if (titleEl) {
+    titleEl.textContent = title || '新会话';
+  }
+}
+
+/**
  * 应用对话区状态
  * @param {Object} config - 对话区配置
  */
@@ -846,19 +867,22 @@ function initOnboarding() {
   // 获取 DOM 元素
   DOM.apiKeyInput = document.getElementById('api-key-input');
   DOM.apiBaseInput = document.getElementById('api-base-input');
+  DOM.modelInput = document.getElementById('model-input');
   DOM.startBtn = document.getElementById('start-btn');
   DOM.setupError = document.getElementById('setup-error');
-  
+
   // 监听输入变化
   DOM.apiKeyInput.addEventListener('input', validateOnboardingForm);
   DOM.apiBaseInput.addEventListener('input', validateOnboardingForm);
-  
+  DOM.modelInput.addEventListener('input', validateOnboardingForm);
+
   // 监听开始按钮
   DOM.startBtn.addEventListener('click', handleStartClick);
-  
-  // 设置默认 API 地址
+
+  // 设置默认值
   DOM.apiBaseInput.value = DEFAULT_API_BASE;
-  
+  DOM.modelInput.value = DEFAULT_MODEL;
+
   // 初始验证表单
   validateOnboardingForm();
 }
@@ -901,18 +925,27 @@ function hideSetupError() {
 async function handleStartClick() {
   const apiKey = DOM.apiKeyInput.value.trim();
   let apiBase = DOM.apiBaseInput.value.trim();
-  
+  let model = DOM.modelInput.value.trim();
+
   // 基本验证
   if (!apiKey) {
     showSetupError('请输入 API Key');
     return;
   }
-  
+
   // 如果 API 地址为空，使用默认值
   if (!apiBase) {
     apiBase = DEFAULT_API_BASE;
   }
-  
+
+  // 如果模型为空，使用默认值
+  if (!model) {
+    model = DEFAULT_MODEL;
+  }
+
+  // 规范化 API 地址（移除多余路径）
+  apiBase = normalizeApiBase(apiBase);
+
   // 验证 URL 格式
   try {
     new URL(apiBase);
@@ -920,20 +953,20 @@ async function handleStartClick() {
     showSetupError('API 地址格式不正确');
     return;
   }
-  
+
   // 显示加载状态
   showLoading(true);
   DOM.startBtn.disabled = true;
   hideSetupError();
-  
+
   try {
     // 验证连接
-    const result = await validateConnection(apiKey, apiBase);
-    
+    const result = await validateConnection(apiKey, apiBase, model);
+
     if (!result.ok) {
       // 连接失败
       let errorMsg = '连接验证失败';
-      
+
       if (result.error) {
         // 网络错误
         errorMsg = `连接失败: ${result.error}`;
@@ -944,22 +977,22 @@ async function handleStartClick() {
       } else if (result.status) {
         errorMsg = `连接失败 (HTTP ${result.status})`;
       }
-      
+
       showSetupError(errorMsg);
       AppState.apiKeyStatus = 'invalid';
       return;
     }
-    
+
     // 连接成功，保存设置
-    await saveSettings({ apiKey, apiBase });
+    await saveSettings({ apiKey, apiBase, model });
     AppState.apiKeyStatus = 'valid';
-    
+
     console.log('[Panel] API Key validated and saved');
-    
+
     // 切换到主界面
     switchView('main');
     initMainView();
-    
+
   } catch (err) {
     console.error('[Panel] Setup error:', err);
     showSetupError(`保存设置失败: ${err.message}`);
@@ -2457,88 +2490,6 @@ function escapeHtml(text) {
 }
 
 /**
- * 处理会会话点击（切换会话）
- * @param {string} domain - 域名
- * @param {string} sessionId - 会话 ID
- */
-async function handleSessionClick(domain, sessionId) {
-  try {
-    console.log(`[Panel] Switching to session: ${sessionId}`);
-    
-    // 动态导入 session 模块
-    const session = await import('./session.js');
-    
-    // 动态导入 tools 模块
-    const { sendToContentScript } = await import('./tools.js');
-    
-    // 1. 卸载当前会话样式
-    try {
-    await sendToContentScript({ tool: 'unload_session_css' });
-    console.log('[Panel] Unloaded current session styles');
-  } catch (err) {
-    console.warn('[Panel] Failed to unload session styles:', err.message);
-    // 继续执行，  }
-    
-    // 2. 创建新的 SessionContext
-    const newSession = new session.SessionContext(domain, sessionId);
-    
-    // 3. 设置为当前会话
-    session.setCurrentSession(newSession);
-    
-    // 4. 加载目标会话历史
-    const history = await session.loadAndPrepareHistory(domain, sessionId);
-    console.log(`[Panel] Loaded ${history.length} history messages`);
-    
-    // 5. 加载目标会话样式并注入
-    const stylesKey = newSession.stylesKey;
-    const { [stylesKey]: sessionStyles } = await chrome.storage.local.get(stylesKey);
-    
-    if (sessionStyles && sessionStyles.trim()) {
-      try {
-        await sendToContentScript({ 
-          tool: 'load_session_css', 
-          args: { css: sessionStyles } 
-        });
-        console.log('[Panel] Loaded target session styles');
-        
-        // 更新全局状态：有样式生效
-        setHasActiveStyles(true);
-      } catch (err) {
-        console.warn('[Panel] Failed to load target session styles:', err.message);
-      }
-    } else {
-      // 没有会话样式
-      setHasActiveStyles(false);
-    }
-    
-    // 6. 更新顶栏显示
-    const meta = await session.loadSessionMeta(domain, sessionId);
-    updateTopBarDisplay(domain, meta.title || '新会话');
-    
-    // 更新全局状态中的当前域名和会话 ID
-    stateManager.set('currentDomain', domain);
-    stateManager.set('currentSessionId', sessionId);
-    
-    // 7. 关闭下拉面板
-    const panel = document.getElementById('session-list-panel');
-    if (panel) panel.classList.add('hidden');
-    
-    // 8. 渲染历史消息到对话区
-    renderHistoryMessages(history);
-    
-    console.log('[Panel] Session switched successfully');
-    
-  } catch (error) {
-    console.error('[Panel] Failed to switch session:', error);
-    showError('切换会话失败');
-  }
-}
-  if (DOM.sessionTitle) {
-    DOM.sessionTitle.textContent = title || '新会话';
-  }
-}
-
-/**
  * 更新状态指示灯
  * @param {'idle' | 'running' | 'error' | 'restricted'} status - 状态
  * @deprecated 请使用 setProcessingState / setErrorState / setRestrictedPageState
@@ -2573,128 +2524,15 @@ function updateStatusIndicator(status) {
 // ============================================================================
 
 /**
- * 初始化主界面
- * 
- * 宝始化流程：
- * 1. 获取 DOM 元素
-    2. 初始化状态同步系统
-    3. 设置初始状态
-    4. 应用初始全局状态
-    5. 绑定顶栏交互事件
-    6. 初始化错误横幅事件
-    7. 初始化输入区
-    8. 初始化技能快捷区
-    9. 显示空状态
-    10. 获取域名并加载会话（异步）
-    11. 恢复会话历史消息并渲染到对话区
+ * 初始化设置页
  */
-async function initMainView() {
-  // 获取 DOM 元素
-  DOM.statusDot = document.getElementById('status-dot');
-  DOM.currentDomain = document.getElementById('current-domain');
-  DOM.sessionTitle = document.getElementById('session-title');
-  DOM.messagesContainer = document.getElementById('messages-container');
-  DOM.messageInput = document.getElementById('message-input');
-  DOM.sendBtn = document.getElementById('send-btn');
-  DOM.stopBtn = document.getElementById('stop-btn');
-  DOM.inputArea = document.getElementById('input-area');
-  DOM.inputWrapper = document.getElementById('input-wrapper');
-  
-  // 获取技能区 DOM 元素
-  DOM.skillArea = document.getElementById('skill-area');
-  DOM.skillChips = document.getElementById('skill-chips');
-  DOM.skillAreaToggle = document.getElementById('skill-area-toggle');
-  
-  // 获取错误横幅 DOM 元素
-  DOM.errorBanner = document.getElementById('error-banner');
-  DOM.errorBannerMessage = document.getElementById('error-banner-message');
-  DOM.errorBannerAction = document.getElementById('error-banner-action');
-  DOM.errorBannerClose = document.getElementById('error-banner-close');
-  
-  // 初始化状态同步系统
-  initStateSync();
-  
-    // 设置初始状态
-  stateManager.set('agentStatus', 'idle');
-    stateManager.set('apiKeyStatus', 'valid'); // 进入主界面说明已有有效 Key
-    stateManager.set('pageStatus', 'ready');
-    
-    // 应用初始全局状态
-    applyGlobalState();
-    
-    // 更新顶栏显示
-    updateTopBarDisplay('--', '新会话');
-    
-    // 绑定顶栏交互事件
-    bindTopBarEvents();
-    
-    // 初始化错误横幅事件
-    initErrorBanner();
-    
-    // 绑定新建会话按钮事件
-    const newSessionBtn = document.getElementById('new-session-btn');
-    if (newSessionBtn) {
-        newSessionBtn.addEventListener('click', handleNewSession);
-    }
-    
-    // 初始化输入区
-    initInputArea();
-    
-    // 初始化技能快捷区
-    initSkillArea();
-    
-    // 显示空状态
-    showEmptyState();
-    
-    // === 获取域名并加载会话（异步）===
-    try {
-        // 动态导入 tools.js 获取域名
-        const { getTargetDomain } = await import('./tools.js');
-        
-        if (domain) {
-            // 更新全局状态中的域名
-            stateManager.set('currentDomain', domain);
-            
-            // === 加载会话 ===
-            // 动态导入 session.js
-            const session = await import('./session.js');
-            
-            // 获取或创建当前域名的会话
-            const { sessionId, sessionMeta } = await session.getOrCreateSession(domain);
-            
-            // 更新全局状态中的会话 ID
-            stateManager.set('currentSessionId', sessionId);
-            
-            // 创建 SessionContext 并设置为当前会话
-            const currentSession = new session.SessionContext(domain, sessionId);
-            session.setCurrentSession(currentSession);
-            
-            // === 加载会话历史（如果有历史） ===
-            const history = await session.loadAndPrepareHistory(domain, sessionId);
-            
-            if (history && history.length > 0) {
-                // 渲染历史消息到对话区
-                renderHistoryMessages(history);
-                console.log(`[Panel] Loaded ${history.length} history messages`);
-            } else {
-                // 无历史，显示空状态
-                showEmptyState();
-            }
-            
-            // 更新顶栏显示
-            const meta = await session.loadSessionMeta(domain, sessionId);
-            updateTopBarDisplay(domain, meta.title || '新会话');
-            
-            console.log(`[Panel] Main view initialized for domain: ${domain}`);
-        } catch (err) {
-        console.error('[Panel] Failed to initialize main view:', err);
-        // 显示错误状态
-        showError('初始化失败');
-        
-        // 设置为受限页面状态
-        setRestrictedPageState(true);
-    }
-}
+async function initSettingsView() {
+  // 获取设置页 DOM 元素
+  DOM.settingsApiKey = document.getElementById('settings-api-key');
+  DOM.settingsApiBase = document.getElementById('settings-api-base');
+  DOM.settingsModel = document.getElementById('settings-model');
+  DOM.verifyConnectionBtn = document.getElementById('verify-connection-btn');
+  DOM.connectionStatus = document.getElementById('connection-status');
   
   // 验证连接按钮
   if (DOM.verifyConnectionBtn) {
@@ -2716,12 +2554,7 @@ async function initMainView() {
   if (clearStorageBtn) {
     clearStorageBtn.addEventListener('click', handleClearStorage);
   }
-  
-  // 模型选择变更事件
-  if (DOM.settingsModel) {
-    DOM.settingsModel.addEventListener('change', handleModelChange);
-  }
-  
+
   // 加载当前设置
   await loadCurrentSettings();
   
@@ -2742,7 +2575,7 @@ async function loadCurrentSettings() {
       DOM.settingsApiBase.value = settings.apiBase || DEFAULT_API_BASE;
     }
     if (DOM.settingsModel) {
-      DOM.settingsModel.value = settings.model || 'claude-sonnet-4-20250514';
+      DOM.settingsModel.value = settings.model || DEFAULT_MODEL;
     }
   } catch (err) {
     console.warn('[Panel] No existing settings');
@@ -2755,29 +2588,30 @@ async function loadCurrentSettings() {
 async function handleVerifyConnection() {
   const apiKey = DOM.settingsApiKey.value.trim();
   const apiBase = DOM.settingsApiBase.value.trim() || DEFAULT_API_BASE;
-  
+  const model = DOM.settingsModel.value.trim() || DEFAULT_MODEL;
+
   if (!apiKey) {
     showConnectionStatus('请输入 API Key', 'error');
     return;
   }
-  
+
   DOM.verifyConnectionBtn.disabled = true;
   showConnectionStatus('正在验证...', 'info');
-  
+
   try {
-    const result = await validateConnection(apiKey, apiBase);
-    
+    const result = await validateConnection(apiKey, apiBase, model);
+
     if (result.ok) {
       showConnectionStatus('✓ 连接成功', 'success');
-      // 保存设置
-      await saveSettings({ apiKey, apiBase });
+      // 保存所有设置
+      await saveSettings({ apiKey, apiBase, model });
       AppState.apiKeyStatus = 'valid';
     } else {
       let msg = '连接失败';
       if (result.status === 401) msg = 'API Key 无效';
       else if (result.status === 403) msg = '访问被拒绝';
       else if (result.error) msg = result.error;
-      
+
       showConnectionStatus(`✗ ${msg}`, 'error');
       AppState.apiKeyStatus = 'invalid';
     }
@@ -2908,32 +2742,6 @@ async function handleClearStorage() {
       clearBtn.disabled = false;
       clearBtn.textContent = '清理历史数据';
     }
-  }
-}
-
-/**
- * 处理模型选择变更
- */
-async function handleModelChange(event) {
-  const selectedModel = event.target.value;
-  
-  try {
-    // 保存模型设置
-    await saveSettings({ model: selectedModel });
-    console.log('[Panel] Model changed to:', selectedModel);
-    
-    // 显示成功提示（短暂显示）
-    const modelSelect = event.target;
-    const originalBorderColor = modelSelect.style.borderColor;
-    modelSelect.style.borderColor = 'var(--color-success)';
-    
-    setTimeout(() => {
-      modelSelect.style.borderColor = originalBorderColor;
-    }, 1000);
-    
-  } catch (error) {
-    console.error('[Panel] Failed to save model setting:', error);
-    showError('保存模型设置失败');
   }
 }
 
@@ -3318,124 +3126,6 @@ function showEmptyState() {
   `;
   
   DOM.messagesContainer.appendChild(emptyState);
-}
-
-/**
- * 渲染历史消息到对话区
- * 
- * 用于会话切换时恢复对话历史。
- * 支持 Anthropic Messages API 的消息格式。
- * 
- * @param {Array} history - 对话历史数组，格式为 [{ role, content }, ...]
- * @returns {void}
- * 
- * @example
- * const history = [
- *   { role: 'user', content: '把背景改成深蓝色' },
- *   { role: 'assistant', content: [{ type: 'text', text: '好的...' }] }
- * ];
- * renderHistoryMessages(history);
- */
-function renderHistoryMessages(history) {
-  if (!DOM.messagesContainer) return;
-  
-  // 如果没有历史，显示空状态
-  if (!history || history.length === 0) {
-    showEmptyState();
-    return;
-  }
-  
-  // 遍历历史消息并渲染
-  for (const message of history) {
-    if (message.role === 'user') {
-      // 用户消息
-      const content = typeof message.content === 'string' 
-        ? message.content 
-        : message.content?.[0]?.text || '';
-      
-      if (content) {
-        const userMessageEl = renderUserMessage(content);
-        addMessageToContainer(userMessageEl);
-      }
-    } else if (message.role === 'assistant') {
-      // 助手消息
-      const assistantMessageEl = renderAssistantMessageContainer();
-      const bubble = assistantMessageEl.querySelector('.message-bubble');
-      
-      // 处理 content 数组
-      if (Array.isArray(message.content)) {
-        let textContent = '';
-        const toolCalls = [];
-        
-        for (const block of message.content) {
-          if (block.type === 'text') {
-            textContent += block.text || '';
-          } else if (block.type === 'tool_use') {
-            toolCalls.push(block);
-          }
-        }
-        
-        // 渲染文本内容
-        if (textContent) {
-          const renderer = createStreamingRenderer(bubble, { showCursor: false });
-          renderer.appendText(textContent);
-          renderer.finish();
-        }
-        
-        // 渲染工具调用卡片（如果有）
-        if (toolCalls.length > 0) {
-          // 创建工具卡片组
-          const cardGroup = createToolCardGroup();
-          
-          for (const toolCall of toolCalls) {
-            // 为历史消息创建已完成的工具卡片
-            const card = document.createElement('div');
-            card.className = 'tool-card completed collapsed';
-            card.dataset.toolId = toolCall.id;
-            card.dataset.toolName = toolCall.name;
-            
-            const displayName = getToolDisplayName(toolCall.name);
-            
-            card.innerHTML = `
-              <div class="tool-card-header">
-                <div class="tool-card-title">
-                  <span class="tool-card-icon">✅</span>
-                  <span class="tool-card-name">${displayName}</span>
-                </div>
-                <div class="tool-card-expand">▸</div>
-              </div>
-              <div class="tool-card-body">
-                <div class="tool-card-section">
-                  <div class="tool-card-label">输入:</div>
-                  <div class="tool-card-content"><code>${toolCardManager.formatInput(toolCall.input)}</code></div>
-                </div>
-                <div class="tool-card-section">
-                  <div class="tool-card-label">输出:</div>
-                  <div class="tool-card-content tool-card-output"><span class="tool-card-empty">(历史记录)</span></div>
-                </div>
-              </div>
-            `;
-            
-            // 绑定展开/折叠事件
-            const header = card.querySelector('.tool-card-header');
-            header.addEventListener('click', () => toolCardManager.toggleCard(card));
-            
-            cardGroup.appendChild(card);
-          }
-          
-          // 添加卡片组到对话区
-          addMessageToContainer(cardGroup);
-        }
-      } else if (typeof message.content === 'string') {
-        // 简单字符串内容
-        const renderer = createStreamingRenderer(bubble, { showCursor: false });
-        renderer.appendText(message.content);
-        renderer.finish();
-      }
-      
-      addMessageToContainer(assistantMessageEl);
-    }
-  }
 }
 
 /**

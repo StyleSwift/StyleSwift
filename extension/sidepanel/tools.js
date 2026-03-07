@@ -800,6 +800,11 @@ async function executeTool(name, args) {
 // =============================================================================
 
 export {
+  // 工具定义
+  BASE_TOOLS,
+  ALL_TOOLS,
+  SKILL_PATHS,
+  // 工具执行函数
   getTargetTabId,
   lockTab,
   unlockTab,
