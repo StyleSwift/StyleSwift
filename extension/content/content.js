@@ -341,6 +341,80 @@ function getActiveCSS() {
   return cssStack.join('\n');
 }
 
+/**
+ * 卸载当前会话样式
+ * 
+ * 用于会话切换时卸载当前会话的样式：
+ * 1. 移除 activeStyleEl 元素（如果存在）
+ * 2. 清空 cssStack
+ * 3. 重置 activeStyleEl 为 null
+ * 
+ * 注意：此函数不影响永久样式（styleswift-persistent），
+ * 永久样式由 early-inject.js 在页面加载时注入，是域名级别共享的。
+ * 
+ * @returns {boolean} 是否成功卸载（有样式则返回 true，无样式返回 false）
+ */
+function unloadSessionCSS() {
+  const hadStyles = activeStyleEl !== null || cssStack.length > 0;
+  
+  // 1. 清空 cssStack
+  cssStack.length = 0;
+  
+  // 2. 移除 activeStyleEl 元素
+  if (activeStyleEl && activeStyleEl.parentNode) {
+    activeStyleEl.parentNode.removeChild(activeStyleEl);
+  }
+  
+  // 3. 重置 activeStyleEl 为 null
+  activeStyleEl = null;
+  
+  console.log('[StyleSwift] Session CSS unloaded:', hadStyles ? 'had styles' : 'no styles');
+  return hadStyles;
+}
+
+/**
+ * 加载会话样式
+ * 
+ * 用于会话切换时加载目标会话的样式：
+ * 1. 清空当前 cssStack
+ * 2. 如果提供了 CSS，将其推入栈中
+ * 3. 创建或更新 activeStyleEl 元素
+ * 
+ * 注意：此函数只管理会话样式，不影响永久样式。
+ * 
+ * @param {string} css - 要加载的 CSS 代码（可以为空字符串）
+ * @returns {boolean} 是否成功加载（有 CSS 内容则返回 true，否则返回 false）
+ */
+function loadSessionCSS(css) {
+  // 1. 清空当前 cssStack
+  cssStack.length = 0;
+  
+  // 2. 如果提供了 CSS，推入栈中
+  const hasStyles = css && css.trim().length > 0;
+  if (hasStyles) {
+    cssStack.push(css);
+  }
+  
+  // 3. 创建或更新 activeStyleEl 元素
+  if (hasStyles) {
+    if (!activeStyleEl) {
+      activeStyleEl = document.createElement('style');
+      activeStyleEl.id = 'styleswift-active';
+      document.head.appendChild(activeStyleEl);
+    }
+    activeStyleEl.textContent = css;
+  } else {
+    // 如果没有样式，移除 activeStyleEl（如果存在）
+    if (activeStyleEl && activeStyleEl.parentNode) {
+      activeStyleEl.parentNode.removeChild(activeStyleEl);
+      activeStyleEl = null;
+    }
+  }
+  
+  console.log('[StyleSwift] Session CSS loaded:', hasStyles ? 'has styles' : 'empty');
+  return hasStyles;
+}
+
 // === 消息监听器 ===
 
 /**
@@ -378,6 +452,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // 获取当前活动的 CSS
         const css = getActiveCSS();
         sendResponse(css || null);
+        break;
+        
+      case 'unload_session_css':
+        // 卸载当前会话样式（会话切换时使用）
+        const unloaded = unloadSessionCSS();
+        sendResponse({ success: true, hadStyles: unloaded });
+        break;
+        
+      case 'load_session_css':
+        // 加载会话样式（会话切换时使用）
+        const loaded = loadSessionCSS(args.css || '');
+        sendResponse({ success: true, hasStyles: loaded });
         break;
         
       default:

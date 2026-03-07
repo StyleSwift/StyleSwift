@@ -1145,11 +1145,11 @@
           "estimatedHours": 1.5,
           "files": ["extension/sidepanel/panel.js", "extension/tests/panel.test.js"]
         },
-        {
+{
           "id": "T143",
           "title": "实现会话切换与恢复",
           "description": "切换会话 → 卸载当前会话样式(移除 activeStyleEl) → 加载目标会话历史(IndexedDB) → 注入目标会话样式(从 stylesKey 读取) → 更新 UI 对话区 → 替换 SessionContext。注意：永久样式(persistKey)是域名级别共享，不随会话切换变化",
-          "status": "pending",
+          "status": "completed",
           "priority": "medium",
           "dependencies": [
             "T129",

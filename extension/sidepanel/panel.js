@@ -1736,6 +1736,18 @@ async function createSessionCard(sessionItem, domain, currentSessionId) {
 
 /**
  * 处理会话点击（切换会话）
+ * 
+ * 实现完整的会话切换流程：
+ * 1. 卸载当前会话样式（移除 activeStyleEl）
+ * 2. 加载目标会话历史（从 IndexedDB）
+ * 3. 注入目标会话样式（从 stylesKey 读取）
+ * 4. 更新 UI 对话区（渲染历史消息）
+ * 5. 替换 SessionContext
+ * 
+ * 注意：永久样式(persistKey)是域名级别共享，不随会话切换变化
+ * 
+ * 设计参考：§8.2 会话生命周期 — 切换会话
+ * 
  * @param {string} domain - 域名
  * @param {string} sessionId - 会话 ID
  */
@@ -1743,30 +1755,72 @@ async function handleSessionClick(domain, sessionId) {
   try {
     console.log(`[Panel] Switching to session: ${sessionId}`);
     
-    // 动态导入 session 模块
+    // 动态导入依赖模块
     const session = await import('./session.js');
+    const { sendToContentScript } = await import('./tools.js');
     
-    // 创建新的 SessionContext
+    // === 1. 卸载当前会话样式 ===
+    // 注意：只卸载会话样式，永久样式保持不变
+    try {
+      await sendToContentScript({ tool: 'unload_session_css' });
+      console.log('[Panel] Unloaded current session CSS');
+    } catch (error) {
+      console.warn('[Panel] Failed to unload session CSS (Content Script may not be ready):', error.message);
+      // 继续执行，不中断切换流程
+    }
+    
+    // === 2. 创建新的 SessionContext 并设置为当前会话 ===
     const newSession = new session.SessionContext(domain, sessionId);
-    
-    // 设置为当前会话
     session.setCurrentSession(newSession);
     
-    // 更新顶栏显示
+    // === 3. 加载目标会话样式并注入 ===
+    const stylesKey = newSession.stylesKey;
+    const { [stylesKey]: sessionCSS = '' } = await chrome.storage.local.get(stylesKey);
+    
+    if (sessionCSS && sessionCSS.trim()) {
+      try {
+        await sendToContentScript({ 
+          tool: 'load_session_css', 
+          args: { css: sessionCSS } 
+        });
+        console.log('[Panel] Loaded target session CSS');
+        
+        // 更新全局状态：有样式生效
+        setHasActiveStyles(true);
+      } catch (error) {
+        console.warn('[Panel] Failed to load session CSS:', error.message);
+      }
+    } else {
+      // 目标会话没有样式
+      setHasActiveStyles(false);
+    }
+    
+    // === 4. 更新顶栏显示 ===
     const meta = await session.loadSessionMeta(domain, sessionId);
     updateTopBarDisplay(domain, meta.title || '新会话');
     
-    // 关闭下拉面板
+    // 更新全局状态中的域名和会话 ID
+    stateManager.set('currentDomain', domain);
+    stateManager.set('currentSessionId', sessionId);
+    
+    // === 5. 关闭下拉面板 ===
     const panel = document.getElementById('session-list-panel');
     if (panel) panel.classList.add('hidden');
     
-    // 清空当前对话区
+    // === 6. 清空当前对话区并加载历史消息 ===
     clearMessages();
     
-    // TODO: 加载会话历史并渲染
-    // 这部分需要等到消息发送流程实现后才能完成
-    // const history = await session.loadAndPrepareHistory(domain, sessionId);
-    // 渲染历史消息...
+    // 加载会话历史
+    const history = await session.loadAndPrepareHistory(domain, sessionId);
+    
+    // 渲染历史消息
+    if (history && history.length > 0) {
+      renderHistoryMessages(history);
+      console.log(`[Panel] Loaded ${history.length} history messages`);
+    } else {
+      // 无历史，显示空状态
+      showEmptyState();
+    }
     
     console.log('[Panel] Session switched successfully');
     
@@ -2040,14 +2094,82 @@ function escapeHtml(text) {
 }
 
 /**
- * 更新顶栏显示内容
- * @param {string} domain - 当前域名
- * @param {string} title - 会话标题
+ * 处理会会话点击（切换会话）
+ * @param {string} domain - 域名
+ * @param {string} sessionId - 会话 ID
  */
-function updateTopBarDisplay(domain, title) {
-  if (DOM.currentDomain) {
-    DOM.currentDomain.textContent = domain || '--';
+async function handleSessionClick(domain, sessionId) {
+  try {
+    console.log(`[Panel] Switching to session: ${sessionId}`);
+    
+    // 动态导入 session 模块
+    const session = await import('./session.js');
+    
+    // 动态导入 tools 模块
+    const { sendToContentScript } = await import('./tools.js');
+    
+    // 1. 卸载当前会话样式
+    try {
+    await sendToContentScript({ tool: 'unload_session_css' });
+    console.log('[Panel] Unloaded current session styles');
+  } catch (err) {
+    console.warn('[Panel] Failed to unload session styles:', err.message);
+    // 继续执行，  }
+    
+    // 2. 创建新的 SessionContext
+    const newSession = new session.SessionContext(domain, sessionId);
+    
+    // 3. 设置为当前会话
+    session.setCurrentSession(newSession);
+    
+    // 4. 加载目标会话历史
+    const history = await session.loadAndPrepareHistory(domain, sessionId);
+    console.log(`[Panel] Loaded ${history.length} history messages`);
+    
+    // 5. 加载目标会话样式并注入
+    const stylesKey = newSession.stylesKey;
+    const { [stylesKey]: sessionStyles } = await chrome.storage.local.get(stylesKey);
+    
+    if (sessionStyles && sessionStyles.trim()) {
+      try {
+        await sendToContentScript({ 
+          tool: 'load_session_css', 
+          args: { css: sessionStyles } 
+        });
+        console.log('[Panel] Loaded target session styles');
+        
+        // 更新全局状态：有样式生效
+        setHasActiveStyles(true);
+      } catch (err) {
+        console.warn('[Panel] Failed to load target session styles:', err.message);
+      }
+    } else {
+      // 没有会话样式
+      setHasActiveStyles(false);
+    }
+    
+    // 6. 更新顶栏显示
+    const meta = await session.loadSessionMeta(domain, sessionId);
+    updateTopBarDisplay(domain, meta.title || '新会话');
+    
+    // 更新全局状态中的当前域名和会话 ID
+    stateManager.set('currentDomain', domain);
+    stateManager.set('currentSessionId', sessionId);
+    
+    // 7. 关闭下拉面板
+    const panel = document.getElementById('session-list-panel');
+    if (panel) panel.classList.add('hidden');
+    
+    // 8. 渲染历史消息到对话区
+    renderHistoryMessages(history);
+    
+    console.log('[Panel] Session switched successfully');
+    
+  } catch (error) {
+    console.error('[Panel] Failed to switch session:', error);
+    showError('切换会话失败');
   }
+}
   if (DOM.sessionTitle) {
     DOM.sessionTitle.textContent = title || '新会话';
   }
@@ -2697,6 +2819,226 @@ function showEmptyState() {
   `;
   
   DOM.messagesContainer.appendChild(emptyState);
+}
+
+/**
+ * 渲染历史消息到对话区
+ * 
+ * 用于会话切换时恢复对话历史。
+ * 支持 Anthropic Messages API 的消息格式。
+ * 
+ * @param {Array} history - 对话历史数组，格式为 [{ role, content }, ...]
+ * @returns {void}
+ * 
+ * @example
+ * const history = [
+ *   { role: 'user', content: '把背景改成深蓝色' },
+ *   { role: 'assistant', content: [{ type: 'text', text: '好的...' }] }
+ * ];
+ * renderHistoryMessages(history);
+ */
+function renderHistoryMessages(history) {
+  if (!DOM.messagesContainer) return;
+  
+  // 如果没有历史，显示空状态
+  if (!history || history.length === 0) {
+    showEmptyState();
+    return;
+  }
+  
+  // 遍历历史消息并渲染
+  for (const message of history) {
+    if (message.role === 'user') {
+      // 用户消息
+      const content = typeof message.content === 'string' 
+        ? message.content 
+        : message.content?.[0]?.text || '';
+      
+      if (content) {
+        const userMessageEl = renderUserMessage(content);
+        addMessageToContainer(userMessageEl);
+      }
+    } else if (message.role === 'assistant') {
+      // 助手消息
+      const assistantMessageEl = renderAssistantMessageContainer();
+      const bubble = assistantMessageEl.querySelector('.message-bubble');
+      
+      // 处理 content 数组
+      if (Array.isArray(message.content)) {
+        let textContent = '';
+        const toolCalls = [];
+        
+        for (const block of message.content) {
+          if (block.type === 'text') {
+            textContent += block.text || '';
+          } else if (block.type === 'tool_use') {
+            toolCalls.push(block);
+          }
+        }
+        
+        // 渲染文本内容
+        if (textContent) {
+          const renderer = createStreamingRenderer(bubble, { showCursor: false });
+          renderer.appendText(textContent);
+          renderer.finish();
+        }
+        
+        // 渲染工具调用卡片（如果有）
+        if (toolCalls.length > 0) {
+          // 创建工具卡片组
+          const cardGroup = createToolCardGroup();
+          
+          for (const toolCall of toolCalls) {
+            // 为历史消息创建已完成的工具卡片
+            const card = document.createElement('div');
+            card.className = 'tool-card completed collapsed';
+            card.dataset.toolId = toolCall.id;
+            card.dataset.toolName = toolCall.name;
+            
+            const displayName = getToolDisplayName(toolCall.name);
+            
+            card.innerHTML = `
+              <div class="tool-card-header">
+                <div class="tool-card-title">
+                  <span class="tool-card-icon">✅</span>
+                  <span class="tool-card-name">${displayName}</span>
+                </div>
+                <div class="tool-card-expand">▸</div>
+              </div>
+              <div class="tool-card-body">
+                <div class="tool-card-section">
+                  <div class="tool-card-label">输入:</div>
+                  <div class="tool-card-content"><code>${toolCardManager.formatInput(toolCall.input)}</code></div>
+                </div>
+                <div class="tool-card-section">
+                  <div class="tool-card-label">输出:</div>
+                  <div class="tool-card-content tool-card-output"><span class="tool-card-empty">(历史记录)</span></div>
+                </div>
+              </div>
+            `;
+            
+            // 绑定展开/折叠事件
+            const header = card.querySelector('.tool-card-header');
+            header.addEventListener('click', () => toolCardManager.toggleCard(card));
+            
+            cardGroup.appendChild(card);
+          }
+          
+          // 添加卡片组到对话区
+          addMessageToContainer(cardGroup);
+        }
+      } else if (typeof message.content === 'string') {
+        // 简单字符串内容
+        const renderer = createStreamingRenderer(bubble, { showCursor: false });
+        renderer.appendText(message.content);
+        renderer.finish();
+      }
+      
+      addMessageToContainer(assistantMessageEl);
+    }
+  }
+}
+
+/**
+ * 渲染历史消息到对话区
+ * 
+ * 用于会话切换时恢复对话历史。
+ * 支持 Anthropic Messages API 的消息格式。
+ * 
+ * @param {Array} history - 对话历史数组，格式为 [{ role, content }, ...]
+ * @returns {void}
+ * 
+ * @example
+ * const history = [
+ *   { role: 'user', content: '把背景改成深蓝色' },
+ *   { role: 'assistant', content: [{ type: 'text', text: '好的...' }] }
+ * ];
+ * renderHistoryMessages(history);
+ */
+function renderHistoryMessages(history) {
+  if (!DOM.messagesContainer) return;
+  
+  // 清空当前对话区
+  clearMessages();
+  
+  // 如果没有历史，显示空状态
+  if (!history || history.length === 0) {
+    showEmptyState();
+    return;
+  }
+  
+  // 遍历历史消息并渲染
+  for (const message of history) {
+    if (message.role === 'user') {
+      // 渲染用户消息
+      const userContent = typeof message.content === 'string' 
+        ? message.content 
+        : message.content?.[0]?.text || '';
+      
+      if (userContent) {
+        const userMessageEl = renderUserMessage(userContent);
+        addMessageToContainer(userMessageEl);
+      }
+    } else if (message.role === 'assistant') {
+      // 渲染助手消息
+      const assistantMessageEl = renderAssistantMessageContainer();
+      const bubble = assistantMessageEl.querySelector('.message-bubble');
+      
+      // 处理 content 数组
+      if (Array.isArray(message.content)) {
+        let textContent = '';
+        const toolCalls = [];
+        
+        for (const block of message.content) {
+          if (block.type === 'text') {
+            textContent += block.text || '';
+          } else if (block.type === 'tool_use') {
+            toolCalls.push(block);
+          }
+        }
+        
+        // 渲染文本内容
+        if (textContent) {
+          const renderer = createStreamingRenderer(bubble, { showCursor: false });
+          renderer.appendText(textContent);
+          renderer.finish();
+        }
+        
+        // 渲染工具调用卡片（如果有）
+        if (toolCalls.length > 0) {
+          const cardGroup = toolCardManager.createCardGroup();
+          
+          for (const toolCall of toolCalls) {
+            toolCardManager.addToolCard(toolCall.id, toolCall.name);
+            // 对于历史消息，工具调用已完成，直接显示为完成状态
+            // 注意：历史消息中没有 tool_result，所以输出显示为 "(历史记录)"
+            toolCardManager.completeToolCard(
+              toolCall.id, 
+              toolCall.name, 
+              toolCall.input, 
+              '(历史记录)'
+            );
+          }
+          
+          // 将卡片组添加到消息容器
+          addMessageToContainer(cardGroup);
+          toolCardManager.finalizeCardGroup();
+        }
+      } else if (typeof message.content === 'string') {
+        // 兼容旧格式
+        const renderer = createStreamingRenderer(bubble, { showCursor: false });
+        renderer.appendText(message.content);
+        renderer.finish();
+      }
+      
+      addMessageToContainer(assistantMessageEl);
+    }
+  }
+  
+  // 滚动到底部
+  scrollToBottom();
+  
+  console.log(`[Panel] Rendered ${history.length} history messages`);
 }
 
 // ============================================================================
