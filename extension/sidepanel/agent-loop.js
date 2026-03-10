@@ -25,6 +25,12 @@ const SYSTEM_BASE = `你是 StyleSwift，网页样式个性化智能体。使用
 
 CSS规则：具体选择器+!important，颜色用hex/rgba，不用CSS变量/*/@import，不用*或标签通配。
 
+样式编辑策略：
+- 修改已有样式时优先用 edit_css（精准替换，省token）
+- 添加全新规则时用 apply_styles(mode:save)
+- edit_css 的 old_css 必须从 [当前已应用样式] 中精确复制
+- 全部重来用 apply_styles(mode:rollback_all)
+
 收到[用户指定元素]时优先用其选择器定位，无需再调get_page_structure。
 
 风格技能：仅用户明确要求时才save_style_skill；应用时先load_skill再结合页面结构适配选择器，保持视觉一致但选择器必须适配目标页面。`;
@@ -87,41 +93,19 @@ const AGENT_TYPES = {
  * @param {string} domain - 当前网站的域名，如 'github.com'
  * @param {Object} sessionMeta - 会话元数据对象
  * @param {string|null} [sessionMeta.title] - 会话标题，无标题时显示'新会话'
- * @param {string} [sessionMeta.activeStylesSummary] - 已应用样式的摘要，如 '5 条规则，涉及 body, .header 等'
  * @param {string} profileHint - 用户画像的一行提示（来自 getProfileOneLiner），无画像时为空字符串
+ * @param {string} currentCSS - 当前会话已应用的完整 CSS 文本，无样式时为空字符串
  * @returns {string} 格式化的会话上下文文本
- * 
- * @example
- * // 完整上下文
- * const ctx = buildSessionContext('github.com', {
- *   title: '深色模式调整',
- *   activeStylesSummary: '5 条规则，涉及 body, .header 等'
- * }, '偏好深色模式、圆角设计');
- * // 返回:
- * // [会话上下文]
- * // 域名: github.com
- * // 会话: 深色模式调整
- * // 已应用样式: 5 条规则，涉及 body, .header 等
- * // 用户风格偏好: 偏好深色模式、圆角设计 (详情可通过 get_user_profile 获取)
- * 
- * @example
- * // 最小上下文（新会话、无样式、无画像）
- * const ctx = buildSessionContext('example.com', { title: null }, '');
- * // 返回:
- * // [会话上下文]
- * // 域名: example.com
- * // 会话: 新会话
  */
-function buildSessionContext(domain, sessionMeta, profileHint) {
-  // 基础上下文：域名和会话标题（必有）
+function buildSessionContext(domain, sessionMeta, profileHint, currentCSS) {
   let ctx = `\n[会话上下文]\n域名: ${domain}\n会话: ${sessionMeta.title || '新会话'}\n`;
 
-  // 已应用样式摘要（可选）
-  if (sessionMeta.activeStylesSummary) {
-    ctx += `已应用样式: ${sessionMeta.activeStylesSummary}\n`;
+  if (currentCSS && currentCSS.trim()) {
+    ctx += `[当前已应用样式]\n\`\`\`css\n${currentCSS.trim()}\n\`\`\`\n`;
+  } else {
+    ctx += `[当前已应用样式] 无\n`;
   }
 
-  // 用户风格偏好提示（可选）
   if (profileHint) {
     ctx += `用户风格偏好: ${profileHint} (详情可通过 get_user_profile 获取)\n`;
   }
@@ -1143,7 +1127,9 @@ async function agentLoop(prompt, uiCallbacks) {
     // 2. 构建 system prompt = L0 + L1
     const sessionMeta = await loadSessionMeta(domain, sessionId);
     const profileHint = await getProfileOneLiner();
-    const system = SYSTEM_BASE + buildSessionContext(domain, sessionMeta, profileHint);
+    const cssResult = await chrome.storage.local.get(session.stylesKey);
+    const currentCSS = cssResult[session.stylesKey] || '';
+    const system = SYSTEM_BASE + buildSessionContext(domain, sessionMeta, profileHint, currentCSS);
 
     // 3. Agent Loop（流式 + 迭代上限 + 取消支持）
     // 新会话自动附加页面结构概览，减少首轮工具调用
@@ -1250,8 +1236,8 @@ async function agentLoop(prompt, uiCallbacks) {
 
     // 4. 捕获当前轮的 CSS 快照，完整历史和快照持久化到 IndexedDB
     const turnNumber = countUserTextMessages(fullHistory);
-    const cssResult = await chrome.storage.local.get(session.stylesKey);
-    snapshots[turnNumber] = cssResult[session.stylesKey] || '';
+    const snapshotResult = await chrome.storage.local.get(session.stylesKey);
+    snapshots[turnNumber] = snapshotResult[session.stylesKey] || '';
     await saveHistory(domain, sessionId, { messages: fullHistory, snapshots });
 
     // 5. 首轮自动标题

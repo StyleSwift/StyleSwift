@@ -62,22 +62,18 @@ const APPLY_STYLES_TOOL = {
   description: `应用或回滚CSS样式。
 
 mode 说明：
-- save: 注入CSS到页面并保存到当前会话
-- rollback_last: 撤销最后一次样式修改（保留之前的修改）
+- save: 注入CSS到页面并保存到当前会话（添加全新规则时使用）
 - rollback_all: 回滚所有已应用的样式
 
-使用流程：
-1. 生成CSS后直接 save 应用并保存
-2. 用户对最近一次修改不满意 → rollback_last 撤销最后一步
-3. 用户想全部重来 → rollback_all 清除所有样式`,
+修改已有样式请用 edit_css 工具（更精准、省token）。`,
   input_schema: {
     type: 'object',
     properties: {
       css: { type: 'string', description: 'CSS代码（save 模式必填，rollback 模式不需要）' },
       mode: {
         type: 'string',
-        enum: ['save', 'rollback_last', 'rollback_all'],
-        description: 'save=应用并保存, rollback_last=撤销最后一次, rollback_all=全部回滚'
+        enum: ['save', 'rollback_all'],
+        description: 'save=应用并保存, rollback_all=全部回滚'
       }
     },
     required: ['mode']
@@ -225,6 +221,33 @@ const DELETE_STYLE_SKILL_TOOL = {
 };
 
 // =============================================================================
+// §3.10 edit_css - 精准编辑已应用样式
+// =============================================================================
+
+const EDIT_CSS_TOOL = {
+  name: 'edit_css',
+  description: `精准编辑已应用的CSS样式。通过精确匹配替换CSS片段，支持修改和删除。
+
+使用方式：
+- old_css 必须从 [当前已应用样式] 中精确复制，包含空格和换行
+- new_css 为替换后的内容，空字符串表示删除该片段
+- 每次只替换第一处匹配
+
+典型用途：
+- 修改某个属性值（如改颜色、调字号）
+- 删除某条规则
+- 替换某个选择器的整个规则块`,
+  input_schema: {
+    type: 'object',
+    properties: {
+      old_css: { type: 'string', description: '要替换的 CSS 片段，必须与当前已应用样式中的内容精确匹配' },
+      new_css: { type: 'string', description: '替换后的 CSS 内容，空字符串表示删除' }
+    },
+    required: ['old_css', 'new_css']
+  }
+};
+
+// =============================================================================
 // §五、TodoWrite - 任务列表管理
 // =============================================================================
 
@@ -285,6 +308,7 @@ const BASE_TOOLS = [
   GET_PAGE_STRUCTURE_TOOL,
   GREP_TOOL,
   APPLY_STYLES_TOOL,
+  EDIT_CSS_TOOL,
   GET_USER_PROFILE_TOOL,
   UPDATE_USER_PROFILE_TOOL,
   LOAD_SKILL_TOOL,
@@ -440,7 +464,7 @@ async function syncActiveStyles() {
  * 每次操作后同步到 active_styles:{domain}，确保页面刷新后样式不丢失。
  * 
  * @param {string} css - CSS 代码（save 模式必填，rollback 模式不需要）
- * @param {string} mode - 模式：'save' | 'rollback_last' | 'rollback_all'
+ * @param {string} mode - 模式：'save' | 'rollback_all'
  * @returns {Promise<string>} 操作结果消息
  */
 async function runApplyStyles(css, mode) {
@@ -455,25 +479,7 @@ async function runApplyStyles(css, mode) {
       await chrome.storage.local.remove(currentSession.stylesKey);
       await syncActiveStyles();
       await updateStylesSummary();
-      return '已回滚所有样式';
-    }
-    
-    // === rollback_last 模式 ===
-    if (mode === 'rollback_last') {
-      await sendToContentScript({ tool: 'rollback_css', args: { scope: 'last' } });
-      
-      const remainingCSS = await sendToContentScript({ tool: 'get_active_css' });
-      const sKey = currentSession.stylesKey;
-      if (remainingCSS && remainingCSS.trim()) {
-        const normalized = mergeCSS('', remainingCSS);
-        await chrome.storage.local.set({ [sKey]: normalized });
-      } else {
-        await chrome.storage.local.remove(sKey);
-      }
-      
-      await syncActiveStyles();
-      await updateStylesSummary();
-      return '已撤销最后一次样式修改';
+      return '已回滚所有样式。当前无已应用样式。';
     }
     
     // === save 模式 ===
@@ -500,7 +506,7 @@ async function runApplyStyles(css, mode) {
       // 4. 更新样式摘要
       await updateStylesSummary();
       
-      return `样式已应用并保存到当前会话`;
+      return `样式已应用。当前完整样式：\n${merged}`;
     }
     
     throw new Error(`[runApplyStyles] 未知模式: ${mode}`);
@@ -509,6 +515,50 @@ async function runApplyStyles(css, mode) {
     console.error('[runApplyStyles] 执行失败:', error);
     throw error;
   }
+}
+
+// =============================================================================
+// §3.10 Side Panel 端：runEditCSS - 精准编辑已应用样式
+// =============================================================================
+
+/**
+ * 精准编辑已应用的 CSS 样式
+ * 
+ * 通过文本替换方式修改已存储的 CSS，替换后重新注入页面。
+ * 
+ * @param {string} oldCSS - 要替换的 CSS 片段（必须精确匹配）
+ * @param {string} newCSS - 替换后的内容（空字符串表示删除）
+ * @returns {Promise<string>} 操作结果 + 更新后的完整 CSS
+ */
+async function runEditCSS(oldCSS, newCSS) {
+  if (!currentSession) {
+    throw new Error('[runEditCSS] 没有活动的会话');
+  }
+
+  const sKey = currentSession.stylesKey;
+  const { [sKey]: stored = '' } = await chrome.storage.local.get(sKey);
+
+  if (!stored || !stored.includes(oldCSS)) {
+    return `编辑失败：未找到匹配的 CSS 片段。请确保 old_css 与 [当前已应用样式] 中的内容完全一致。\n\n当前完整样式：\n${stored || '(无)'}`;
+  }
+
+  const updated = stored.replace(oldCSS, newCSS);
+  const trimmed = updated.trim();
+
+  if (trimmed) {
+    await chrome.storage.local.set({ [sKey]: trimmed });
+  } else {
+    await chrome.storage.local.remove(sKey);
+  }
+
+  await sendToContentScript({ tool: 'replace_css', args: { css: trimmed } });
+  await syncActiveStyles();
+  await updateStylesSummary();
+
+  if (trimmed) {
+    return `样式已更新。当前完整样式：\n${trimmed}`;
+  }
+  return '样式已全部删除。当前无已应用样式。';
 }
 
 // =============================================================================
@@ -735,6 +785,9 @@ const TOOL_HANDLERS = {
   apply_styles: async (args) =>
     await runApplyStyles(args.css || '', args.mode),
 
+  edit_css: async (args) =>
+    await runEditCSS(args.old_css, args.new_css),
+
   // —— Side Panel 本地工具 ——
   get_user_profile: async () => {
     const { runGetUserProfile } = await import('./profile.js');
@@ -802,6 +855,7 @@ export {
   sendToContentScript,
   normalizeToolResult,
   runApplyStyles,
+  runEditCSS,
   runLoadSkill,
   runSaveStyleSkill,
   runListStyleSkills,

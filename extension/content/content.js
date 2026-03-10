@@ -1289,6 +1289,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         rollbackCSS(args.scope);
         sendResponse({ success: true });
         break;
+
+      case 'replace_css':
+        cssStack.length = 0;
+        if (args.css && args.css.trim()) {
+          cssStack.push(args.css);
+        }
+        applyCurrentCSS();
+        sendResponse({ success: true });
+        break;
         
       case 'get_active_css':
         // 获取当前活动的 CSS
