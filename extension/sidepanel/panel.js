@@ -76,6 +76,12 @@ const DOM = {
   verifyConnectionBtn: null,
   connectionStatus: null,
   
+  // Element picker
+  pickerBtn: null,
+  pickedElementBar: null,
+  pickedElementLabel: null,
+  pickedElementClear: null,
+  
   // Other
   loadingOverlay: null,
   errorToast: null,
@@ -258,6 +264,19 @@ class GlobalStateManager {
  * 全局状态管理器实例
  */
 const stateManager = new GlobalStateManager();
+
+/**
+ * 当前选中的元素信息（由元素选择器设置）
+ * 存在时会作为上下文注入到 agentLoop 的 prompt 中
+ * @type {Object|null}
+ */
+let _pickedElementInfo = null;
+
+/**
+ * 元素选择器是否处于激活状态
+ * @type {boolean}
+ */
+let _pickerActive = false;
 
 /**
  * 兼容旧代码的 AppState 对象
@@ -1027,6 +1046,12 @@ async function initMainView() {
   DOM.inputArea = document.getElementById('input-area');
   DOM.inputWrapper = document.getElementById('input-wrapper');
   
+  // 获取元素选择器 DOM 元素
+  DOM.pickerBtn = document.getElementById('picker-btn');
+  DOM.pickedElementBar = document.getElementById('picked-element-bar');
+  DOM.pickedElementLabel = document.getElementById('picked-element-label');
+  DOM.pickedElementClear = document.getElementById('picked-element-clear');
+  
   // 获取技能区 DOM 元素
   DOM.skillArea = document.getElementById('skill-area');
   DOM.skillChips = document.getElementById('skill-chips');
@@ -1066,6 +1091,9 @@ async function initMainView() {
   
   // 初始化输入区
   initInputArea();
+  
+  // 初始化元素选择器
+  initElementPicker();
   
   // 初始化技能快捷区
   initSkillArea();
@@ -1154,12 +1182,22 @@ async function loadSessionForDomain(domain) {
       showEmptyState();
     }
     
-    // 检查是否有样式生效
+    // 加载会话样式到 Content Script（接管 early-inject.js 的样式）
     const stylesKey = currentSession.stylesKey;
-    const { [stylesKey]: sessionStyles } = await chrome.storage.local.get(stylesKey);
+    const { [stylesKey]: sessionStyles = '' } = await chrome.storage.local.get(stylesKey);
     
     if (sessionStyles && sessionStyles.trim()) {
-      // 有样式生效
+      try {
+        const { sendToContentScript } = await import('./tools.js');
+        await sendToContentScript({ 
+          tool: 'load_session_css', 
+          args: { css: sessionStyles } 
+        });
+      } catch (error) {
+        console.warn('[Panel] Failed to load session CSS on init:', error.message);
+      }
+      // 同步 active_styles（确保与当前会话一致）
+      await chrome.storage.local.set({ [currentSession.activeStylesKey]: sessionStyles });
       setHasActiveStyles(true);
     }
     
@@ -1175,6 +1213,19 @@ async function loadSessionForDomain(domain) {
 // ============================================================================
 
 /**
+ * 根据内容自动增高输入框（多行友好）
+ * 受 CSS min-height / max-height 约束
+ */
+function resizeMessageInput() {
+  const el = DOM.messageInput;
+  if (!el) return;
+  el.style.height = 'auto';
+  const maxH = 200; // 与 CSS --input-max-height 一致
+  const h = Math.min(Math.max(el.scrollHeight, 44), maxH);
+  el.style.height = `${h}px`;
+}
+
+/**
  * 初始化输入区
  */
 function initInputArea() {
@@ -1188,9 +1239,11 @@ function initInputArea() {
     DOM.stopBtn.addEventListener('click', handleStopClick);
   }
   
-  // 绑定输入框 Enter 键事件
   if (DOM.messageInput) {
     DOM.messageInput.addEventListener('keydown', handleInputKeydown);
+    // 输入时自动增高，便于长文本
+    DOM.messageInput.addEventListener('input', resizeMessageInput);
+    DOM.messageInput.addEventListener('focus', resizeMessageInput);
   }
   
   // 初始化为空闲态
@@ -1279,10 +1332,29 @@ async function handleSendClick() {
     return;
   }
   
+  // 如果有选中的元素，将其信息附加到 prompt 中
+  let finalMessage = message;
+  const pickedInfo = _pickedElementInfo;
+  if (pickedInfo) {
+    const elementContext = [
+      `\n[用户指定元素]`,
+      `选择器: ${pickedInfo.fullPath}`,
+      `标签: ${pickedInfo.tag}`,
+      pickedInfo.id ? `ID: ${pickedInfo.id}` : null,
+      pickedInfo.classes.length ? `Classes: ${pickedInfo.classes.join(' ')}` : null,
+      pickedInfo.text ? `文本: "${pickedInfo.text}"` : null,
+      `尺寸: ${pickedInfo.rect.width}×${pickedInfo.rect.height}`,
+      `\n元素及子元素结构:\n${pickedInfo.treeText}`,
+    ].filter(Boolean).join('\n');
+    finalMessage = message + '\n' + elementContext;
+    clearPickedElement();
+  }
+  
   console.log('[Panel] Sending message:', message);
   
-  // 清空输入框
+  // 清空输入框并恢复高度
   DOM.messageInput.value = '';
+  resizeMessageInput();
   
   // 隐藏确认浮层（如果有）- 用户发新消息视为隐式确认上一步
   if (isConfirmationOverlayVisible()) {
@@ -1295,8 +1367,11 @@ async function handleSendClick() {
     emptyState.remove();
   }
   
-  // 渲染用户消息气泡
-  const userMessageEl = renderUserMessage(message);
+  // 渲染用户消息气泡（附带元素定位标记）
+  const displayMessage = pickedInfo
+    ? `${message}\n🎯 ${pickedInfo.selector}`
+    : message;
+  const userMessageEl = renderUserMessage(displayMessage);
   addMessageToContainer(userMessageEl);
   
   // 切换为处理中状态
@@ -1334,6 +1409,9 @@ async function handleSendClick() {
       showToolCall: (block) => {
         if (block.type === 'tool_use') {
           createToolCard(block.id, block.name);
+          if (block.name === 'apply_styles' && block.input?.mode === 'save') {
+            applyStylesCount++;
+          }
         }
       },
       
@@ -1352,19 +1430,14 @@ async function handleSendClick() {
        * @param {string} output - 工具输出
        */
       showToolResult: (toolId, output) => {
-        completeToolCard(toolId, null, null, output);
-        
-        // 检测是否为 apply_styles 工具
-        // 从工具卡片管理器获取工具名称
         const card = toolCardManager.cardMap.get(toolId);
-        if (card && card.dataset.toolName === 'apply_styles') {
-          applyStylesCount++;
-        }
+        const toolName = card?.dataset.toolName || null;
+        completeToolCard(toolId, toolName, null, output);
       }
     };
     
     // 调用 Agent Loop
-    const response = await agentLoop(message, uiCallbacks);
+    const response = await agentLoop(finalMessage, uiCallbacks);
     
     // 完成流式输出
     streamingRenderer.finish();
@@ -1375,7 +1448,6 @@ async function handleSendClick() {
     // 恢复就绪状态
     setProcessingState(false);
     
-    // 如果有样式应用，显示确认浮层
     if (applyStylesCount > 0) {
       showConfirmationOverlay({
         applyCount: applyStylesCount,
@@ -1383,17 +1455,23 @@ async function handleSendClick() {
           console.log('[Panel] 样式已确认');
         },
         onUndo: async () => {
-          // 撤销最后一步
-          console.log('[Panel] 撤销最后一步样式');
-          // 发送撤销消息
-          DOM.messageInput.value = '撤销最后一次样式修改';
-          handleSendClick();
+          try {
+            const { executeTool } = await import('./tools.js');
+            await executeTool('apply_styles', { mode: 'rollback_last' });
+            console.log('[Panel] 已直接撤销最后一步样式');
+          } catch (error) {
+            console.error('[Panel] 撤销失败:', error);
+          }
         },
         onUndoAll: async () => {
-          // 全部撤销
-          console.log('[Panel] 撤销所有样式');
-          DOM.messageInput.value = '撤销所有样式修改';
-          handleSendClick();
+          try {
+            const { executeTool } = await import('./tools.js');
+            await executeTool('apply_styles', { mode: 'rollback_all' });
+            setHasActiveStyles(false);
+            console.log('[Panel] 已直接撤销所有样式');
+          } catch (error) {
+            console.error('[Panel] 全部撤销失败:', error);
+          }
         }
       });
     }
@@ -1480,6 +1558,99 @@ function handleInputKeydown(e) {
     e.preventDefault();
     handleSendClick();
   }
+}
+
+// ============================================================================
+// 元素选择器逻辑
+// ============================================================================
+
+/**
+ * 初始化元素选择器
+ * 绑定按钮事件和消息监听
+ */
+function initElementPicker() {
+  if (DOM.pickerBtn) {
+    DOM.pickerBtn.addEventListener('click', togglePicker);
+  }
+  if (DOM.pickedElementClear) {
+    DOM.pickedElementClear.addEventListener('click', clearPickedElement);
+  }
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'element_picked') {
+      onElementPicked(message.data);
+      sendResponse({ ok: true });
+    } else if (message.type === 'picker_cancelled') {
+      setPickerActive(false);
+      sendResponse({ ok: true });
+    }
+    return false;
+  });
+}
+
+/**
+ * 切换元素选择器激活状态
+ */
+async function togglePicker() {
+  if (AppState.agentStatus === 'running') return;
+  if (AppState.pageStatus === 'restricted') return;
+
+  try {
+    const { sendToContentScript } = await import('./tools.js');
+    if (_pickerActive) {
+      await sendToContentScript({ tool: 'stop_picker' });
+      setPickerActive(false);
+    } else {
+      await sendToContentScript({ tool: 'start_picker' });
+      setPickerActive(true);
+    }
+  } catch (err) {
+    console.error('[Panel] Picker toggle failed:', err);
+    setPickerActive(false);
+  }
+}
+
+/**
+ * 更新选择器按钮的激活态 UI
+ */
+function setPickerActive(active) {
+  _pickerActive = active;
+  if (DOM.pickerBtn) {
+    DOM.pickerBtn.classList.toggle('active', active);
+  }
+}
+
+/**
+ * 元素被选中后的回调
+ */
+function onElementPicked(info) {
+  _pickedElementInfo = info;
+  setPickerActive(false);
+
+  if (DOM.pickedElementBar && DOM.pickedElementLabel) {
+    const label = info.fullPath || info.selector || info.tag;
+    DOM.pickedElementLabel.textContent = label;
+    DOM.pickedElementLabel.title = label;
+    DOM.pickedElementBar.classList.remove('hidden');
+  }
+}
+
+/**
+ * 清除已选中的元素
+ */
+function clearPickedElement() {
+  _pickedElementInfo = null;
+  if (DOM.pickedElementBar) {
+    DOM.pickedElementBar.classList.add('hidden');
+  }
+}
+
+/**
+ * 获取当前选中的元素信息（供外部模块使用）
+ * @returns {Object|null}
+ */
+function getPickedElementInfo() {
+  return _pickedElementInfo;
 }
 
 // ============================================================================
@@ -2140,7 +2311,6 @@ async function createSessionCard(sessionItem, domain, currentSessionId) {
  * 4. 更新 UI 对话区（渲染历史消息）
  * 5. 替换 SessionContext
  * 
- * 注意：永久样式(persistKey)是域名级别共享，不随会话切换变化
  * 
  * 设计参考：§8.2 会话生命周期 — 切换会话
  * 
@@ -2156,7 +2326,6 @@ async function handleSessionClick(domain, sessionId) {
     const { sendToContentScript } = await import('./tools.js');
     
     // === 1. 卸载当前会话样式 ===
-    // 注意：只卸载会话样式，永久样式保持不变
     try {
       await sendToContentScript({ tool: 'unload_session_css' });
       console.log('[Panel] Unloaded current session CSS');
@@ -2173,21 +2342,22 @@ async function handleSessionClick(domain, sessionId) {
     const stylesKey = newSession.stylesKey;
     const { [stylesKey]: sessionCSS = '' } = await chrome.storage.local.get(stylesKey);
     
+    // 同步 active_styles（供页面刷新时 early-inject.js 读取）
+    const aKey = newSession.activeStylesKey;
     if (sessionCSS && sessionCSS.trim()) {
+      await chrome.storage.local.set({ [aKey]: sessionCSS });
       try {
         await sendToContentScript({ 
           tool: 'load_session_css', 
           args: { css: sessionCSS } 
         });
         console.log('[Panel] Loaded target session CSS');
-        
-        // 更新全局状态：有样式生效
         setHasActiveStyles(true);
       } catch (error) {
         console.warn('[Panel] Failed to load session CSS:', error.message);
       }
     } else {
-      // 目标会话没有样式
+      await chrome.storage.local.remove(aKey);
       setHasActiveStyles(false);
     }
     
@@ -2262,9 +2432,17 @@ async function handleNewSession() {
     
     // 创建新的 SessionContext
     const newSession = new session.SessionContext(domain, newSessionId);
-    
-    // 设置为当前会话
     session.setCurrentSession(newSession);
+    
+    // 卸载当前会话样式并清空 active_styles
+    try {
+      const { sendToContentScript } = await import('./tools.js');
+      await sendToContentScript({ tool: 'unload_session_css' });
+    } catch (error) {
+      console.warn('[Panel] Failed to unload session CSS:', error.message);
+    }
+    await chrome.storage.local.remove(newSession.activeStylesKey);
+    setHasActiveStyles(false);
     
     // 创建默认元数据
     await session.saveSessionMeta(domain, newSessionId, {
@@ -2358,7 +2536,7 @@ function showDeleteConfirmationModal(domain, sessionId, sessionTitle) {
   // 绑定事件
   const handleAction = async (action) => {
     if (action === 'confirm') {
-      await executeDeleteSession(domain, sessionId, false);
+      await executeDeleteSession(domain, sessionId);
     }
     // 关闭弹窗
     overlay.remove();
@@ -2386,11 +2564,9 @@ function showDeleteConfirmationModal(domain, sessionId, sessionTitle) {
  * @param {string} sessionTitle - 会话标题
  */
 function showLastSessionModal(domain, sessionId, sessionTitle) {
-  // 创建遮罩
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   
-  // 创建弹窗
   const modal = document.createElement('div');
   modal.className = 'modal-container';
   
@@ -2400,25 +2576,20 @@ function showLastSessionModal(domain, sessionId, sessionTitle) {
     </div>
     <div class="modal-body">
       <p>删除后将清除该域名的所有会话数据。</p>
-      <p>是否同时清除该网站的永久样式？</p>
     </div>
     <div class="modal-footer">
-      <button class="modal-btn modal-btn-secondary" data-action="delete-only">仅删会话</button>
-      <button class="modal-btn modal-btn-danger" data-action="delete-all">一并清除样式</button>
+      <button class="modal-btn modal-btn-secondary" data-action="cancel">取消</button>
+      <button class="modal-btn modal-btn-danger" data-action="delete">确认删除</button>
     </div>
   `;
   
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
   
-  // 绑定事件
   const handleAction = async (action) => {
-    if (action === 'delete-only') {
-      await executeDeleteSession(domain, sessionId, false);
-    } else if (action === 'delete-all') {
-      await executeDeleteSession(domain, sessionId, true);
+    if (action === 'delete') {
+      await executeDeleteSession(domain, sessionId);
     }
-    // 关闭弹窗
     overlay.remove();
   };
   
@@ -2429,7 +2600,6 @@ function showLastSessionModal(domain, sessionId, sessionTitle) {
     }
   });
   
-  // 点击遮罩关闭（取消操作）
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) {
       overlay.remove();
@@ -2441,32 +2611,18 @@ function showLastSessionModal(domain, sessionId, sessionTitle) {
  * 执行删除会话
  * @param {string} domain - 域名
  * @param {string} sessionId - 会话 ID
- * @param {boolean} clearPersistent - 是否清除永久样式
  */
-async function executeDeleteSession(domain, sessionId, clearPersistent) {
+async function executeDeleteSession(domain, sessionId) {
   try {
-    console.log(`[Panel] Deleting session: ${sessionId}, clearPersistent: ${clearPersistent}`);
+    console.log(`[Panel] Deleting session: ${sessionId}`);
     
-    // 动态导入 session 模块
     const session = await import('./session.js');
-    
-    // 执行删除
     const result = await session.deleteSession(domain, sessionId);
     
-    // 如果需要清除永久样式
-    if (clearPersistent && result.lastSession) {
-      const persistKey = `persistent:${domain}`;
-      await chrome.storage.local.remove(persistKey);
-      console.log(`[Panel] Cleared persistent styles for domain: ${domain}`);
-    }
-    
-    // 如果删除的是当前会话，创建新会话
     const currentSession = session.getCurrentSession();
     if (currentSession && currentSession.sessionId === sessionId) {
-      // 创建新会话
       await handleNewSession();
     } else {
-      // 重新渲染会话列表
       await renderSessionList();
     }
     
@@ -2533,7 +2689,25 @@ async function initSettingsView() {
   DOM.settingsModel = document.getElementById('settings-model');
   DOM.verifyConnectionBtn = document.getElementById('verify-connection-btn');
   DOM.connectionStatus = document.getElementById('connection-status');
-  
+
+  // 防止重复绑定事件监听器（使用 data 属性标记）
+  const settingsView = document.getElementById('settings-view');
+  if (settingsView && settingsView.dataset.listenersAttached === 'true') {
+    // 仅重新加载数据，不重复绑定事件
+    await loadCurrentSettings();
+    await loadStorageUsage();
+    return;
+  }
+  if (settingsView) settingsView.dataset.listenersAttached = 'true';
+
+  // 返回按钮
+  const backBtn = document.getElementById('settings-back-btn');
+  if (backBtn) {
+    backBtn.addEventListener('click', async () => {
+      await handleSettingsBack();
+    });
+  }
+
   // 验证连接按钮
   if (DOM.verifyConnectionBtn) {
     DOM.verifyConnectionBtn.addEventListener('click', handleVerifyConnection);
@@ -2548,6 +2722,18 @@ async function initSettingsView() {
       toggleKeyBtn.textContent = type === 'password' ? '🙈' : '👁';
     });
   }
+
+  // 输入框变化时标记有未保存的更改
+  const settingsInputs = [
+    document.getElementById('settings-api-key'),
+    document.getElementById('settings-api-base'),
+    document.getElementById('settings-model'),
+  ];
+  settingsInputs.forEach(input => {
+    if (input) {
+      input.addEventListener('input', () => markSettingsDirty());
+    }
+  });
   
   // 清理历史数据按钮
   const clearStorageBtn = document.getElementById('clear-storage-btn');
@@ -2560,6 +2746,71 @@ async function initSettingsView() {
   
   // 加载存储用量
   await loadStorageUsage();
+}
+
+/**
+ * 标记设置有未保存的更改
+ */
+function markSettingsDirty() {
+  const saveHint = document.getElementById('settings-save-hint');
+  if (saveHint) {
+    saveHint.classList.remove('hidden');
+  }
+  if (DOM.connectionStatus) {
+    DOM.connectionStatus.classList.add('hidden');
+  }
+}
+
+/**
+ * 处理设置页返回按钮
+ * 自动保存有效的设置后返回
+ */
+async function handleSettingsBack() {
+  const apiKey = DOM.settingsApiKey?.value.trim();
+  const apiBase = DOM.settingsApiBase?.value.trim() || DEFAULT_API_BASE;
+  const model = DOM.settingsModel?.value.trim() || DEFAULT_MODEL;
+
+  // 如果有 API Key，自动保存设置
+  if (apiKey) {
+    try {
+      await saveSettings({ apiKey, apiBase, model });
+      showSaveSuccess();
+    } catch (err) {
+      console.warn('[Panel] Auto-save on back failed:', err);
+    }
+  }
+
+  // 根据是否有 API Key 决定返回哪个视图
+  if (!apiKey) {
+    switchView('onboarding');
+    return;
+  }
+
+  // 若之前是 missing 状态但现在填入了 Key，需要初始化主界面
+  if (AppState.apiKeyStatus === 'missing') {
+    AppState.apiKeyStatus = 'valid';
+    try {
+      await initMainView();
+    } catch (err) {
+      console.warn('[Panel] initMainView on back failed:', err);
+    }
+  }
+  switchView('main');
+}
+
+/**
+ * 显示保存成功的简短提示（不跳转）
+ */
+function showSaveSuccess() {
+  const saveHint = document.getElementById('settings-save-hint');
+  if (saveHint) {
+    saveHint.textContent = '✓ 已保存';
+    saveHint.classList.remove('hidden', 'unsaved');
+    saveHint.classList.add('saved');
+    setTimeout(() => {
+      saveHint.classList.add('hidden');
+    }, 2000);
+  }
 }
 
 /**
@@ -2602,10 +2853,13 @@ async function handleVerifyConnection() {
     const result = await validateConnection(apiKey, apiBase, model);
 
     if (result.ok) {
-      showConnectionStatus('✓ 连接成功', 'success');
+      showConnectionStatus('✓ 连接成功，已保存', 'success');
       // 保存所有设置
       await saveSettings({ apiKey, apiBase, model });
       AppState.apiKeyStatus = 'valid';
+      // 隐藏未保存提示
+      const saveHint = document.getElementById('settings-save-hint');
+      if (saveHint) saveHint.classList.add('hidden');
     } else {
       let msg = '连接失败';
       if (result.status === 401) msg = 'API Key 无效';
@@ -2631,13 +2885,18 @@ function showConnectionStatus(message, type) {
   if (!DOM.connectionStatus) return;
   
   DOM.connectionStatus.textContent = message;
-  DOM.connectionStatus.classList.remove('hidden');
+  DOM.connectionStatus.classList.remove('hidden', 'status-success', 'status-error', 'status-info');
+  DOM.connectionStatus.classList.add(`status-${type}`);
   
-  // 设置颜色
+  // 设置颜色（保留内联样式作为回退）
   DOM.connectionStatus.style.color = 
     type === 'success' ? 'var(--color-success)' :
     type === 'error' ? 'var(--color-error)' :
     'var(--color-text-secondary)';
+  DOM.connectionStatus.style.backgroundColor =
+    type === 'success' ? 'var(--color-success-bg)' :
+    type === 'error' ? 'var(--color-error-bg)' :
+    'var(--color-info-bg)';
 }
 
 /**
@@ -3113,9 +3372,13 @@ function createStreamingRenderer(container, options = {}) {
 
 /**
  * 显示空状态提示
+ * 会先移除已有的空状态，保证只存在一个。
  */
 function showEmptyState() {
   if (!DOM.messagesContainer) return;
+  
+  const existing = DOM.messagesContainer.querySelector('.chat-area-empty');
+  if (existing) existing.remove();
   
   const emptyState = document.createElement('div');
   emptyState.className = 'chat-area-empty';
@@ -3482,25 +3745,11 @@ class ToolCardManager {
       return '<span class="tool-card-empty">(无输出)</span>';
     }
 
-    // 截断长文本
-    const maxLen = 500;
-    let displayText = output;
-    let truncated = false;
-
-    if (output.length > maxLen) {
-      displayText = output.substring(0, maxLen);
-      truncated = true;
-    }
-
     // 转义HTML
-    const escaped = this.escapeHtml(displayText);
+    const escaped = this.escapeHtml(output);
     
     // 保留换行
     const formatted = escaped.replace(/\n/g, '<br>');
-
-    if (truncated) {
-      return `<span class="tool-card-text">${formatted}</span><span class="tool-card-truncated">(已截断)</span>`;
-    }
 
     return `<span class="tool-card-text">${formatted}</span>`;
   }
@@ -4133,5 +4382,8 @@ export {
   getConfirmationOverlay,
   // 错误横幅导出
   showErrorBanner,
-  hideErrorBanner
+  hideErrorBanner,
+  // 元素选择器导出
+  getPickedElementInfo,
+  clearPickedElement,
 };

@@ -14,6 +14,7 @@
  * 仅处理这些标签的元素，过滤掉 script、style、meta 等非视觉元素
  */
 const TAG_WHITELIST = new Set([
+  'body',
   'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
   'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'a', 'img',
   'form', 'input', 'button', 'select', 'textarea', 'label',
@@ -27,7 +28,7 @@ const TAG_WHITELIST = new Set([
  * 这些标签代表页面的主要结构区域，需要更深层次的遍历
  */
 const LANDMARKS = new Set([
-  'header', 'nav', 'main', 'aside', 'footer', 'article', 'section'
+  'body', 'header', 'nav', 'main', 'aside', 'footer', 'article', 'section'
 ]);
 
 /**
@@ -79,6 +80,15 @@ const VISUAL_PROPS = new Set([
 ]);
 
 /**
+ * 深层关键样式属性
+ * 深层元素（depth >= STYLE_DEPTH_CUTOFF）在紧凑模式下仍然展示这些属性，
+ * 避免模型生成的 CSS 与元素现有的颜色、字体等产生冲突导致风格不统一
+ */
+const ESSENTIAL_STYLE_PROPS = new Set([
+  'background-color', 'color', 'font-size', 'font-weight'
+]);
+
+/**
  * CSS 选择器特征模式
  * 用于检测查询字符串是否为 CSS 选择器（而非普通关键词）
  * 匹配：.class、#id、[attr]、>、+、~、:pseudo 或 tag tag 空格组合
@@ -88,8 +98,9 @@ const SELECTOR_PATTERN = /[.#\[\]>+~:=]|^\w+\s+\w+/;
 // === 辅助函数 ===
 
 /**
- * 生成元素的最短选择器
+ * 生成元素的最短选择器（不保证唯一性）
  * 优先级：tag#id > tag.className > tag
+ * 用于签名比较、分组折叠等不需要唯一性的场景
  * 
  * @param {Element} el - DOM 元素
  * @returns {string} 最短选择器字符串
@@ -116,6 +127,57 @@ function shortSelector(el) {
 }
 
 /**
+ * 生成元素在兄弟中唯一的选择器段
+ * 当同级存在多个会被 CSS 选择器匹配的兄弟元素时，
+ * 追加 :nth-of-type(n) 确保选择器精准且唯一。
+ * 
+ * 唯一性判断基于 CSS 实际匹配规则：
+ * - tag#id → 全局唯一
+ * - tag.class → 匹配所有含该 class 的同标签兄弟
+ * - tag → 匹配所有同标签兄弟（不管有无 class）
+ * 
+ * :nth-of-type(n) 计数基于同标签兄弟的位置（CSS 规范行为）
+ * 
+ * @param {Element} el - DOM 元素
+ * @returns {string} 唯一的选择器字符串
+ */
+function uniqueSelector(el) {
+  const tag = el.tagName.toLowerCase();
+  
+  if (el.id) {
+    return `${tag}#${el.id}`;
+  }
+  
+  const parent = el.parentElement;
+  if (!parent) return shortSelector(el);
+  
+  const sameTagSiblings = Array.from(parent.children).filter(
+    s => s.tagName.toLowerCase() === tag
+  );
+  
+  if (sameTagSiblings.length <= 1) return shortSelector(el);
+  
+  if (el.className && typeof el.className === 'string') {
+    const classes = el.className.split(/\s+/).filter(Boolean);
+    if (classes.length > 0) {
+      const base = `${tag}.${classes[0]}`;
+      const matchCount = sameTagSiblings.filter(s => {
+        if (!s.className || typeof s.className !== 'string') return false;
+        return s.className.split(/\s+/).filter(Boolean).includes(classes[0]);
+      }).length;
+      
+      if (matchCount <= 1) return base;
+      
+      const index = sameTagSiblings.indexOf(el) + 1;
+      return `${base}:nth-of-type(${index})`;
+    }
+  }
+  
+  const index = sameTagSiblings.indexOf(el) + 1;
+  return `${tag}:nth-of-type(${index})`;
+}
+
+/**
  * 获取元素的直接文本内容（不含子元素文本）
  * 仅提取元素自身的文本节点内容
  * 
@@ -131,15 +193,16 @@ function getDirectText(el) {
 }
 
 /**
- * 判断两个元素是否具有相同签名（tagName + className）
- * 用于相似元素分组
+ * 判断两个元素是否具有相同签名
+ * 使用 shortSelector 比较（tagName + 第一个 class 或 id），
+ * 忽略修饰类差异（如 BEM 的 --active、--clone）
  * 
  * @param {Element} a - 第一个元素
  * @param {Element} b - 第二个元素
  * @returns {boolean} 签名是否相同
  */
 function sameSignature(a, b) {
-  return a.tagName === b.tagName && a.className === b.className;
+  return shortSelector(a) === shortSelector(b);
 }
 
 // === 分组折叠 ===
@@ -277,9 +340,15 @@ function estimateTokens(text) {
 function formatNodeDecoration(node, compact = false) {
   let deco = '';
   
-  // 样式信息（非紧凑模式时显示）
-  if (!compact && node.styles?.length) {
-    deco += ` [${node.styles.map(([p, v]) => `${p}:${v}`).join('; ')}]`;
+  if (node.styles?.length) {
+    if (!compact) {
+      deco += ` [${node.styles.map(([p, v]) => `${p}:${v}`).join('; ')}]`;
+    } else {
+      const essential = node.styles.filter(([p]) => ESSENTIAL_STYLE_PROPS.has(p));
+      if (essential.length) {
+        deco += ` [${essential.map(([p, v]) => `${p}:${v}`).join('; ')}]`;
+      }
+    }
   }
   
   // 折叠计数
@@ -301,27 +370,35 @@ function formatNodeDecoration(node, compact = false) {
 }
 
 /**
+ * 渐进式紧凑的样式深度阈值
+ * 浅层（< 阈值）显示完整样式，深层只显示结构标签
+ * 详细样式可通过 grep 按需获取
+ */
+const STYLE_DEPTH_CUTOFF = 7;
+
+/**
  * 格式化树节点（子节点）
  * 
  * @param {Object} node - 节点对象
  * @param {string} indent - 当前缩进
  * @param {boolean} isLast - 是否为同级最后一个节点
- * @param {number} maxDepth - 最大深度
- * @param {boolean} [compact=false] - 是否紧凑模式
+ * @param {number} maxDepth - 剩余可渲染深度
+ * @param {boolean} [compact=false] - 是否强制紧凑模式
+ * @param {number} [currentDepth=0] - 当前绝对深度（用于渐进式紧凑）
  * @returns {string} 格式化后的字符串
  */
-function formatTreeNode(node, indent, isLast, maxDepth, compact = false) {
-  // maxDepth <= 0 时不再渲染（maxDepth 表示还能递归的层数）
+function formatTreeNode(node, indent, isLast, maxDepth, compact = false, currentDepth = 0) {
   if (!node || maxDepth <= 0) return '';
+  
+  const effectiveCompact = compact || currentDepth >= STYLE_DEPTH_CUTOFF;
   
   const prefix = isLast ? '└── ' : '├── ';
   const childIndent = indent + (isLast ? '    ' : '│   ');
   
   let line = indent + prefix + node.selector;
-  line += formatNodeDecoration(node, compact);
+  line += formatNodeDecoration(node, effectiveCompact);
   let result = line + '\n';
   
-  // 递归处理子节点
   if (node.children) {
     for (let i = 0; i < node.children.length; i++) {
       result += formatTreeNode(
@@ -329,7 +406,8 @@ function formatTreeNode(node, indent, isLast, maxDepth, compact = false) {
         childIndent,
         i === node.children.length - 1,
         maxDepth - 1,
-        compact
+        compact,
+        currentDepth + 1
       );
     }
   }
@@ -344,18 +422,16 @@ function formatTreeNode(node, indent, isLast, maxDepth, compact = false) {
  * @param {string} indent - 缩进
  * @param {boolean} isLast - 是否为最后一个节点
  * @param {number} maxDepth - 最大深度
- * @param {boolean} [compact=false] - 是否紧凑模式
+ * @param {boolean} [compact=false] - 是否强制紧凑模式
  * @returns {string} 格式化后的字符串
  */
 function formatTree(node, indent, isLast, maxDepth, compact = false) {
   if (!node) return '';
   
-  // 根节点：无前缀，直接输出选择器
   let line = node.selector;
   line += formatNodeDecoration(node, compact);
   let result = line + '\n';
   
-  // 处理子节点
   if (node.children) {
     for (let i = 0; i < node.children.length; i++) {
       result += formatTreeNode(
@@ -363,7 +439,8 @@ function formatTree(node, indent, isLast, maxDepth, compact = false) {
         indent,
         i === node.children.length - 1,
         maxDepth - 1,
-        compact
+        compact,
+        1
       );
     }
   }
@@ -387,82 +464,560 @@ function elementSignature(el) {
   return `${el.tagName.toLowerCase()}.${el.className || ''}[${childSig}]`;
 }
 
+// === 页面结构获取 ===
+
+/**
+ * 提取页面元信息
+ * 
+ * @returns {string} 格式化的元信息字符串
+ */
+function extractMeta() {
+  return [
+    `URL: ${location.href}`,
+    `Title: ${document.title}`,
+    `Viewport: ${window.innerWidth} × ${window.innerHeight}`
+  ].join('\n');
+}
+
+/**
+ * 链式折叠的最大长度
+ * 防止极端嵌套产生过长的选择器路径
+ */
+const MAX_CHAIN_LENGTH = 5;
+
+/**
+ * 构建 DOM 树结构
+ * 
+ * 包含链式折叠优化：当非地标元素只有一个非地标子元素且自身无文本时，
+ * 将它们折叠为链式选择器（如 "div.a > div.b > div.c"），
+ * 不消耗深度层级，大幅提升有效深度。
+ * 
+ * @param {Element} element - 当前元素
+ * @param {number} depth - 当前深度
+ * @param {number} maxDepth - 最大深度
+ * @returns {Object|null} 节点对象或 null
+ */
+function buildTree(element, depth, maxDepth) {
+  let tag = element.tagName?.toLowerCase();
+  if (!tag || !TAG_WHITELIST.has(tag)) return null;
+  if (element.shadowRoot) return null;
+
+  // === 链式折叠：合并单子元素的 wrapper div 链 ===
+  let current = element;
+  const chainParts = [uniqueSelector(element)];
+
+  if (!LANDMARKS.has(tag)) {
+    while (chainParts.length < MAX_CHAIN_LENGTH) {
+      if (getDirectText(current)) break;
+
+      const visibleChildren = Array.from(current.children).filter(c =>
+        TAG_WHITELIST.has(c.tagName?.toLowerCase()) && !c.shadowRoot
+      );
+      if (visibleChildren.length !== 1) break;
+
+      const child = visibleChildren[0];
+      const childTag = child.tagName.toLowerCase();
+      if (LANDMARKS.has(childTag)) break;
+
+      chainParts.push(uniqueSelector(child));
+      current = child;
+      tag = childTag;
+    }
+  }
+
+  const selector = chainParts.join(' > ');
+  const text = getDirectText(current).slice(0, 40);
+  const styles = getComputedStyles(current, tag);
+
+  const childEls = Array.from(current.children).filter(c =>
+    TAG_WHITELIST.has(c.tagName?.toLowerCase()) && !c.shadowRoot
+  );
+
+  if (depth >= maxDepth || childEls.length === 0) {
+    const summary = summarizeChildren(childEls);
+    return { selector, text, styles, summary };
+  }
+
+  const groups = groupSimilar(childEls);
+  const children = [];
+
+  for (const group of groups) {
+    if (group.length >= COLLAPSE_THRESHOLD) {
+      const rep = buildTree(group[0], depth + 1, maxDepth);
+      if (rep) children.push({ ...rep, count: group.length });
+    } else {
+      for (const child of group) {
+        const childTag = child.tagName.toLowerCase();
+        const childMax = LANDMARKS.has(childTag) ? maxDepth + 1 : maxDepth;
+        const node = buildTree(child, depth + 1, childMax);
+        if (node) children.push(node);
+      }
+    }
+  }
+
+  return { selector, text, styles, children };
+}
+
+/**
+ * 格式化页面结构输出
+ * 
+ * @param {string} meta - 页面元信息
+ * @param {Object} tree - DOM 树
+ * @returns {string} 格式化的输出字符串
+ */
+const TOKEN_LIMIT = 8000;
+const FORMAT_DEPTHS = [4, 8, 12, 16, 24, 32];
+
+function formatOutput(meta, tree) {
+  // 二分查找满足 token 预算的最大深度
+  let lo = 0, hi = FORMAT_DEPTHS.length - 1;
+  let bestResult = '';
+
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const result = formatTree(tree, '', true, FORMAT_DEPTHS[mid]);
+    if (estimateTokens(result) <= TOKEN_LIMIT) {
+      bestResult = result;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+
+  // 如果最小深度仍超限，使用紧凑模式
+  if (!bestResult) {
+    bestResult = formatTree(tree, '', true, 2, true);
+  }
+
+  return meta + '\n\n' + bestResult;
+}
+
+let _structureCache = null;
+let _structureCacheTime = 0;
+const STRUCTURE_CACHE_TTL = 3000;
+
+/**
+ * 获取页面结构（主函数）
+ * 3 秒内的重复调用返回缓存结果
+ * @returns {string} 页面结构的文本表示
+ */
+function getPageStructure() {
+  const now = Date.now();
+  if (_structureCache && (now - _structureCacheTime) < STRUCTURE_CACHE_TTL) {
+    return _structureCache;
+  }
+  const meta = extractMeta();
+  const tree = buildTree(document.body, 0, 30);
+  _structureCache = formatOutput(meta, tree);
+  _structureCacheTime = now;
+  return _structureCache;
+}
+
+// === 元素搜索 (grep) ===
+
+/**
+ * 判断查询是否为 CSS 选择器
+ * 
+ * @param {string} query - 查询字符串
+ * @returns {boolean} 是否为 CSS 选择器
+ */
+function isCssSelector(query) {
+  return SELECTOR_PATTERN.test(query);
+}
+
+/**
+ * 使用 CSS 选择器搜索元素
+ * 选择器无效时返回空数组，降级逻辑由 runGrep 统一控制
+ * 
+ * @param {string} selector - CSS 选择器
+ * @param {number} limit - 最大结果数
+ * @returns {Element[]} 匹配的元素数组
+ */
+function selectorSearch(selector, limit) {
+  try {
+    const all = document.querySelectorAll(selector);
+    return Array.from(all).slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 使用关键词搜索元素
+ * 
+ * @param {string} keyword - 关键词
+ * @param {number} limit - 最大结果数
+ * @returns {Element[]} 匹配的元素数组
+ */
+function keywordSearch(keyword, limit) {
+  const kw = keyword.toLowerCase();
+  const results = [];
+  // 仅在关键词看起来像颜色值时才匹配 computedStyle
+  const looksLikeColor = /^(#|rgb|hsl|red|blue|green|black|white|gray|grey|transparent)/i.test(keyword);
+
+  const walker = document.createTreeWalker(
+    document.body, NodeFilter.SHOW_ELEMENT
+  );
+
+  let el;
+  while ((el = walker.nextNode()) && results.length < limit) {
+    const tag = el.tagName.toLowerCase();
+    if (!TAG_WHITELIST.has(tag)) continue;
+
+    if (tag.includes(kw)) { results.push(el); continue; }
+
+    const classes = el.className?.toLowerCase?.() || '';
+    if (classes.includes(kw)) { results.push(el); continue; }
+
+    const id = el.id?.toLowerCase() || '';
+    if (id.includes(kw)) { results.push(el); continue; }
+
+    const directText = getDirectText(el).toLowerCase();
+    if (directText.includes(kw)) { results.push(el); continue; }
+
+    // 仅在关键词疑似颜色值时才执行 getComputedStyle（避免大量 reflow）
+    if (looksLikeColor) {
+      const cs = window.getComputedStyle(el);
+      if (cs.backgroundColor.includes(kw) || cs.color.includes(kw)) {
+        results.push(el);
+        continue;
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
+ * 将相似元素分组（用于 grep 输出折叠）
+ * 
+ * @param {Element[]} elements - 元素数组
+ * @returns {Array<{el: Element, count: number, texts: string[]}>} 分组结果
+ */
+function groupSimilarElements(elements) {
+  const groups = [];
+  const used = new Set();
+
+  for (let i = 0; i < elements.length; i++) {
+    if (used.has(i)) continue;
+
+    const sig = elementSignature(elements[i]);
+    const texts = [getDirectText(elements[i]).slice(0, 30)];
+    let count = 1;
+
+    for (let j = i + 1; j < elements.length; j++) {
+      if (used.has(j)) continue;
+      if (elementSignature(elements[j]) === sig) {
+        used.add(j);
+        count++;
+        if (texts.length < 3) texts.push(getDirectText(elements[j]).slice(0, 30));
+      }
+    }
+
+    groups.push({ el: elements[i], count, texts });
+  }
+
+  return groups;
+}
+
+/**
+ * 获取元素的所有计算样式（字符串格式）
+ * 
+ * @param {Element} el - DOM 元素
+ * @returns {string} 样式字符串
+ */
+function getAllComputedStyles(el) {
+  const cs = window.getComputedStyle(el);
+  const pairs = [];
+  for (const prop of STYLE_WHITELIST) {
+    const val = cs.getPropertyValue(prop);
+    if (val && !SKIP_VALUES.has(val)) {
+      pairs.push(`${prop}:${val}`);
+    }
+  }
+  return pairs.join('; ') || '';
+}
+
+/**
+ * 构建从 body 到当前元素的完整路径选择器
+ * 使用 uniqueSelector 确保路径中每一段都能唯一定位元素
+ * 
+ * @param {Element} el - DOM 元素
+ * @returns {string} 完整路径选择器
+ */
+function buildFullPathSelector(el) {
+  const parts = [];
+  let curr = el;
+  while (curr && curr !== document.body.parentElement) {
+    parts.unshift(uniqueSelector(curr));
+    curr = curr.parentElement;
+  }
+  return parts.join(' > ');
+}
+
+/**
+ * 提取有用的 HTML 属性
+ * 
+ * @param {Element} el - DOM 元素
+ * @returns {string} 格式化的属性字符串
+ */
+function formatUsefulAttrs(el) {
+  const useful = ['href', 'src', 'type', 'placeholder', 'role', 'aria-label'];
+  return useful.map(a => el.getAttribute(a) ? `${a}="${el.getAttribute(a)}"` : null).filter(Boolean).join(', ');
+}
+
+/**
+ * 格式化子元素列表
+ * 
+ * @param {Element} el - DOM 元素
+ * @param {string} scope - 范围：'children' 仅直接子元素，'subtree' 递归展示子树
+ * @returns {string[]} 子元素描述行数组
+ */
+function formatChildren(el, scope) {
+  const maxDepth = scope === 'subtree' ? 3 : 1;
+
+  function walk(parent, depth, indent) {
+    if (depth > maxDepth) return [];
+    const children = Array.from(parent.children).filter(c => TAG_WHITELIST.has(c.tagName?.toLowerCase()));
+    const lines = [];
+    for (const c of children.slice(0, 10)) {
+      const sel = uniqueSelector(c);
+      const styles = getAllComputedStyles(c);
+      lines.push(`${indent}${sel}${styles ? ` [${styles}]` : ''}`);
+      if (scope === 'subtree' && depth < maxDepth) {
+        lines.push(...walk(c, depth + 1, indent + '  '));
+      }
+    }
+    return lines;
+  }
+
+  return walk(el, 1, '      ');
+}
+
+/**
+ * 格式化 grep 输出
+ * 
+ * @param {Array<{el: Element, count: number, texts: string[]}>} groups - 分组结果
+ * @param {string} scope - 范围
+ * @param {number} maxResults - 最大结果数
+ * @returns {string} 格式化的输出字符串
+ */
+function formatGrepOutput(groups, scope, maxResults) {
+  const lines = [];
+  let shown = 0;
+
+  for (const { el, count, texts } of groups) {
+    if (shown >= maxResults) break;
+
+    if (count > 1) {
+      lines.push(`[${shown + 1}] ${shortSelector(el)} × ${count}`);
+      lines.push(`    Texts: ${texts.join(' | ')}`);
+    } else {
+      lines.push(`[${shown + 1}] ${uniqueSelector(el)}`);
+    }
+
+    lines.push(`    Path: ${buildFullPathSelector(el)}`);
+
+    // 完整计算样式
+    const allStyles = getAllComputedStyles(el);
+    if (allStyles) lines.push(`    Styles: ${allStyles}`);
+
+    const attrs = formatUsefulAttrs(el);
+    if (attrs) lines.push(`    Attrs: ${attrs}`);
+
+    const text = getDirectText(el).slice(0, 60);
+    if (text) lines.push(`    Text: "${text}"`);
+
+    if (scope === 'children' || scope === 'subtree') {
+      const childLines = formatChildren(el, scope);
+      if (childLines.length) {
+        lines.push('    Children:');
+        lines.push(...childLines);
+      }
+    }
+
+    lines.push('');
+    shown++;
+  }
+
+  const result = lines.join('\n');
+  if (estimateTokens(result) > 800 && scope === 'subtree')
+    return formatGrepOutput(groups, 'children', maxResults);
+  if (estimateTokens(result) > 800 && scope === 'children')
+    return formatGrepOutput(groups, 'self', maxResults);
+  if (estimateTokens(result) > 800 && scope === 'self')
+    return formatGrepOutput(groups, 'self', Math.max(1, Math.floor(maxResults / 2)));
+
+  return result;
+}
+
+/**
+ * 执行元素搜索（主函数）
+ * 
+ * 搜索策略（方法优先）：
+ * 1. 总是先用 CSS 选择器搜索（querySelectorAll），覆盖标签名、#id、.class、复合选择器
+ * 2. CSS 选择器无结果且查询不像 CSS 选择器时，降级为关键词搜索
+ * 
+ * 这确保 get_page_structure 返回的 shortSelector（如 nav、div.container）
+ * 都能被可靠地 grep 到，不依赖启发式检测。
+ * 
+ * @param {string} query - 查询字符串（CSS 选择器或关键词）
+ * @param {string} scope - 范围：'self'、'children' 或 'subtree'
+ * @param {number} maxResults - 最大结果数
+ * @returns {string} 搜索结果字符串
+ */
+function runGrep(query, scope = 'children', maxResults = 5) {
+  maxResults = Math.max(1, Math.min(maxResults, 20));
+
+  // 第一步：尝试 CSS 选择器搜索（querySelectorAll 对标签名也有效）
+  let elements = selectorSearch(query, maxResults);
+
+  // 第二步：选择器无结果时，降级为关键词搜索
+  // 仅当查询不含明确的 CSS 选择器语法时才降级，避免对合法但无匹配的选择器误降级
+  if (elements.length === 0 && !isCssSelector(query)) {
+    elements = keywordSearch(query, maxResults);
+  }
+
+  if (elements.length === 0) return `未找到匹配: ${query}`;
+
+  const groups = groupSimilarElements(elements);
+  return formatGrepOutput(groups, scope, maxResults);
+}
+
 // === CSS 注入/回滚功能 ===
 
 /**
- * 当前活动的样式元素
- * 用于存储当前会话的 CSS，id 为 'styleswift-active'
+ * 当前活动的样式元素（方案 1：<style> 标签注入）
  * @type {HTMLStyleElement|null}
  */
 let activeStyleEl = null;
 
 /**
+ * Constructable Stylesheet 实例（方案 2：adoptedStyleSheets）
+ * @type {CSSStyleSheet|null}
+ */
+let adoptedSheet = null;
+
+/**
+ * CSS 注入方式缓存
+ * @type {'style-element'|'adopted-stylesheets'|'scripting-api'|null}
+ */
+let cssInjectionMethod = null;
+
+/**
  * CSS 变更栈（内存中的会话状态）
- * 
- * 用于跟踪当前页面会话中应用的 CSS 规则，支持增量应用和回滚功能。
- * 
- * 生命周期：
- * - 页面加载时为空
- * - 每次 injectCSS 调用 push 一条 CSS 记录
- * - rollbackCSS 可 pop 最后一条或清空全部
- * - 页面刷新/关闭后丢失
- * 
- * 持久化说明：
- * - 本变量不持久化，仅存在于当前页面会话
- * - 持久化由 Side Panel 通过 chrome.storage.local 管理
- * - 页面刷新后，持久化的 CSS（存储在 persistent:{domain}）由 early-inject.js 在 document_start 阶段重新注入
- * 
  * @type {string[]}
  */
 const cssStack = [];
 
 /**
- * 注入 CSS 到页面
- * 
- * 将 CSS 注入到页面的 <head> 中，创建 id 为 'styleswift-active' 的 <style> 元素。
- * 支持多次注入，每次注入都会 push 到 cssStack 中，支持撤销。
- * 
- * @param {string} css - CSS 代码
- * @returns {void}
+ * 检测可用的 CSS 注入方式
+ * 按优先级尝试：<style> 标签 → adoptedStyleSheets → scripting-api
+ * 结果缓存，只检测一次
  */
-function injectCSS(css) {
-  // 如果样式元素不存在，创建并添加到 head
+function detectCSSInjectionMethod() {
+  if (cssInjectionMethod) return cssInjectionMethod;
+
+  // 方案 1：<style> 标签注入（默认，兼容性最广）
+  try {
+    const testStyle = document.createElement('style');
+    testStyle.textContent = '#styleswift-csp-test { display: none }';
+    document.head.appendChild(testStyle);
+    const applied = testStyle.sheet?.cssRules?.length > 0;
+    document.head.removeChild(testStyle);
+    if (applied) {
+      cssInjectionMethod = 'style-element';
+      return cssInjectionMethod;
+    }
+  } catch { /* CSP 阻止 */ }
+
+  // 方案 2：Constructable Stylesheets（Chrome 73+，绕过部分 CSP）
+  try {
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync('#styleswift-csp-test { display: none }');
+    cssInjectionMethod = 'adopted-stylesheets';
+    return cssInjectionMethod;
+  } catch { /* 不支持 */ }
+
+  // 方案 3：需要通知 Side Panel 使用 chrome.scripting.insertCSS
+  cssInjectionMethod = 'scripting-api';
+  return cssInjectionMethod;
+}
+
+/**
+ * 使用 <style> 标签注入 CSS（方案 1）
+ */
+function injectCSSStyleElement(fullCSS) {
   if (!activeStyleEl) {
     activeStyleEl = document.createElement('style');
     activeStyleEl.id = 'styleswift-active';
     document.head.appendChild(activeStyleEl);
   }
-  
-  // 将新 CSS 推入栈中
+  activeStyleEl.textContent = fullCSS;
+}
+
+/**
+ * 使用 adoptedStyleSheets 注入 CSS（方案 2）
+ */
+function injectCSSAdopted(fullCSS) {
+  if (!adoptedSheet) {
+    adoptedSheet = new CSSStyleSheet();
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, adoptedSheet];
+  }
+  adoptedSheet.replaceSync(fullCSS);
+}
+
+/**
+ * 根据检测结果更新当前 CSS 显示
+ */
+function applyCurrentCSS() {
+  const fullCSS = cssStack.join('\n');
+  const method = detectCSSInjectionMethod();
+
+  switch (method) {
+    case 'style-element':
+      injectCSSStyleElement(fullCSS);
+      break;
+    case 'adopted-stylesheets':
+      injectCSSAdopted(fullCSS);
+      break;
+    case 'scripting-api':
+      // scripting-api 由 Side Panel 处理，此处不操作 DOM
+      break;
+  }
+}
+
+/**
+ * 注入 CSS 到页面
+ * 自动选择最佳注入方式（带 CSP 降级）
+ *
+ * @param {string} css - CSS 代码
+ * @returns {void|{fallback: string, css: string}} scripting-api 降级时返回对象
+ */
+function injectCSS(css) {
   cssStack.push(css);
-  
-  // 更新样式元素内容（合并所有栈中的 CSS）
-  activeStyleEl.textContent = cssStack.join('\n');
+
+  const method = detectCSSInjectionMethod();
+  if (method === 'scripting-api') {
+    return { fallback: 'scripting-api', css: cssStack.join('\n') };
+  }
+
+  applyCurrentCSS();
 }
 
 /**
  * 回滚 CSS
- * 
- * 根据 scope 参数决定回滚范围：
- * - 'last': 撤销最后一次 CSS 修改（从 cssStack 中 pop）
- * - 'all': 回滚所有 CSS 修改（清空 cssStack）
- * 
- * @param {string} [scope='last'] - 回滚范围：'last' 或 'all'
+ *
+ * @param {string} [scope='last'] - 'last' 或 'all'
  * @returns {void}
  */
 function rollbackCSS(scope = 'last') {
   if (scope === 'all') {
-    // 清空整个栈
     cssStack.length = 0;
   } else {
-    // 仅移除最后一条
     cssStack.pop();
   }
-  
-  // 更新样式元素内容（如果存在）
-  if (activeStyleEl) {
-    activeStyleEl.textContent = cssStack.join('\n');
-  }
+  applyCurrentCSS();
 }
 
 /**
@@ -485,24 +1040,31 @@ function getActiveCSS() {
  * 2. 清空 cssStack
  * 3. 重置 activeStyleEl 为 null
  * 
- * 注意：此函数不影响永久样式（styleswift-persistent），
- * 永久样式由 early-inject.js 在页面加载时注入，是域名级别共享的。
- * 
  * @returns {boolean} 是否成功卸载（有样式则返回 true，无样式返回 false）
  */
+function removeEarlyInjectStyle() {
+  const el = document.getElementById('styleswift-active-persistent');
+  if (el && el.parentNode) {
+    el.parentNode.removeChild(el);
+  }
+}
+
 function unloadSessionCSS() {
-  const hadStyles = activeStyleEl !== null || cssStack.length > 0;
+  const hadStyles = activeStyleEl !== null || adoptedSheet !== null || cssStack.length > 0;
   
-  // 1. 清空 cssStack
   cssStack.length = 0;
   
-  // 2. 移除 activeStyleEl 元素
   if (activeStyleEl && activeStyleEl.parentNode) {
     activeStyleEl.parentNode.removeChild(activeStyleEl);
   }
-  
-  // 3. 重置 activeStyleEl 为 null
   activeStyleEl = null;
+  
+  if (adoptedSheet) {
+    document.adoptedStyleSheets = document.adoptedStyleSheets.filter(s => s !== adoptedSheet);
+    adoptedSheet = null;
+  }
+  
+  removeEarlyInjectStyle();
   
   console.log('[StyleSwift] Session CSS unloaded:', hadStyles ? 'had styles' : 'no styles');
   return hadStyles;
@@ -516,39 +1078,175 @@ function unloadSessionCSS() {
  * 2. 如果提供了 CSS，将其推入栈中
  * 3. 创建或更新 activeStyleEl 元素
  * 
- * 注意：此函数只管理会话样式，不影响永久样式。
+ * 同时移除 early-inject.js 注入的样式元素（content.js 接管后不再需要）。
  * 
  * @param {string} css - 要加载的 CSS 代码（可以为空字符串）
  * @returns {boolean} 是否成功加载（有 CSS 内容则返回 true，否则返回 false）
  */
 function loadSessionCSS(css) {
-  // 1. 清空当前 cssStack
   cssStack.length = 0;
+  removeEarlyInjectStyle();
   
-  // 2. 如果提供了 CSS，推入栈中
   const hasStyles = css && css.trim().length > 0;
   if (hasStyles) {
     cssStack.push(css);
   }
   
-  // 3. 创建或更新 activeStyleEl 元素
   if (hasStyles) {
-    if (!activeStyleEl) {
-      activeStyleEl = document.createElement('style');
-      activeStyleEl.id = 'styleswift-active';
-      document.head.appendChild(activeStyleEl);
-    }
-    activeStyleEl.textContent = css;
+    applyCurrentCSS();
   } else {
-    // 如果没有样式，移除 activeStyleEl（如果存在）
+    // 清除所有注入方式
     if (activeStyleEl && activeStyleEl.parentNode) {
       activeStyleEl.parentNode.removeChild(activeStyleEl);
       activeStyleEl = null;
+    }
+    if (adoptedSheet) {
+      adoptedSheet.replaceSync('');
     }
   }
   
   console.log('[StyleSwift] Session CSS loaded:', hasStyles ? 'has styles' : 'empty');
   return hasStyles;
+}
+
+// === 元素选择器 ===
+
+let _pickerActive = false;
+let _pickerOverlay = null;
+let _pickerHighlight = null;
+let _hoveredElement = null;
+
+/**
+ * 创建选择器覆盖层和高亮元素
+ */
+function createPickerOverlay() {
+  if (_pickerOverlay) return;
+
+  _pickerOverlay = document.createElement('div');
+  _pickerOverlay.id = 'styleswift-picker-overlay';
+  _pickerOverlay.style.cssText = 'position:fixed;inset:0;z-index:2147483646;cursor:crosshair;';
+
+  _pickerHighlight = document.createElement('div');
+  _pickerHighlight.id = 'styleswift-picker-highlight';
+  _pickerHighlight.style.cssText =
+    'position:fixed;pointer-events:none;z-index:2147483647;' +
+    'border:2px solid #0a84ff;background:rgba(10,132,255,.12);' +
+    'border-radius:3px;transition:all 80ms ease;';
+  document.documentElement.appendChild(_pickerHighlight);
+  document.documentElement.appendChild(_pickerOverlay);
+
+  _pickerOverlay.addEventListener('mousemove', onPickerMouseMove, true);
+  _pickerOverlay.addEventListener('click', onPickerClick, true);
+  _pickerOverlay.addEventListener('contextmenu', (e) => { e.preventDefault(); stopPicker(); }, true);
+  document.addEventListener('keydown', onPickerKeyDown, true);
+}
+
+function removePickerOverlay() {
+  if (_pickerOverlay) {
+    _pickerOverlay.remove();
+    _pickerOverlay = null;
+  }
+  if (_pickerHighlight) {
+    _pickerHighlight.remove();
+    _pickerHighlight = null;
+  }
+  document.removeEventListener('keydown', onPickerKeyDown, true);
+  _hoveredElement = null;
+}
+
+function onPickerMouseMove(e) {
+  _pickerOverlay.style.pointerEvents = 'none';
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  _pickerOverlay.style.pointerEvents = '';
+
+  if (!el || el === _pickerHighlight || el === _pickerOverlay) return;
+  if (_hoveredElement === el) return;
+  _hoveredElement = el;
+
+  const rect = el.getBoundingClientRect();
+  Object.assign(_pickerHighlight.style, {
+    top: rect.top + 'px',
+    left: rect.left + 'px',
+    width: rect.width + 'px',
+    height: rect.height + 'px',
+    display: 'block',
+  });
+}
+
+function onPickerClick(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+
+  if (!_hoveredElement) return;
+  const target = _hoveredElement;
+  stopPicker();
+
+  const info = extractElementInfo(target);
+  try {
+    chrome.runtime.sendMessage({
+      type: 'element_picked',
+      data: info,
+    });
+  } catch { /* extension context lost */ }
+}
+
+function onPickerKeyDown(e) {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    stopPicker();
+    try {
+      chrome.runtime.sendMessage({ type: 'picker_cancelled' });
+    } catch { /* ignored */ }
+  }
+}
+
+function startPicker() {
+  if (_pickerActive) return;
+  _pickerActive = true;
+  createPickerOverlay();
+}
+
+function stopPicker() {
+  if (!_pickerActive) return;
+  _pickerActive = false;
+  removePickerOverlay();
+}
+
+/**
+ * 提取选中元素及其子元素的结构和样式信息
+ */
+function extractElementInfo(el) {
+  const tag = el.tagName.toLowerCase();
+  const selector = uniqueSelector(el);
+  const fullPath = buildFullPathSelector(el);
+  const tree = buildTree(el, 0, 8);
+  const treeText = tree ? formatTree(tree, '', true, 8) : selector;
+
+  const cs = window.getComputedStyle(el);
+  const styles = {};
+  for (const prop of STYLE_WHITELIST) {
+    const val = cs.getPropertyValue(prop);
+    if (val && !SKIP_VALUES.has(val)) {
+      styles[prop] = val;
+    }
+  }
+
+  const rect = el.getBoundingClientRect();
+  const meta = `URL: ${location.href}\nTitle: ${document.title}\nViewport: ${window.innerWidth} × ${window.innerHeight}`;
+
+  return {
+    selector,
+    fullPath,
+    tag,
+    id: el.id || null,
+    classes: (typeof el.className === 'string') ? el.className.split(/\s+/).filter(Boolean) : [],
+    text: getDirectText(el).slice(0, 60),
+    styles,
+    rect: { top: Math.round(rect.top), left: Math.round(rect.left), width: Math.round(rect.width), height: Math.round(rect.height) },
+    treeText,
+    meta,
+  };
 }
 
 // === 消息监听器 ===
@@ -561,6 +1259,8 @@ function loadSessionCSS(css) {
  * - inject_css: 注入 CSS（args: { css }）
  * - rollback_css: 回滚 CSS（args: { scope }）
  * - get_active_css: 获取当前活动的 CSS
+ * - start_picker: 启动元素选择器
+ * - stop_picker: 停止元素选择器
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const { tool, args = {} } = message;
@@ -572,11 +1272,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse(location.hostname || 'unknown');
         break;
         
-      case 'inject_css':
-        // 注入 CSS
-        injectCSS(args.css);
-        sendResponse({ success: true });
+      case 'inject_css': {
+        const injectResult = injectCSS(args.css);
+        if (injectResult && injectResult.fallback === 'scripting-api') {
+          sendResponse({ success: false, fallback: 'scripting-api', css: injectResult.css });
+        } else {
+          sendResponse({ success: true });
+        }
         break;
+      }
         
       case 'rollback_css':
         // 回滚 CSS
@@ -602,6 +1306,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true, hasStyles: loaded });
         break;
         
+      case 'get_page_structure':
+        // 获取页面结构
+        const structure = getPageStructure();
+        sendResponse(structure);
+        break;
+        
+      case 'grep':
+        // 搜索元素
+        const grepResult = runGrep(
+          args.query,
+          args.scope || 'children',
+          args.maxResults || 5
+        );
+        sendResponse(grepResult);
+        break;
+        
+      case 'start_picker':
+        startPicker();
+        sendResponse({ success: true });
+        break;
+
+      case 'stop_picker':
+        stopPicker();
+        sendResponse({ success: true });
+        break;
+
       default:
         // 未知工具
         console.warn(`[StyleSwift] Unknown tool: ${tool}`);
@@ -616,5 +1346,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-// === 后续功能实现区域 ===
-// T044-T053 任务将在此添加 DOM 操作、CSS 注入等功能
+// === SPA 导航检测 ===
+
+let lastUrl = location.href;
+
+function notifyNavigation() {
+  if (location.href !== lastUrl) {
+    lastUrl = location.href;
+    try {
+      chrome.runtime.sendMessage({
+        type: 'page_navigated',
+        url: location.href,
+        domain: location.hostname
+      });
+    } catch {
+      // 扩展上下文失效时忽略
+    }
+  }
+}
+
+const navObserver = new MutationObserver(notifyNavigation);
+if (document.body) {
+  navObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+window.addEventListener('popstate', notifyNavigation);

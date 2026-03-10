@@ -3,11 +3,7 @@
  * Agent 主循环 + 系统提示词定义
  */
 
-// Import tool definitions from tools.js
-import { 
-  BASE_TOOLS as BASE_TOOLS_DEF,
-  ALL_TOOLS as ALL_TOOLS_DEF 
-} from './tools.js';
+import { BASE_TOOLS, ALL_TOOLS } from './tools.js';
 
 // =============================================================================
 // §10.4 SYSTEM_BASE - 系统提示词常量
@@ -42,8 +38,14 @@ const SYSTEM_BASE = `你是 StyleSwift，网页样式个性化智能体。
 3. 避免使用 @import 或修改 <link> 标签
 4. 颜色使用 hex 或 rgba，不使用 CSS 变量（页面变量可能被覆盖）
 
+元素定位：
+- 用户消息中可能包含 [用户指定元素] 块，表示用户通过页面上的鼠标点击选取了一个具体元素
+- 该块包含元素的选择器路径、结构树和样式信息
+- 收到此信息时，优先针对该元素及其子元素生成样式，无需再调用 get_page_structure
+- 使用提供的选择器路径来精确定位元素
+
 风格技能（Style Skill）：
-- 用户满意当前风格并希望复用时，用 save_style_skill 提取并保存
+- ⚠️ save_style_skill **只能**在用户明确要求时调用（如"保存这个风格"），禁止自动保存
 - 提取时关注抽象特征（色彩、排版、效果、设计意图），不是具体选择器
 - 应用用户风格技能时，先 load_skill 读取，再结合 get_page_structure 查看目标页面结构，生成适配当前页面的 CSS
 - 参考 CSS 中的选择器来自原始页面，不可直接使用
@@ -93,36 +95,6 @@ const AGENT_TYPES = {
 // =============================================================================
 // §10.4 工具数组定义
 // =============================================================================
-
-/**
- * BASE_TOOLS - 基础工具数组
- * 
- * 包含所有可直接调用的工具，不包括 Task 子智能体工具。
- * 从 tools.js 模块导入并重新导出，方便统一管理。
- * 
- * 包含的工具：
- * - GET_PAGE_STRUCTURE_TOOL: 获取页面结构
- * - GREP_TOOL: 元素搜索
- * - APPLY_STYLES_TOOL: 应用/回滚样式
- * - GET_USER_PROFILE_TOOL: 获取用户画像
- * - UPDATE_USER_PROFILE_TOOL: 更新用户画像
- * - LOAD_SKILL_TOOL: 加载领域知识/风格技能
- * - SAVE_STYLE_SKILL_TOOL: 保存风格技能
- * - LIST_STYLE_SKILLS_TOOL: 列出风格技能
- * - DELETE_STYLE_SKILL_TOOL: 删除风格技能
- * - TODO_WRITE_TOOL: 任务列表管理
- */
-const BASE_TOOLS = BASE_TOOLS_DEF;
-
-/**
- * ALL_TOOLS - 完整工具数组
- * 
- * 包含所有工具，包括 Task 子智能体工具。
- * 从 tools.js 模块导入并重新导出。
- * 
- * 组成：BASE_TOOLS + TASK_TOOL
- */
-const ALL_TOOLS = ALL_TOOLS_DEF;
 
 // =============================================================================
 // §6.2 Layer 1 — Session Context 注入
@@ -474,14 +446,28 @@ async function checkPageAccess(tabId) {
 }
 
 // =============================================================================
+// §11.3 AgentError - 分类错误
+// =============================================================================
+
+class AgentError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// =============================================================================
 // §10.1 LLM API 调用（Streaming）
 // =============================================================================
 
 /**
- * 调用 Anthropic Streaming API (使用官方 SDK)
- * 
- * 使用 Anthropic 官方 SDK 调用 API，提供更好的错误处理和浏览器兼容性。
- * 支持流式输出和工具调用。
+ * 调用 LLM Streaming API（OpenAI 兼容格式）
+ *
+ * 支持流式输出和工具调用。底层使用 /v1/chat/completions 端点。
  * 
  * @param {string} system - 系统提示词
  * @param {Array} messages - 消息历史
@@ -493,7 +479,7 @@ async function checkPageAccess(tabId) {
  * @returns {Promise<{content: Array, stop_reason: string|null, usage: object|null}>}
  * 
  * @example
- * const result = await callAnthropicStream(
+ * const result = await callLLMStream(
  *   'You are a helpful assistant',
  *   [{ role: 'user', content: 'Hello' }],
  *   ALL_TOOLS,
@@ -501,7 +487,7 @@ async function checkPageAccess(tabId) {
  *   abortController.signal
  * );
  */
-async function callAnthropicStream(system, messages, tools, callbacks, abortSignal) {
+async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
   // 动态导入依赖
   const { getSettings } = await import('./api.js');
   
@@ -528,10 +514,15 @@ async function callAnthropicStream(system, messages, tools, callbacks, abortSign
           // 工具结果消息 - 转换为 OpenAI 格式
           for (const item of msg.content) {
             if (item.type === 'tool_result') {
+              // 确保 content 是字符串（OpenAI API 要求）
+              let toolContent = item.content;
+              if (typeof toolContent !== 'string') {
+                toolContent = JSON.stringify(toolContent);
+              }
               openaiMessages.push({
                 role: 'tool',
                 tool_call_id: item.tool_use_id,
-                content: item.content,
+                content: toolContent,
               });
             }
           }
@@ -603,7 +594,16 @@ async function callAnthropicStream(system, messages, tools, callbacks, abortSign
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`API 错误 (${response.status}): ${errorText}`);
+      if (response.status === 401) {
+        throw new AgentError('API_KEY_INVALID', '请检查 API Key 是否正确');
+      }
+      if (response.status === 429) {
+        throw new AgentError('RATE_LIMITED', `API 限流: ${errorText}`);
+      }
+      if (response.status >= 500) {
+        throw new AgentError('API_ERROR', `API 服务异常 (${response.status}): ${errorText}`);
+      }
+      throw new AgentError('API_ERROR', `API 错误 (${response.status}): ${errorText}`);
     }
 
     // 处理流式响应
@@ -702,14 +702,52 @@ async function callAnthropicStream(system, messages, tools, callbacks, abortSign
     return result;
     
   } catch (error) {
-    // 处理取消
     if (error.name === 'AbortError' || abortSignal?.aborted) {
       throw new DOMException('Aborted', 'AbortError');
     }
-    
-    // 网络或其他错误
-    throw new Error(`API 调用失败: ${error.message || error}`);
+    if (error instanceof AgentError) {
+      throw error;
+    }
+    if (error instanceof TypeError) {
+      throw new AgentError('NETWORK_ERROR', '网络连接失败，请检查网络');
+    }
+    throw new AgentError('API_ERROR', `API 调用失败: ${error.message || error}`);
   }
+}
+
+/**
+ * 带安全重试的 LLM API 调用
+ *
+ * 对 callLLMStream 的安全包装，按错误类型做分类处理：
+ * - 401: 直接抛出，不重试
+ * - 429: 指数退避重试
+ * - TypeError (网络): 直接抛出
+ * - 其他: 直接抛出
+ */
+const API_MAX_RETRIES = 2;
+
+async function callLLMStreamSafe(system, messages, tools, callbacks, abortSignal) {
+  let retries = 0;
+  while (retries <= API_MAX_RETRIES) {
+    try {
+      return await callLLMStream(system, messages, tools, callbacks, abortSignal);
+    } catch (err) {
+      if (err.name === 'AbortError') throw err;
+      if (err.code === 'API_KEY_INVALID') throw err;
+      if (err.code === 'NETWORK_ERROR') throw err;
+
+      if (err.code === 'RATE_LIMITED' && retries < API_MAX_RETRIES) {
+        const waitMs = Math.pow(2, retries) * 2000;
+        callbacks.onStatus?.(`API 限流，${waitMs / 1000}秒后重试...`);
+        await sleep(waitMs);
+        retries++;
+        continue;
+      }
+
+      throw err;
+    }
+  }
+  throw new AgentError('MAX_RETRIES', 'API 多次重试失败');
 }
 
 // =============================================================================
@@ -861,12 +899,12 @@ function detectDeadLoop(toolName, args) {
  * @param {Function} executor - 工具执行函数
  * @returns {Promise<string>} 工具执行结果
  */
-async function executeToolWithRetry(toolName, args, executor) {
+async function executeToolWithRetry(toolName, args, executor, context) {
   let lastError = null;
   
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const result = await executor(toolName, args);
+      const result = await executor(toolName, args, context);
       return result;
     } catch (error) {
       lastError = error;
@@ -908,61 +946,70 @@ async function executeToolWithRetry(toolName, args, executor) {
  *   'StyleGenerator'
  * );
  */
-async function runTask(description, prompt, agentType) {
+async function runTask(description, prompt, agentType, abortSignal) {
   const config = AGENT_TYPES[agentType];
   
   if (!config) {
     return `未知子智能体类型: ${agentType}`;
   }
 
-  // 构建子智能体的系统提示词
   const subSystem = `${config.prompt}\n\n完成任务后返回清晰、简洁的摘要。`;
   
-  // 筛选子智能体可用的工具
   const subTools = config.tools === '*'
     ? BASE_TOOLS
     : BASE_TOOLS.filter(t => config.tools.includes(t.name));
 
-  // 子智能体的消息历史（隔离上下文）
   const subMessages = [{ role: 'user', content: prompt }];
   let iterations = 0;
+  let subToolCallHistory = [];
 
-  // 动态导入 executeTool 避免循环依赖
   const { executeTool } = await import('./tools.js');
 
   while (iterations++ < SUB_MAX_ITERATIONS) {
+    // 检查取消信号
+    if (abortSignal?.aborted) {
+      return '(子智能体已被取消)';
+    }
+
     try {
-      const response = await callAnthropicStream(
+      const response = await callLLMStreamSafe(
         subSystem, 
         subMessages, 
         subTools, 
-        {
-          onText: () => {}, // 子智能体不流式输出到 UI
-          onToolCall: () => {}
-        },
-        null // 子智能体不支持取消
+        { onText: () => {}, onToolCall: () => {} },
+        abortSignal
       );
 
-      // 如果不是工具调用，返回最终文本
       if (response.stop_reason !== 'tool_use') {
         const textBlock = response.content.find(b => b.type === 'text');
         return textBlock?.text || '(子智能体无输出)';
       }
 
-      // 处理工具调用
       const results = [];
       for (const block of response.content) {
+        if (abortSignal?.aborted) return '(子智能体已被取消)';
+
         if (block.type === 'tool_use') {
+          // 子智能体死循环检测
+          const callKey = generateToolCallKey(block.name, block.input);
+          subToolCallHistory.push(callKey);
+          if (subToolCallHistory.length >= DUPLICATE_CALL_THRESHOLD) {
+            const recent = subToolCallHistory.slice(-DUPLICATE_CALL_THRESHOLD);
+            if (recent.every(k => k === callKey)) {
+              return `(子智能体检测到死循环: ${block.name} 连续调用 ${DUPLICATE_CALL_THRESHOLD} 次)`;
+            }
+          }
+
           const output = await executeTool(block.name, block.input);
           results.push({ type: 'tool_result', tool_use_id: block.id, content: output });
         }
       }
 
-      // 追加助手消息和工具结果
       subMessages.push({ role: 'assistant', content: response.content });
       subMessages.push({ role: 'user', content: results });
 
     } catch (error) {
+      if (error.name === 'AbortError') return '(子智能体已被取消)';
       console.error('[Subagent] Error:', error);
       return `(子智能体执行失败: ${error.message})`;
     }
@@ -1025,7 +1072,6 @@ async function agentLoop(prompt, uiCallbacks) {
     getTargetTabId, 
     lockTab, 
     unlockTab, 
-    getTargetDomain,
     executeTool 
   } = await import('./tools.js');
   const { 
@@ -1041,10 +1087,16 @@ async function agentLoop(prompt, uiCallbacks) {
   const { getProfileOneLiner } = await import('./profile.js');
 
   try {
-    // 0. 锁定当前 Tab 并获取域名
+    // 0. 锁定当前 Tab 并预检测页面可访问性
     const tabId = await getTargetTabId();
     lockTab(tabId);
-    const domain = await getTargetDomain();
+
+    const access = await checkPageAccess(tabId);
+    if (!access.ok) {
+      uiCallbacks.appendText?.(access.reason);
+      return;
+    }
+    const domain = access.domain || 'unknown';
     
     // 创建或获取会话
     const sessionId = await getOrCreateSession(domain);
@@ -1071,10 +1123,11 @@ async function agentLoop(prompt, uiCallbacks) {
         throw new DOMException('Aborted', 'AbortError');
       }
 
-      // 调用流式 API
-      response = await callAnthropicStream(system, history, ALL_TOOLS, {
+      // 调用流式 API（带安全重试）
+      response = await callLLMStreamSafe(system, history, ALL_TOOLS, {
         onText: (delta) => uiCallbacks.appendText?.(delta),
         onToolCall: (block) => uiCallbacks.showToolCall?.(block),
+        onStatus: (msg) => uiCallbacks.appendText?.(msg),
       }, signal);
 
       // 更新 token 统计
@@ -1113,8 +1166,9 @@ async function agentLoop(prompt, uiCallbacks) {
           
           uiCallbacks.showToolExecuting?.(block.name);
           
-          // 使用带重试的工具执行
-          const output = await executeToolWithRetry(block.name, block.input, executeTool);
+          // 使用带重试的工具执行，传递 abortSignal 上下文
+          const toolContext = { abortSignal: signal };
+          const output = await executeToolWithRetry(block.name, block.input, executeTool, toolContext);
           results.push({ type: 'tool_result', tool_use_id: block.id, content: output });
           uiCallbacks.showToolResult?.(block.id, output);
         }
@@ -1148,13 +1202,22 @@ async function agentLoop(prompt, uiCallbacks) {
     return textParts.join('');
 
   } catch (err) {
-    // 处理取消
     if (err.name === 'AbortError') {
       uiCallbacks.appendText?.('\n(已取消)');
       return;
     }
-    
-    // 其他错误向上抛出
+
+    if (err instanceof AgentError) {
+      const userMessages = {
+        'API_KEY_INVALID': '\n⚠️ API Key 无效，请在设置中检查。',
+        'NETWORK_ERROR': '\n⚠️ 网络连接失败，请检查网络后重试。',
+        'RATE_LIMITED': '\n⚠️ API 请求频率过高，请稍后重试。',
+        'MAX_RETRIES': '\n⚠️ API 多次重试失败，请稍后重试。',
+      };
+      uiCallbacks.appendText?.(userMessages[err.code] || `\n⚠️ ${err.message}`);
+      return;
+    }
+
     throw err;
     
   } finally {
@@ -1216,8 +1279,6 @@ function getCurrentAbortController() {
 
 export { 
   SYSTEM_BASE,
-  BASE_TOOLS,
-  ALL_TOOLS,
   AGENT_TYPES,
   buildSessionContext,
   TOKEN_BUDGET,
@@ -1227,10 +1288,11 @@ export {
   RESTRICTED_PATTERNS,
   isRestrictedPage,
   checkPageAccess,
-  // 新增导出
   MAX_ITERATIONS,
   SUB_MAX_ITERATIONS,
-  callAnthropicStream,
+  AgentError,
+  callLLMStream,
+  callLLMStreamSafe,
   agentLoop,
   cancelAgentLoop,
   runTask,

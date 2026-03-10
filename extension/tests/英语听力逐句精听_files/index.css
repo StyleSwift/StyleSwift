@@ -1,0 +1,13 @@
+﻿.cover {
+    float: left;
+    margin: 10px;
+}
+
+.cover img {
+    width: 144px;
+    height: 120px;
+}
+
+.cover p {
+    text-align: center;
+}

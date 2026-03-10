@@ -53,7 +53,7 @@
     <!-- 主界面 -->
     <section id="main-view" class="view hidden">
       
-      <!-- 顶栏 -->
+      <!-- 顶栏（含会话下拉，下拉相对顶栏定位） -->
       <header id="top-bar" class="topbar">
         <div class="topbar-left">
           <div class="status-indicator" id="status-dot">
@@ -71,25 +71,20 @@
             <span class="icon">⚙</span>
           </button>
         </div>
+        <!-- 会话列表下拉：挂载在顶栏内，定位在顶栏正下方 -->
+        <div id="session-list-panel" class="session-dropdown-panel hidden">
+          <div class="session-dropdown-header">
+            <span>会话历史</span>
+            <button id="new-session-btn" class="new-session-btn">
+              <span>+</span>
+              <span>新会话</span>
+            </button>
+          </div>
+          <div id="session-list" class="session-list-container">
+            <!-- 动态生成会话项 -->
+          </div>
+        </div>
       </header>
-      
-      <!-- 会话列表下拉面板 -->
-      <div id="session-list-panel" class="session-dropdown-panel hidden">
-        <div class="session-dropdown-header">
-          <span>会话历史</span>
-          <button id="new-session-btn" class="new-session-btn">
-            <span>+</span>
-            <span>新会话</span>
-          </button>
-        </div>
-        <div id="session-list" class="session-list-container">
-          <!-- 动态生成会话项 -->
-        </div>
-      </div>
-        <div id="session-list" class="session-list-container">
-          <!-- 动态生成会话项 -->
-        </div>
-      </div>
       
       <!-- 错误横幅 -->
       <div id="error-banner" class="error-banner hidden">
@@ -116,7 +111,7 @@
       </section>
       
       <!-- 聊天区域 -->
-      <main id="chat-area">
+      <main id="chat-area" class="chat-area">
         <div id="messages-container">
           <!-- 动态生成消息 -->
         </div>
@@ -130,20 +125,34 @@
       
       <!-- 输入区域 -->
       <footer id="input-area" class="input-area">
+        <!-- 选中元素预览条 -->
+        <div id="picked-element-bar" class="picked-element-bar hidden">
+          <span class="picked-element-icon">🎯</span>
+          <span id="picked-element-label" class="picked-element-label"></span>
+          <button id="picked-element-clear" class="picked-element-clear" title="移除选中元素" aria-label="移除选中元素">×</button>
+        </div>
         <div id="input-wrapper" class="input-wrapper">
+          <button id="picker-btn" class="picker-btn" title="选取页面元素" aria-label="选取页面元素">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2 2L7 14L9 9L14 7L2 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+              <path d="M9 9L13 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
           <textarea 
             id="message-input" 
             class="message-input"
-            placeholder="描述你想要的风格..."
-            rows="1"
+            placeholder="描述你想要的风格，例如：标题改成蓝色、整体暗色、字体调大..."
+            rows="2"
+            aria-label="输入风格描述"
           ></textarea>
-          <button id="send-btn" class="send-btn" title="发送">
+          <button id="send-btn" class="send-btn" title="发送 (Enter)" aria-label="发送">
             ➤
           </button>
-          <button id="stop-btn" class="stop-btn hidden" title="停止">
+          <button id="stop-btn" class="stop-btn hidden" title="停止" aria-label="停止">
             ■
           </button>
         </div>
+        <span class="input-hint" aria-hidden="true">Enter 发送 · Shift+Enter 换行 · 🎯 选取元素</span>
       </footer>
       
     </section>
@@ -151,10 +160,12 @@
     <!-- 设置页 -->
     <section id="settings-view" class="view hidden">
       <header class="settings-header">
-        <button id="settings-back-btn" class="icon-btn">
-          <span class="icon">←</span>
+        <button id="settings-back-btn" class="settings-back-btn" title="返回 (自动保存)">
+          <span class="back-arrow">‹</span>
+          <span class="back-label">返回</span>
         </button>
         <h2>设置</h2>
+        <span id="settings-save-hint" class="settings-save-hint hidden">未保存</span>
       </header>
       
       <div class="settings-content">
@@ -200,15 +211,6 @@
           </div>
           <button id="clear-storage-btn" class="btn-secondary">清理历史数据</button>
           <p class="hint">清理90天前的会话和超出限制的历史记录</p>
-        </div>
-            <div class="progress">
-              <div id="storage-usage-bar" class="progress-bar" style="width: 0%"></div>
-            </div>
-            <div class="storage-percent">
-              <span id="storage-usage-percent">0%</span>
-            </div>
-          </div>
-          <button id="clear-storage-btn" class="btn-danger">清理历史数据</button>
         </div>
         
         <div class="settings-group">

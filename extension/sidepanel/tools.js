@@ -62,7 +62,7 @@ const APPLY_STYLES_TOOL = {
   description: `应用或回滚CSS样式。
 
 mode 说明：
-- save: 注入CSS到页面并永久保存（下次访问该域名自动应用）
+- save: 注入CSS到页面并保存到当前会话
 - rollback_last: 撤销最后一次样式修改（保留之前的修改）
 - rollback_all: 回滚所有已应用的样式
 
@@ -162,11 +162,15 @@ const SAVE_STYLE_SKILL_TOOL = {
   name: 'save_style_skill',
   description: `从当前会话中提取视觉风格特征，保存为可复用的风格技能。
 
-调用时机：
-- 用户对当前风格满意，希望在其他网站复用
-- 用户明确说"保存这个风格" / "把这个风格做成模板"
+⚠️ 重要：此工具**只能**在用户**明确要求**时调用！
 
-你需要自己分析当前会话的 CSS 和对话意图，提炼出风格技能文档。`,
+必须等待用户说以下类似的话才能调用：
+- "保存这个风格" / "保存当前风格"
+- "把这个风格做成模板" / "创建风格模板"
+- "我想在其他网站也用这个风格"
+- "帮我保存风格技能"
+
+❌ 禁止自动调用：即使你对当前样式效果很满意，也不能主动保存，必须等待用户明确请求。`,
   input_schema: {
     type: 'object',
     properties: {
@@ -236,10 +240,9 @@ const TODO_WRITE_TOOL = {
           type: 'object',
           properties: {
             content: { type: 'string', description: '任务描述' },
-            status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] },
-            activeForm: { type: 'string', description: '进行时形式' }
+            status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] }
           },
-          required: ['content', 'status', 'activeForm']
+          required: ['content', 'status']
         }
       }
     },
@@ -323,6 +326,9 @@ let lockedTabId = null;
 async function getTargetTabId() {
   if (lockedTabId) return lockedTabId;
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab) {
+    throw new Error('没有可用的活跃标签页');
+  }
   return tab.id;
 }
 
@@ -373,6 +379,8 @@ async function sendToContentScript(message) {
     chrome.tabs.sendMessage(tabId, message, (response) => {
       if (chrome.runtime.lastError) {
         reject(new Error(`Content Script 不可用: ${chrome.runtime.lastError.message}`));
+      } else if (response && typeof response === 'object' && response.error) {
+        reject(new Error(`Content Script 执行错误: ${response.error}`));
       } else {
         resolve(response);
       }
@@ -380,46 +388,62 @@ async function sendToContentScript(message) {
   });
 }
 
+/**
+ * 将工具返回值规范化为字符串
+ * LLM 的 tool_result content 必须是字符串类型
+ * @param {any} value - 工具返回值
+ * @returns {string} 字符串化的返回值
+ */
+function normalizeToolResult(value) {
+  if (typeof value === 'string') return value;
+  if (value === null || value === undefined) return '(无结果)';
+  return JSON.stringify(value);
+}
+
 // =============================================================================
-// §3.3.2 Side Panel 端：runApplyStyles - 工具执行 + 持久化
+// §3.3.2 Side Panel 端：runApplyStyles - 工具执行 + 会话样式持久化
 // =============================================================================
+
+/**
+ * 使用 chrome.scripting.insertCSS 注入样式（CSP 方案 3）
+ * 当 Content Script 无法通过 <style> 或 adoptedStyleSheets 注入时，
+ * 通过浏览器级别 API 绕过 CSP 限制。
+ */
+async function injectCSSViaScriptingAPI(css) {
+  const tabId = await getTargetTabId();
+  await chrome.scripting.insertCSS({
+    target: { tabId },
+    css
+  });
+}
+
+/**
+ * 将当前会话的样式同步到 active_styles:{domain}
+ * 供 early-inject.js 在 document_start 时读取，实现页面刷新后样式不闪烁。
+ */
+async function syncActiveStyles() {
+  const aKey = currentSession.activeStylesKey;
+  const sKey = currentSession.stylesKey;
+  const { [sKey]: sessionCSS = '' } = await chrome.storage.local.get(sKey);
+  if (sessionCSS.trim()) {
+    await chrome.storage.local.set({ [aKey]: sessionCSS });
+  } else {
+    await chrome.storage.local.remove(aKey);
+  }
+}
 
 /**
  * 应用或回滚 CSS 样式
  * 
  * 跨 Side Panel 和 Content Script 两个执行环境的样式管理函数。
- * 
- * **模式说明：**
- * - `save`: 注入 CSS 到页面并永久保存（下次访问该域名自动应用）
- * - `rollback_last`: 撤销最后一次样式修改（保留之前的修改）
- * - `rollback_all`: 回滚所有已应用的样式
- * 
- * **持久化策略：**
- * - `stylesKey` (sessions:{domain}:{sessionId}:styles): 会话级样式，仅当前会话使用
- * - `persistKey` (persistent:{domain}): 域名级永久样式，所有会话共享
+ * 仅维护当前会话的样式，切换会话时自动切换对应样式。
+ * 每次操作后同步到 active_styles:{domain}，确保页面刷新后样式不丢失。
  * 
  * @param {string} css - CSS 代码（save 模式必填，rollback 模式不需要）
  * @param {string} mode - 模式：'save' | 'rollback_last' | 'rollback_all'
  * @returns {Promise<string>} 操作结果消息
- * @throws {Error} 当 Content Script 不可用或存储操作失败时抛出错误
- * 
- * @example
- * // save 模式：注入并保存 CSS
- * await runApplyStyles('body { background: #000 !important; }', 'save');
- * // → '已保存，下次访问 github.com 自动应用'
- * 
- * @example
- * // rollback_last 模式：撤销最后一次修改
- * await runApplyStyles(null, 'rollback_last');
- * // → '已撤销最后一次样式修改'
- * 
- * @example
- * // rollback_all 模式：回滚所有样式
- * await runApplyStyles(null, 'rollback_all');
- * // → '已回滚所有样式'
  */
 async function runApplyStyles(css, mode) {
-  // 检查是否有当前会话
   if (!currentSession) {
     throw new Error('[runApplyStyles] 没有活动的会话');
   }
@@ -427,58 +451,42 @@ async function runApplyStyles(css, mode) {
   try {
     // === rollback_all 模式 ===
     if (mode === 'rollback_all') {
-      // 1. 通知 Content Script 回滚所有 CSS
       await sendToContentScript({ tool: 'rollback_css', args: { scope: 'all' } });
-      
-      // 2. 删除会话样式和永久样式
-      const sKey = currentSession.stylesKey;
-      const pKey = currentSession.persistKey;
-      await chrome.storage.local.remove([sKey, pKey]);
-      
-      // 3. 更新样式摘要
+      await chrome.storage.local.remove(currentSession.stylesKey);
+      await syncActiveStyles();
       await updateStylesSummary();
-      
       return '已回滚所有样式';
     }
     
     // === rollback_last 模式 ===
     if (mode === 'rollback_last') {
-      // 1. 通知 Content Script 回滚最后一条 CSS
       await sendToContentScript({ tool: 'rollback_css', args: { scope: 'last' } });
       
-      // 2. 从 Content Script 获取当前剩余的 CSS
       const remainingCSS = await sendToContentScript({ tool: 'get_active_css' });
-      
-      // 3. 同步更新存储
       const sKey = currentSession.stylesKey;
-      const pKey = currentSession.persistKey;
-      
       if (remainingCSS && remainingCSS.trim()) {
-        // 如果还有剩余 CSS，更新存储
-        await chrome.storage.local.set({ 
-          [sKey]: remainingCSS, 
-          [pKey]: remainingCSS 
-        });
+        const normalized = mergeCSS('', remainingCSS);
+        await chrome.storage.local.set({ [sKey]: normalized });
       } else {
-        // 如果没有剩余 CSS，删除存储
-        await chrome.storage.local.remove([sKey, pKey]);
+        await chrome.storage.local.remove(sKey);
       }
       
-      // 4. 更新样式摘要
+      await syncActiveStyles();
       await updateStylesSummary();
-      
       return '已撤销最后一次样式修改';
     }
     
     // === save 模式 ===
     if (mode === 'save') {
-      // 检查 CSS 参数
       if (!css || !css.trim()) {
         throw new Error('[runApplyStyles] save 模式需要提供 CSS 代码');
       }
       
-      // 1. 注入 CSS 到页面
-      await sendToContentScript({ tool: 'inject_css', args: { css } });
+      // 1. 注入 CSS 到页面（带 CSP 降级）
+      const injectResp = await sendToContentScript({ tool: 'inject_css', args: { css } });
+      if (injectResp && injectResp.fallback === 'scripting-api') {
+        await injectCSSViaScriptingAPI(injectResp.css);
+      }
       
       // 2. 合并并写入会话样式
       const sKey = currentSession.stylesKey;
@@ -486,19 +494,15 @@ async function runApplyStyles(css, mode) {
       const merged = mergeCSS(existing, css);
       await chrome.storage.local.set({ [sKey]: merged });
       
-      // 3. 合并并写入永久样式
-      const pKey = currentSession.persistKey;
-      const { [pKey]: existingP = '' } = await chrome.storage.local.get(pKey);
-      const mergedP = mergeCSS(existingP, css);
-      await chrome.storage.local.set({ [pKey]: mergedP });
+      // 3. 同步到 active_styles（供页面刷新时使用）
+      await syncActiveStyles();
       
       // 4. 更新样式摘要
       await updateStylesSummary();
       
-      return `已保存，下次访问 ${currentSession.domain} 自动应用`;
+      return `样式已应用并保存到当前会话`;
     }
     
-    // 未知模式
     throw new Error(`[runApplyStyles] 未知模式: ${mode}`);
     
   } catch (error) {
@@ -708,91 +712,77 @@ async function runDeleteStyleSkill(skillId) {
 }
 
 // =============================================================================
-// §10.2 工具执行器 - executeTool 统一分派器
+// §10.2 工具执行器 - TOOL_HANDLERS dispatch map + executeTool
 // =============================================================================
 
 /**
+ * 工具处理器注册表（dispatch map）
+ *
+ * 每个 handler 接收 args 对象，返回 Promise<string>。
+ * 添加新工具只需在此 map 中新增一行。
+ */
+const TOOL_HANDLERS = {
+  // —— Content Script 工具（DOM 操作）——
+  get_page_structure: async () =>
+    normalizeToolResult(await sendToContentScript({ tool: 'get_page_structure' })),
+
+  grep: async (args) =>
+    normalizeToolResult(await sendToContentScript({
+      tool: 'grep',
+      args: { query: args.query, scope: args.scope || 'children', maxResults: args.max_results || 5 }
+    })),
+
+  apply_styles: async (args) =>
+    await runApplyStyles(args.css || '', args.mode),
+
+  // —— Side Panel 本地工具 ——
+  get_user_profile: async () => {
+    const { runGetUserProfile } = await import('./profile.js');
+    return await runGetUserProfile();
+  },
+
+  update_user_profile: async (args) => {
+    const { runUpdateUserProfile } = await import('./profile.js');
+    return await runUpdateUserProfile(args.content);
+  },
+
+  load_skill: async (args) => await runLoadSkill(args.skill_name),
+
+  save_style_skill: async (args) =>
+    await runSaveStyleSkill(args.name, args.mood, args.skill_content),
+
+  list_style_skills: async () => await runListStyleSkills(),
+
+  delete_style_skill: async (args) => await runDeleteStyleSkill(args.skill_id),
+
+  TodoWrite: async () => '任务列表已更新',
+
+  Task: async (args, context) => {
+    const { runTask } = await import('./agent-loop.js').catch(() => ({ runTask: null }));
+    if (runTask) {
+      return await runTask(args.description, args.prompt, args.agent_type, context?.abortSignal);
+    }
+    return '(子智能体功能尚未实现)';
+  },
+};
+
+/**
  * 工具执行器统一分派器
- * 
- * 根据 tool name 分发到对应的实现函数。
- * 工具分为两类：
- * 1. Content Script 工具 - 需要 DOM 操作，通过 sendToContentScript 发送消息
- * 2. 本地工具 - 在 Side Panel 中直接执行
- * 
+ *
+ * 通过 TOOL_HANDLERS dispatch map 路由到对应的实现函数。
+ * 保证返回值为字符串。
+ *
  * @param {string} name - 工具名称
  * @param {object} args - 工具参数
+ * @param {object} [context] - 执行上下文（包含 abortSignal 等）
  * @returns {Promise<string>} 工具执行结果
- * 
- * @example
- * // Content Script 工具
- * const structure = await executeTool('get_page_structure', {});
- * 
- * @example
- * // 本地工具
- * const profile = await executeTool('get_user_profile', {});
- * 
- * @example
- * // 未知工具
- * const result = await executeTool('unknown_tool', {});
- * // → '未知工具: unknown_tool'
  */
-async function executeTool(name, args) {
-  switch (name) {
-    // —— 需要 Content Script 执行的工具（DOM 操作）——
-    case 'get_page_structure':
-      return await sendToContentScript({ tool: 'get_page_structure' });
-
-    case 'grep':
-      return await sendToContentScript({
-        tool: 'grep',
-        args: { 
-          query: args.query, 
-          scope: args.scope || 'children', 
-          maxResults: args.max_results || 5 
-        }
-      });
-
-    case 'apply_styles':
-      return await runApplyStyles(args.css || '', args.mode);
-
-    // —— Side Panel 本地执行的工具 ——
-    case 'get_user_profile':
-      // 动态导入避免循环依赖
-      const { runGetUserProfile } = await import('./profile.js');
-      return await runGetUserProfile();
-
-    case 'update_user_profile':
-      const { runUpdateUserProfile } = await import('./profile.js');
-      return await runUpdateUserProfile(args.content);
-
-    case 'load_skill':
-      return await runLoadSkill(args.skill_name);
-
-    case 'save_style_skill':
-      return await runSaveStyleSkill(args.name, args.mood, args.skill_content);
-
-    case 'list_style_skills':
-      return await runListStyleSkills();
-
-    case 'delete_style_skill':
-      return await runDeleteStyleSkill(args.skill_id);
-
-    case 'TodoWrite':
-      // TodoWrite 工具只是更新 UI 状态，不返回实际内容
-      return '任务列表已更新';
-
-    case 'Task':
-      // Task 工具需要调用子智能体执行器（将在 agent-loop.js 中实现）
-      // 这里返回提示信息，实际实现在 agent-loop.js 的 runTask 函数
-      const { runTask } = await import('./agent-loop.js').catch(() => ({ runTask: null }));
-      if (runTask) {
-        return await runTask(args.description, args.prompt, args.agent_type);
-      }
-      return '(子智能体功能尚未实现)';
-
-    default:
-      return `未知工具: ${name}`;
+async function executeTool(name, args, context) {
+  const handler = TOOL_HANDLERS[name];
+  if (!handler) {
+    return `未知工具: ${name}`;
   }
+  return await handler(args, context);
 }
 
 // =============================================================================
@@ -810,6 +800,7 @@ export {
   unlockTab,
   getTargetDomain,
   sendToContentScript,
+  normalizeToolResult,
   runApplyStyles,
   runLoadSkill,
   runSaveStyleSkill,

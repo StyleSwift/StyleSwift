@@ -27,9 +27,11 @@
  * 
  * 核心逻辑：
  * 1. 遍历 CSS 字符串，追踪 `{` 和 `}` 的深度
- * 2. 当遇到 `{` 时深度 +1
- * 3. 当遇到 `}` 时深度 -1
- * 4. 当深度回到 0 时，说明找到了一个完整的顶层块
+ * 2. 跳过 CSS 注释（/* ... * /）内的花括号，避免被误计入深度
+ * 3. 跳过字符串字面量（`"..."` / `'...'`）内的花括号，避免 `content: "{"` 等属性导致深度误计
+ * 4. 当遇到 `{` 时深度 +1
+ * 5. 当遇到 `}` 时深度 -1
+ * 6. 当深度回到 0 时，说明找到了一个完整的顶层块
  * 
  * @param {string} css - CSS 文本
  * @returns {string[]} 顶层块数组，每个元素是一个完整的 CSS 块
@@ -60,11 +62,34 @@ function splitTopLevelBlocks(css) {
     
     let depth = 0;
     let start = 0;
+    let i = 0;
 
-    for (let i = 0; i < css.length; i++) {
-      if (css[i] === '{') {
+    while (i < css.length) {
+      const ch = css[i];
+
+      // 跳过 CSS 注释 /* ... */（注释内的花括号不计入深度）
+      if (ch === '/' && css[i + 1] === '*') {
+        const end = css.indexOf('*/', i + 2);
+        i = end === -1 ? css.length : end + 2;
+        continue;
+      }
+
+      // 跳过字符串字面量 "..." 或 '...'（字符串内的花括号不计入深度）
+      // 常见于 content: "{" 等属性值
+      if (ch === '"' || ch === "'") {
+        const quote = ch;
+        i++;
+        while (i < css.length) {
+          if (css[i] === '\\') { i += 2; continue; } // 跳过转义字符
+          if (css[i] === quote) { i++; break; }
+          i++;
+        }
+        continue;
+      }
+
+      if (ch === '{') {
         depth++;
-      } else if (css[i] === '}') {
+      } else if (ch === '}') {
         depth--;
         if (depth === 0) {
           // 找到一个完整的顶层块
@@ -76,14 +101,27 @@ function splitTopLevelBlocks(css) {
         } else if (depth < 0) {
           // 深度为负说明花括号不匹配（右括号多余），记录警告并重置深度
           console.warn('[StyleSwift] CSS 花括号不匹配（右括号多余），位置：', i, '| 深度：', depth);
-          depth = 0; // 重置深度，继续解析
+          depth = 0;
         }
       }
+
+      i++;
     }
 
-    // 如果遍历完还有未闭合的花括号，记录警告
+    // 如果遍历完还有未闭合的花括号，自动补全并尝试恢复
     if (depth > 0) {
-      console.warn('[StyleSwift] CSS 存在未闭合的花括号，剩余深度：', depth, '| 部分内容可能被丢弃');
+      const tail = css.slice(start).trim();
+      if (tail) {
+        // 补足缺失的右花括号
+        const repaired = tail + '}'.repeat(depth);
+        console.warn(
+          '[StyleSwift] CSS 存在未闭合的花括号，剩余深度：', depth,
+          '| 已自动补全并尝试恢复，内容片段：', tail.slice(0, 80)
+        );
+        blocks.push(repaired);
+      } else {
+        console.warn('[StyleSwift] CSS 存在未闭合的花括号，剩余深度：', depth, '| 无残余内容，已忽略');
+      }
     }
 
     return blocks;

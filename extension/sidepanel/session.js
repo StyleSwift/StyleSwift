@@ -345,7 +345,7 @@ async function deleteHistory(domain, sessionId) {
  * console.log(ctx.stylesKey);    // 'sessions:github.com:abc123:styles'
  * console.log(ctx.metaKey);      // 'sessions:github.com:abc123:meta'
  * console.log(ctx.historyKey);   // 'github.com:abc123'
- * console.log(ctx.persistKey);   // 'persistent:github.com'
+ * console.log(ctx.activeStylesKey); // 'active_styles:github.com'
  * console.log(ctx.sessionIndex); // 'sessions:github.com:index'
  */
 class SessionContext {
@@ -384,11 +384,12 @@ class SessionContext {
   }
 
   /**
-   * 获取永久样式的 chrome.storage.local key
-   * @returns {string} 格式: 'persistent:{domain}'
+   * 获取当前域名活跃样式的 chrome.storage.local key
+   * 始终镜像当前活跃会话的 CSS，供 early-inject.js 在 document_start 时读取
+   * @returns {string} 格式: 'active_styles:{domain}'
    */
-  get persistKey() {
-    return `persistent:${this.domain}`;
+  get activeStylesKey() {
+    return `active_styles:${this.domain}`;
   }
 
   /**
