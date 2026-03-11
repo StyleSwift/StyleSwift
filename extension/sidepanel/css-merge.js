@@ -87,6 +87,36 @@ function splitTopLevelBlocks(css) {
         continue;
       }
 
+      // 跳过 url(...) 内容（data URI 可能包含花括号、分号等特殊字符）
+      // 例如 url('data:image/svg+xml,...') 或 url(data:image/svg+xml,<svg>...</svg>)
+      if ((ch === 'u' || ch === 'U') && css.slice(i, i + 4).toLowerCase() === 'url(') {
+        i += 4;
+        while (i < css.length && (css[i] === ' ' || css[i] === '\t' || css[i] === '\n')) i++;
+        if (i < css.length && (css[i] === '"' || css[i] === "'")) {
+          // 带引号的 URL：跳过引号内容，再找闭合括号
+          const q = css[i];
+          i++;
+          while (i < css.length) {
+            if (css[i] === '\\') { i += 2; continue; }
+            if (css[i] === q) { i++; break; }
+            i++;
+          }
+          while (i < css.length && css[i] !== ')') i++;
+          if (i < css.length) i++;
+        } else {
+          // 不带引号的 URL：按括号深度找匹配的 )
+          let parenDepth = 1;
+          while (i < css.length && parenDepth > 0) {
+            if (css[i] === '\\') { i += 2; continue; }
+            if (css[i] === '(') parenDepth++;
+            else if (css[i] === ')') parenDepth--;
+            if (parenDepth > 0) i++;
+          }
+          if (i < css.length) i++;
+        }
+        continue;
+      }
+
       if (ch === '{') {
         depth++;
       } else if (ch === '}') {
@@ -130,6 +160,87 @@ function splitTopLevelBlocks(css) {
     console.warn('[StyleSwift] splitTopLevelBlocks 失败，返回空数组：', error.message);
     return [];
   }
+}
+
+// ============================================================================
+// CSS 声明分割
+// ============================================================================
+
+/**
+ * 按分号分割 CSS 声明体，正确跳过字符串和 url() 内的分号
+ * 
+ * body.split(';') 会被 url('data:image/svg+xml;charset=...') 中的分号误分割，
+ * 此函数通过逐字符扫描，确保只在顶层语境分割。
+ * 
+ * @param {string} body - CSS 声明体（花括号之间的内容）
+ * @returns {string[]} 分割后的声明数组
+ */
+function splitDeclarations(body) {
+  const decls = [];
+  let current = '';
+  let i = 0;
+
+  while (i < body.length) {
+    const ch = body[i];
+
+    // 跳过字符串字面量
+    if (ch === '"' || ch === "'") {
+      const quote = ch;
+      current += ch;
+      i++;
+      while (i < body.length) {
+        if (body[i] === '\\') { current += body.slice(i, i + 2); i += 2; continue; }
+        current += body[i];
+        if (body[i] === quote) { i++; break; }
+        i++;
+      }
+      continue;
+    }
+
+    // 跳过 url(...) 内容
+    if ((ch === 'u' || ch === 'U') && body.slice(i, i + 4).toLowerCase() === 'url(') {
+      current += body.slice(i, i + 4);
+      i += 4;
+      while (i < body.length && (body[i] === ' ' || body[i] === '\t' || body[i] === '\n')) { current += body[i]; i++; }
+      if (i < body.length && (body[i] === '"' || body[i] === "'")) {
+        const q = body[i];
+        current += q;
+        i++;
+        while (i < body.length) {
+          if (body[i] === '\\') { current += body.slice(i, i + 2); i += 2; continue; }
+          current += body[i];
+          if (body[i] === q) { i++; break; }
+          i++;
+        }
+        while (i < body.length && body[i] !== ')') { current += body[i]; i++; }
+        if (i < body.length) { current += ')'; i++; }
+      } else {
+        let pd = 1;
+        while (i < body.length && pd > 0) {
+          if (body[i] === '\\') { current += body.slice(i, i + 2); i += 2; continue; }
+          if (body[i] === '(') pd++;
+          else if (body[i] === ')') pd--;
+          if (pd > 0) { current += body[i]; i++; }
+        }
+        if (i < body.length) { current += ')'; i++; }
+      }
+      continue;
+    }
+
+    // 顶层分号 → 切割声明
+    if (ch === ';') {
+      decls.push(current);
+      current = '';
+      i++;
+      continue;
+    }
+
+    current += ch;
+    i++;
+  }
+
+  if (current.trim()) decls.push(current);
+  return decls;
 }
 
 // ============================================================================
@@ -204,7 +315,7 @@ function parseRules(css) {
             : block.slice(braceIdx + 1);
             
           const props = new Map();
-          for (const decl of body.split(';')) {
+          for (const decl of splitDeclarations(body)) {
             const colonIdx = decl.indexOf(':');
             if (colonIdx === -1) continue;
             const prop = decl.slice(0, colonIdx).trim();

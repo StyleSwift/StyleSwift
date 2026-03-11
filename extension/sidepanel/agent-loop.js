@@ -544,8 +544,9 @@ async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     
-    const result = { content: [], stop_reason: null, usage: null };
+    const result = { content: [], stop_reason: null, usage: null, reasoning: null };
     let currentText = '';
+    let currentReasoning = '';
     let currentToolCalls = [];
     let buffer = '';
 
@@ -570,6 +571,7 @@ async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
           
           // 处理推理内容（DeepSeek-R1 等推理模型的 reasoning_content 字段）
           if (delta.reasoning_content) {
+            currentReasoning += delta.reasoning_content;
             callbacks.onReasoning?.(delta.reasoning_content);
           }
           
@@ -623,6 +625,9 @@ async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
     // 构建最终内容
     if (currentText) {
       result.content.push({ type: 'text', text: currentText });
+    }
+    if (currentReasoning) {
+      result.reasoning = currentReasoning;
     }
     
     for (const toolCall of currentToolCalls) {
@@ -1069,6 +1074,11 @@ async function agentLoop(prompt, uiCallbacks) {
         throw new DOMException('Aborted', 'AbortError');
       }
 
+      // 第二轮及以后：通知 UI 创建新的消息气泡
+      if (iterations > 1) {
+        uiCallbacks.onNewIteration?.();
+      }
+
       // 调用流式 API（带安全重试）
       response = await callLLMStreamSafe(system, llmHistory, ALL_TOOLS, {
         onReasoning: (delta) => uiCallbacks.appendReasoning?.(delta),
@@ -1080,9 +1090,12 @@ async function agentLoop(prompt, uiCallbacks) {
       // 更新 token 统计
       lastInputTokens = response.usage?.input_tokens || 0;
       
-      // 追加助手消息到完整历史和 LLM 视图
+      // 追加助手消息：LLM 视图不含推理文本（避免发送给 API），完整历史包含推理文本
       const assistantMsg = { role: 'assistant', content: response.content };
-      fullHistory.push(assistantMsg);
+      const fullMsg = response.reasoning
+        ? { ...assistantMsg, _reasoning: response.reasoning }
+        : assistantMsg;
+      fullHistory.push(fullMsg);
       llmHistory.push(assistantMsg);
 
       // 如果不是工具调用，跳出循环

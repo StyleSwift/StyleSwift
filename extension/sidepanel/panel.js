@@ -1375,27 +1375,68 @@ async function handleSendClick() {
   // 切换为处理中状态
   setProcessingState(true);
   
-  // 创建助手消息容器（用于流式输出）
-  const assistantMessageEl = renderAssistantMessageContainer();
-  const assistantBubble = assistantMessageEl.querySelector('.message-bubble');
-  const reasoningBlock = assistantMessageEl.querySelector('.reasoning-block');
-  const reasoningContentEl = assistantMessageEl.querySelector('.reasoning-content');
-  const reasoningHeader = assistantMessageEl.querySelector('.reasoning-header');
-  const reasoningTitleEl = assistantMessageEl.querySelector('.reasoning-title');
-  addMessageToContainer(assistantMessageEl);
+  // 创建首个助手消息容器（用于流式输出）
+  let curAssistantEl = renderAssistantMessageContainer();
+  let curBubble = curAssistantEl.querySelector('.message-bubble');
+  let curReasoningBlock = curAssistantEl.querySelector('.reasoning-block');
+  let curReasoningContentEl = curAssistantEl.querySelector('.reasoning-content');
+  let curReasoningHeader = curAssistantEl.querySelector('.reasoning-header');
+  let curReasoningTitleEl = curAssistantEl.querySelector('.reasoning-title');
+  addMessageToContainer(curAssistantEl);
   
   // 创建流式文本渲染器
-  const streamingRenderer = createStreamingRenderer(assistantBubble);
+  let streamingRenderer = createStreamingRenderer(curBubble);
   
-  // 创建推理内容流式渲染器（无光标，无自动滚动打扰）
-  const reasoningRenderer = createStreamingRenderer(reasoningContentEl, {
+  // 创建推理内容流式渲染器
+  let reasoningRenderer = createStreamingRenderer(curReasoningContentEl, {
     showCursor: true,
     autoScroll: true,
   });
   let reasoningCharCount = 0;
   
+  // 工具输入暂存 Map（toolId -> input），在 showToolResult 时使用
+  const toolInputMap = new Map();
+  
   // 样式应用计数器（用于确认浮层）
   let applyStylesCount = 0;
+
+  /**
+   * 结束当前气泡的流式输出，为下一轮 LLM 迭代做准备
+   * 由 onNewIteration 回调调用
+   */
+  function finalizeCurrentBubble() {
+    if (reasoningCharCount > 0) {
+      reasoningRenderer.finish();
+      curReasoningBlock.classList.add('finished', 'collapsed');
+      curReasoningHeader.setAttribute('aria-expanded', 'false');
+      if (curReasoningTitleEl) {
+        curReasoningTitleEl.textContent = `思考过程（${reasoningCharCount} 字）`;
+      }
+    }
+    streamingRenderer.finish();
+    finalizeToolCardGroup();
+  }
+
+  /**
+   * 创建新的助手消息气泡，更新所有当前气泡引用
+   * 在 agentLoop 每轮新迭代开始时调用
+   */
+  function createNewAssistantBubble() {
+    finalizeCurrentBubble();
+    curAssistantEl = renderAssistantMessageContainer();
+    curBubble = curAssistantEl.querySelector('.message-bubble');
+    curReasoningBlock = curAssistantEl.querySelector('.reasoning-block');
+    curReasoningContentEl = curAssistantEl.querySelector('.reasoning-content');
+    curReasoningHeader = curAssistantEl.querySelector('.reasoning-header');
+    curReasoningTitleEl = curAssistantEl.querySelector('.reasoning-title');
+    addMessageToContainer(curAssistantEl);
+    streamingRenderer = createStreamingRenderer(curBubble);
+    reasoningRenderer = createStreamingRenderer(curReasoningContentEl, {
+      showCursor: true,
+      autoScroll: true,
+    });
+    reasoningCharCount = 0;
+  }
   
   // 动态导入 agent-loop 模块
   try {
@@ -1404,14 +1445,20 @@ async function handleSendClick() {
     // UI 回调函数
     const uiCallbacks = {
       /**
+       * 新的 LLM 迭代开始：结束当前气泡，创建新气泡
+       */
+      onNewIteration: () => {
+        createNewAssistantBubble();
+      },
+
+      /**
        * 追加推理文本（reasoning_content 字段）
        * @param {string} delta - 推理文本增量
        */
       appendReasoning: (delta) => {
         if (!delta) return;
-        // 首次收到推理内容时显示推理块
         if (reasoningCharCount === 0) {
-          reasoningBlock.classList.add('visible');
+          curReasoningBlock.classList.add('visible');
         }
         reasoningCharCount += delta.length;
         reasoningRenderer.appendText(delta);
@@ -1431,6 +1478,7 @@ async function handleSendClick() {
        */
       showToolCall: (block) => {
         if (block.type === 'tool_use') {
+          toolInputMap.set(block.id, block.input);
           createToolCard(block.id, block.name);
           if (block.name === 'apply_styles' && block.input?.mode === 'save') {
             applyStylesCount++;
@@ -1443,7 +1491,6 @@ async function handleSendClick() {
        * @param {string} toolName - 工具名称
        */
       showToolExecuting: (toolName) => {
-        // 卡片已经在 showToolCall 时创建，这里可以更新状态
         console.log('[Panel] Tool executing:', toolName);
       },
       
@@ -1455,25 +1502,26 @@ async function handleSendClick() {
       showToolResult: (toolId, output) => {
         const card = toolCardManager.cardMap.get(toolId);
         const toolName = card?.dataset.toolName || null;
-        completeToolCard(toolId, toolName, null, output);
+        const toolInput = toolInputMap.get(toolId) ?? null;
+        completeToolCard(toolId, toolName, toolInput, output);
       }
     };
     
     // 调用 Agent Loop
     const response = await agentLoop(finalMessage, uiCallbacks);
     
-    // 完成推理流式输出：收起推理块，更新标题
+    // 完成最后一个气泡的推理流式输出
     if (reasoningCharCount > 0) {
       reasoningRenderer.finish();
-      reasoningBlock.classList.add('finished');
-      reasoningBlock.classList.add('collapsed');
-      reasoningHeader.setAttribute('aria-expanded', 'false');
-      if (reasoningTitleEl) {
-        reasoningTitleEl.textContent = `思考过程（${reasoningCharCount} 字）`;
+      curReasoningBlock.classList.add('finished');
+      curReasoningBlock.classList.add('collapsed');
+      curReasoningHeader.setAttribute('aria-expanded', 'false');
+      if (curReasoningTitleEl) {
+        curReasoningTitleEl.textContent = `思考过程（${reasoningCharCount} 字）`;
       }
     }
 
-    // 完成流式输出
+    // 完成最后一个气泡的流式文本输出
     streamingRenderer.finish();
     
     // 结束工具卡片组
@@ -3504,6 +3552,22 @@ function renderHistoryMessages(history) {
     if (msg.role === 'user' && typeof msg.content === 'string') totalTurns++;
   }
   
+  // 预先构建 tool_use_id -> tool_result 的映射，供渲染工具卡片时使用
+  const toolResultMap = new Map();
+  for (const msg of messages) {
+    if (msg.role === 'user' && Array.isArray(msg.content)) {
+      for (const block of msg.content) {
+        if (block.type === 'tool_result' && block.tool_use_id) {
+          const content = block.content;
+          toolResultMap.set(
+            block.tool_use_id,
+            typeof content === 'string' ? content : JSON.stringify(content)
+          );
+        }
+      }
+    }
+  }
+
   let currentTurn = 0;
   
   // 遍历历史消息并渲染
@@ -3531,6 +3595,23 @@ function renderHistoryMessages(history) {
       const assistantMessageEl = renderAssistantMessageContainer();
       const bubble = assistantMessageEl.querySelector('.message-bubble');
       
+      // 渲染推理文本（_reasoning 字段由 agent-loop 在完整历史中保存）
+      if (message._reasoning) {
+        const reasoningBlock = assistantMessageEl.querySelector('.reasoning-block');
+        const reasoningContentEl = assistantMessageEl.querySelector('.reasoning-content');
+        const reasoningHeader = assistantMessageEl.querySelector('.reasoning-header');
+        const reasoningTitleEl = assistantMessageEl.querySelector('.reasoning-title');
+        const charCount = message._reasoning.length;
+        const reasoningRenderer = createStreamingRenderer(reasoningContentEl, { showCursor: false });
+        reasoningRenderer.appendText(message._reasoning);
+        reasoningRenderer.finish();
+        reasoningBlock.classList.add('visible', 'finished', 'collapsed');
+        reasoningHeader.setAttribute('aria-expanded', 'false');
+        if (reasoningTitleEl) {
+          reasoningTitleEl.textContent = `思考过程（${charCount} 字）`;
+        }
+      }
+
       // 处理 content 数组
       if (Array.isArray(message.content)) {
         let textContent = '';
@@ -3551,17 +3632,18 @@ function renderHistoryMessages(history) {
           renderer.finish();
         }
         
-        // 渲染工具调用卡片（如果有）
+        // 渲染工具调用卡片（从后续 tool_result 消息中查找实际输出）
         if (toolCalls.length > 0) {
           const cardGroup = toolCardManager.createCardGroup();
           
           for (const toolCall of toolCalls) {
             toolCardManager.addToolCard(toolCall.id, toolCall.name);
+            const actualOutput = toolResultMap.get(toolCall.id) ?? null;
             toolCardManager.completeToolCard(
-              toolCall.id, 
-              toolCall.name, 
-              toolCall.input, 
-              '(历史记录)'
+              toolCall.id,
+              toolCall.name,
+              toolCall.input,
+              actualOutput
             );
           }
           
