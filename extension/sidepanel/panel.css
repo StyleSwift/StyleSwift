@@ -1717,6 +1717,127 @@ pre code {
   margin-top: var(--spacing-xs);
 }
 
+/* 任务列表悬浮容器 - 附着在输入框上方 */
+.todo-floating-container {
+  background: linear-gradient(180deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--spacing-sm) var(--spacing-md);
+  animation: slideUp 0.3s ease-out;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.todo-floating-container.all-completed {
+  animation: fadeOut 0.5s ease-out forwards;
+  animation-delay: 1s;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.todo-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xs);
+}
+
+.todo-card-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.todo-progress {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+  background-color: var(--color-bg-tertiary);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.todo-progress-bar {
+  height: 3px;
+  background-color: var(--color-bg-tertiary);
+  border-radius: 2px;
+  margin-bottom: var(--spacing-sm);
+  overflow: hidden;
+}
+
+.todo-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-success) 100%);
+  transition: width 0.3s ease-out;
+}
+
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.todo-icon {
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.todo-content {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todo-item-pending {
+  color: var(--color-text-tertiary);
+}
+
+.todo-item-in_progress {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-primary-light);
+  margin: 0 calc(-1 * var(--spacing-md));
+  padding-left: var(--spacing-md);
+  padding-right: var(--spacing-md);
+  border-radius: var(--radius-sm);
+}
+
+.todo-item-completed {
+  color: var(--color-text-tertiary);
+}
+
+.todo-item-completed .todo-content {
+  text-decoration: line-through;
+}
+
 /* 会话卡片 */
 .session-card {
   display: flex;
@@ -1970,6 +2091,11 @@ pre code {
   padding: var(--spacing-sm) var(--spacing-md);
   line-height: var(--line-height-relaxed);
   word-wrap: break-word;
+}
+
+/* 空的流式气泡不显示 */
+.message-bubble.streaming-text:empty {
+  display: none;
 }
 
 /* ---------- 徽标 ---------- */

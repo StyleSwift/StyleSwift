@@ -1,9 +1,9 @@
 /**
  * StyleSwift - Panel UI Module
- * 
+ *
  * Side Panel UI controller
  * Responsible for: onboarding, main view, settings view management and interactions
- * 
+ *
  * This file implements:
  * - First-run onboarding (shown when no API Key detected)
  * - View switching logic
@@ -21,10 +21,10 @@ import {
   DEFAULT_API_BASE,
   DEFAULT_MODEL,
   getSettings,
-  normalizeApiBase
-} from './api.js';
+  normalizeApiBase,
+} from "./api.js";
 
-import { StyleSkillStore } from './style-skill.js';
+import { StyleSkillStore } from "./style-skill.js";
 
 // ============================================================================
 // DOM Element References
@@ -39,14 +39,14 @@ const DOM = {
   onboardingView: null,
   mainView: null,
   settingsView: null,
-  
+
   // Onboarding elements
   apiKeyInput: null,
   apiBaseInput: null,
   modelInput: null,
   startBtn: null,
   setupError: null,
-  
+
   // Main view elements
   statusDot: null,
   currentDomain: null,
@@ -57,31 +57,31 @@ const DOM = {
   stopBtn: null,
   inputArea: null,
   inputWrapper: null,
-  
+
   // Error banner elements
   errorBanner: null,
   errorBannerMessage: null,
   errorBannerAction: null,
   errorBannerClose: null,
-  
+
   // Skill area elements
   skillArea: null,
   skillChips: null,
   skillAreaToggle: null,
-  
+
   // Settings elements
   settingsApiKey: null,
   settingsApiBase: null,
   settingsModel: null,
   verifyConnectionBtn: null,
   connectionStatus: null,
-  
+
   // Element picker
   pickerBtn: null,
   pickedElementBar: null,
   pickedElementLabel: null,
   pickedElementClear: null,
-  
+
   // Other
   loadingOverlay: null,
   errorToast: null,
@@ -94,27 +94,27 @@ const DOM = {
 
 /**
  * 应用全局状态定义
- * 
+ *
  * 设计参考：§16.5 全局状态联动
- * 
+ *
  * 状态说明：
  * - agentStatus: Agent 运行状态
  *   - 'idle': 空闲，等待用户输入
  *   - 'running': 正在处理用户请求
  *   - 'error': 出现错误
  *   - 'restricted': 受限页面（chrome:// 等）
- * 
+ *
  * - apiKeyStatus: API Key 状态
  *   - 'valid': 已验证有效
  *   - 'invalid': 验证失败/过期
  *   - 'missing': 未配置
- * 
+ *
  * - pageStatus: 页面状态
  *   - 'ready': 正常页面，可操作
  *   - 'restricted': 受限页面，不支持样式修改
- * 
+ *
  * - hasActiveStyles: 是否有样式生效
- * 
+ *
  * - storageWarning: 存储空间警告
  *   - 'none': 无警告
  *   - 'warning': 存储将满（>80%）
@@ -130,40 +130,40 @@ class GlobalStateManager {
     /** @type {Object} 状态存储 */
     this._state = {
       /** 当前视图: 'onboarding' | 'main' | 'settings' */
-      currentView: 'onboarding',
-      
+      currentView: "onboarding",
+
       /** Agent 状态: 'idle' | 'running' | 'error' | 'restricted' */
-      agentStatus: 'idle',
-      
+      agentStatus: "idle",
+
       /** API Key 状态: 'valid' | 'invalid' | 'missing' */
-      apiKeyStatus: 'missing',
-      
+      apiKeyStatus: "missing",
+
       /** 页面状态: 'ready' | 'restricted' */
-      pageStatus: 'ready',
-      
+      pageStatus: "ready",
+
       /** 当前域名 */
       currentDomain: null,
-      
+
       /** 当前会话 ID */
       currentSessionId: null,
-      
+
       /** 是否有样式生效 */
       hasActiveStyles: false,
-      
+
       /** 存储空间警告: 'none' | 'warning' | 'critical' */
-      storageWarning: 'none',
-      
+      storageWarning: "none",
+
       /** 当前错误类型: null | 'API_KEY_INVALID' | 'NETWORK_ERROR' | 'API_ERROR' */
       currentError: null,
     };
-    
+
     /** @type {Map<string, Set<Function>>} 状态变化监听器 */
     this._listeners = new Map();
-    
+
     /** @type {Set<Function>} 全局状态变化监听器 */
     this._globalListeners = new Set();
   }
-  
+
   /**
    * 获取状态值
    * @param {string} key - 状态键名
@@ -172,7 +172,7 @@ class GlobalStateManager {
   get(key) {
     return this._state[key];
   }
-  
+
   /**
    * 获取所有状态
    * @returns {Object} 状态对象
@@ -180,7 +180,7 @@ class GlobalStateManager {
   getAll() {
     return { ...this._state };
   }
-  
+
   /**
    * 设置状态值并触发监听器
    * @param {string} key - 状态键名
@@ -188,35 +188,37 @@ class GlobalStateManager {
    */
   set(key, value) {
     const oldValue = this._state[key];
-    
+
     if (oldValue === value) return; // 值未变化，不触发
-    
+
     this._state[key] = value;
-    
+
     // 触发特定键的监听器
     const keyListeners = this._listeners.get(key);
     if (keyListeners) {
-      keyListeners.forEach(listener => {
+      keyListeners.forEach((listener) => {
         try {
           listener(value, oldValue, key);
         } catch (err) {
-          console.error('[StateManager] Listener error:', err);
+          console.error("[StateManager] Listener error:", err);
         }
       });
     }
-    
+
     // 触发全局监听器
-    this._globalListeners.forEach(listener => {
+    this._globalListeners.forEach((listener) => {
       try {
         listener(key, value, oldValue);
       } catch (err) {
-        console.error('[StateManager] Global listener error:', err);
+        console.error("[StateManager] Global listener error:", err);
       }
     });
-    
-    console.log(`[StateManager] State changed: ${key} = ${JSON.stringify(value)}`);
+
+    console.log(
+      `[StateManager] State changed: ${key} = ${JSON.stringify(value)}`,
+    );
   }
-  
+
   /**
    * 批量设置状态
    * @param {Object} updates - 状态更新对象
@@ -226,7 +228,7 @@ class GlobalStateManager {
       this.set(key, value);
     });
   }
-  
+
   /**
    * 订阅特定状态变化
    * @param {string} key - 状态键名
@@ -237,9 +239,9 @@ class GlobalStateManager {
     if (!this._listeners.has(key)) {
       this._listeners.set(key, new Set());
     }
-    
+
     this._listeners.get(key).add(listener);
-    
+
     // 返回取消订阅函数
     return () => {
       const keyListeners = this._listeners.get(key);
@@ -248,7 +250,7 @@ class GlobalStateManager {
       }
     };
   }
-  
+
   /**
    * 订阅所有状态变化
    * @param {Function} listener - 监听函数 (key, newValue, oldValue) => void
@@ -282,15 +284,18 @@ let _pickerActive = false;
  * 兼容旧代码的 AppState 对象
  * 通过 Proxy 实现与 stateManager 的双向同步
  */
-const AppState = new Proxy({}, {
-  get(target, prop) {
-    return stateManager.get(prop);
+const AppState = new Proxy(
+  {},
+  {
+    get(target, prop) {
+      return stateManager.get(prop);
+    },
+    set(target, prop, value) {
+      stateManager.set(prop, value);
+      return true;
+    },
   },
-  set(target, prop, value) {
-    stateManager.set(prop, value);
-    return true;
-  }
-});
+);
 
 // ============================================================================
 // 视图切换
@@ -302,28 +307,28 @@ const AppState = new Proxy({}, {
  */
 function switchView(viewName) {
   // 隐藏所有视图
-  DOM.onboardingView.classList.add('hidden');
-  DOM.mainView.classList.add('hidden');
-  DOM.settingsView.classList.add('hidden');
-  
+  DOM.onboardingView.classList.add("hidden");
+  DOM.mainView.classList.add("hidden");
+  DOM.settingsView.classList.add("hidden");
+
   // 显示目标视图
   switch (viewName) {
-    case 'onboarding':
-      DOM.onboardingView.classList.remove('hidden');
+    case "onboarding":
+      DOM.onboardingView.classList.remove("hidden");
       break;
-    case 'main':
-      DOM.mainView.classList.remove('hidden');
+    case "main":
+      DOM.mainView.classList.remove("hidden");
       break;
-    case 'settings':
-      DOM.settingsView.classList.remove('hidden');
+    case "settings":
+      DOM.settingsView.classList.remove("hidden");
       break;
     default:
-      console.error('[Panel] Unknown view:', viewName);
+      console.error("[Panel] Unknown view:", viewName);
       return;
   }
-  
+
   AppState.currentView = viewName;
-  console.log('[Panel] Switched to view:', viewName);
+  console.log("[Panel] Switched to view:", viewName);
 }
 
 /**
@@ -332,9 +337,9 @@ function switchView(viewName) {
  */
 function showLoading(show) {
   if (show) {
-    DOM.loadingOverlay.classList.remove('hidden');
+    DOM.loadingOverlay.classList.remove("hidden");
   } else {
-    DOM.loadingOverlay.classList.add('hidden');
+    DOM.loadingOverlay.classList.add("hidden");
   }
 }
 
@@ -345,11 +350,11 @@ function showLoading(show) {
  */
 function showError(message, duration = 5000) {
   DOM.errorMessage.textContent = message;
-  DOM.errorToast.classList.remove('hidden');
-  
+  DOM.errorToast.classList.remove("hidden");
+
   // 自动隐藏
   setTimeout(() => {
-    DOM.errorToast.classList.add('hidden');
+    DOM.errorToast.classList.add("hidden");
   }, duration);
 }
 
@@ -357,7 +362,7 @@ function showError(message, duration = 5000) {
  * 隐藏错误提示
  */
 function hideError() {
-  DOM.errorToast.classList.add('hidden');
+  DOM.errorToast.classList.add("hidden");
 }
 
 // ============================================================================
@@ -366,11 +371,11 @@ function hideError() {
 
 /**
  * 全局状态联动配置表
- * 
+ *
  * 设计参考：§16.5 全局状态联动
- * 
+ *
  * 定义各状态下各区域的表现
- * 
+ *
  * 区域定义：
  * - topBar: 顶栏状态指示灯
  * - chatArea: 对话区
@@ -387,13 +392,13 @@ const GLOBAL_STATE_CONFIG = {
    * - 技能区：正常
    */
   ready: {
-    topBar: { status: 'idle', showStyleBadge: false },
-    chatArea: { mode: 'normal' },
-    inputArea: { mode: 'idle' },
-    skillArea: { mode: 'normal' },
-    errorBanner: { show: false }
+    topBar: { status: "idle", showStyleBadge: false },
+    chatArea: { mode: "normal" },
+    inputArea: { mode: "idle" },
+    skillArea: { mode: "normal" },
+    errorBanner: { show: false },
   },
-  
+
   /**
    * 处理中状态
    * - 顶栏：🟡 黄色 + 脉动动画
@@ -402,13 +407,13 @@ const GLOBAL_STATE_CONFIG = {
    * - 技能区：正常但不可点击
    */
   processing: {
-    topBar: { status: 'running', showStyleBadge: false },
-    chatArea: { mode: 'streaming' },
-    inputArea: { mode: 'processing' },
-    skillArea: { mode: 'disabled' },
-    errorBanner: { show: false }
+    topBar: { status: "running", showStyleBadge: false },
+    chatArea: { mode: "streaming" },
+    inputArea: { mode: "processing" },
+    skillArea: { mode: "disabled" },
+    errorBanner: { show: false },
   },
-  
+
   /**
    * 有样式生效状态
    * - 顶栏：🟢 绿色 + 小徽标
@@ -417,26 +422,26 @@ const GLOBAL_STATE_CONFIG = {
    * - 技能区：正常
    */
   hasStyles: {
-    topBar: { status: 'idle', showStyleBadge: true },
-    chatArea: { mode: 'normal' },
-    inputArea: { mode: 'idle' },
-    skillArea: { mode: 'normal' },
-    errorBanner: { show: false }
+    topBar: { status: "idle", showStyleBadge: true },
+    chatArea: { mode: "normal" },
+    inputArea: { mode: "idle" },
+    skillArea: { mode: "normal" },
+    errorBanner: { show: false },
   },
-  
+
   /**
    * API Key 缺失状态
    * - 顶栏：🔴 红色
    * - 其他区域：不显示（引导页）
    */
   apiKeyMissing: {
-    topBar: { status: 'error', showStyleBadge: false },
-    chatArea: { mode: 'hidden' },
-    inputArea: { mode: 'hidden' },
-    skillArea: { mode: 'hidden' },
-    errorBanner: { show: false }
+    topBar: { status: "error", showStyleBadge: false },
+    chatArea: { mode: "hidden" },
+    inputArea: { mode: "hidden" },
+    skillArea: { mode: "hidden" },
+    errorBanner: { show: false },
   },
-  
+
   /**
    * API Key 无效状态
    * - 顶栏：🔴 红色
@@ -445,13 +450,13 @@ const GLOBAL_STATE_CONFIG = {
    * - 技能区：正常
    */
   apiKeyInvalid: {
-    topBar: { status: 'error', showStyleBadge: false },
-    chatArea: { mode: 'normal' },
-    inputArea: { mode: 'idle' },
-    skillArea: { mode: 'normal' },
-    errorBanner: { show: true, type: 'API_KEY_INVALID' }
+    topBar: { status: "error", showStyleBadge: false },
+    chatArea: { mode: "normal" },
+    inputArea: { mode: "idle" },
+    skillArea: { mode: "normal" },
+    errorBanner: { show: true, type: "API_KEY_INVALID" },
   },
-  
+
   /**
    * 网络错误状态
    * - 顶栏：🔴 红色
@@ -460,13 +465,13 @@ const GLOBAL_STATE_CONFIG = {
    * - 技能区：正常
    */
   networkError: {
-    topBar: { status: 'error', showStyleBadge: false },
-    chatArea: { mode: 'normal' },
-    inputArea: { mode: 'idle' },
-    skillArea: { mode: 'normal' },
-    errorBanner: { show: true, type: 'NETWORK_ERROR' }
+    topBar: { status: "error", showStyleBadge: false },
+    chatArea: { mode: "normal" },
+    inputArea: { mode: "idle" },
+    skillArea: { mode: "normal" },
+    errorBanner: { show: true, type: "NETWORK_ERROR" },
   },
-  
+
   /**
    * API 错误状态
    * - 顶栏：🔴 红色
@@ -475,13 +480,13 @@ const GLOBAL_STATE_CONFIG = {
    * - 技能区：正常
    */
   apiError: {
-    topBar: { status: 'error', showStyleBadge: false },
-    chatArea: { mode: 'normal' },
-    inputArea: { mode: 'idle' },
-    skillArea: { mode: 'normal' },
-    errorBanner: { show: true, type: 'API_ERROR' }
+    topBar: { status: "error", showStyleBadge: false },
+    chatArea: { mode: "normal" },
+    inputArea: { mode: "idle" },
+    skillArea: { mode: "normal" },
+    errorBanner: { show: true, type: "API_ERROR" },
   },
-  
+
   /**
    * 受限页面状态
    * - 顶栏：⚪ 灰色
@@ -490,13 +495,13 @@ const GLOBAL_STATE_CONFIG = {
    * - 技能区：整体置灰禁用
    */
   restricted: {
-    topBar: { status: 'restricted', showStyleBadge: false },
-    chatArea: { mode: 'restricted' },
-    inputArea: { mode: 'restricted' },
-    skillArea: { mode: 'disabled' },
-    errorBanner: { show: false }
+    topBar: { status: "restricted", showStyleBadge: false },
+    chatArea: { mode: "restricted" },
+    inputArea: { mode: "restricted" },
+    skillArea: { mode: "disabled" },
+    errorBanner: { show: false },
   },
-  
+
   /**
    * 存储将满状态（不单独作为主状态，叠加在其他状态上）
    * - 顶栏：继承主状态
@@ -508,8 +513,8 @@ const GLOBAL_STATE_CONFIG = {
     chatArea: { inherit: true },
     inputArea: { inherit: true },
     skillArea: { inherit: true },
-    errorBanner: { inherit: true }
-  }
+    errorBanner: { inherit: true },
+  },
 };
 
 /**
@@ -518,48 +523,48 @@ const GLOBAL_STATE_CONFIG = {
  * @returns {string} 全局状态名称
  */
 function computeGlobalState() {
-  const agentStatus = stateManager.get('agentStatus');
-  const apiKeyStatus = stateManager.get('apiKeyStatus');
-  const pageStatus = stateManager.get('pageStatus');
-  const hasActiveStyles = stateManager.get('hasActiveStyles');
-  const currentError = stateManager.get('currentError');
-  
+  const agentStatus = stateManager.get("agentStatus");
+  const apiKeyStatus = stateManager.get("apiKeyStatus");
+  const pageStatus = stateManager.get("pageStatus");
+  const hasActiveStyles = stateManager.get("hasActiveStyles");
+  const currentError = stateManager.get("currentError");
+
   // 优先级：受限页面 > API Key 缺失 > 处理中 > 错误 > 有样式 > 就绪
-  
+
   // 1. 受限页面
-  if (pageStatus === 'restricted') {
-    return 'restricted';
+  if (pageStatus === "restricted") {
+    return "restricted";
   }
-  
+
   // 2. API Key 缺失（显示引导页）
-  if (apiKeyStatus === 'missing') {
-    return 'apiKeyMissing';
+  if (apiKeyStatus === "missing") {
+    return "apiKeyMissing";
   }
-  
+
   // 3. 处理中
-  if (agentStatus === 'running') {
-    return 'processing';
+  if (agentStatus === "running") {
+    return "processing";
   }
-  
+
   // 4. 错误状态
   if (currentError) {
     switch (currentError) {
-      case 'API_KEY_INVALID':
-        return 'apiKeyInvalid';
-      case 'NETWORK_ERROR':
-        return 'networkError';
-      case 'API_ERROR':
-        return 'apiError';
+      case "API_KEY_INVALID":
+        return "apiKeyInvalid";
+      case "NETWORK_ERROR":
+        return "networkError";
+      case "API_ERROR":
+        return "apiError";
     }
   }
-  
+
   // 5. 有样式生效
   if (hasActiveStyles) {
-    return 'hasStyles';
+    return "hasStyles";
   }
-  
+
   // 6. 就绪状态
-  return 'ready';
+  return "ready";
 }
 
 /**
@@ -570,26 +575,26 @@ function computeGlobalState() {
 function applyGlobalState(forceState) {
   const globalState = forceState || computeGlobalState();
   const config = GLOBAL_STATE_CONFIG[globalState];
-  
+
   if (!config) {
-    console.error('[Panel] Unknown global state:', globalState);
+    console.error("[Panel] Unknown global state:", globalState);
     return;
   }
-  
-  console.log('[Panel] Applying global state:', globalState);
-  
+
+  console.log("[Panel] Applying global state:", globalState);
+
   // 1. 更新顶栏状态指示灯
   applyTopBarState(config.topBar);
-  
+
   // 2. 更新对话区状态
   applyChatAreaState(config.chatArea);
-  
+
   // 3. 更新输入区状态
   applyInputAreaState(config.inputArea);
-  
+
   // 4. 更新技能区状态
   applySkillAreaState(config.skillArea);
-  
+
   // 5. 更新错误横幅
   applyErrorBannerState(config.errorBanner);
 }
@@ -600,36 +605,36 @@ function applyGlobalState(forceState) {
  */
 function applyTopBarState(config) {
   if (!DOM.statusDot) return;
-  
-  const dot = DOM.statusDot.querySelector('.dot');
+
+  const dot = DOM.statusDot.querySelector(".dot");
   if (!dot) return;
-  
+
   // 更新状态指示灯颜色
-  dot.classList.remove('ready', 'processing', 'error', 'restricted');
-  
+  dot.classList.remove("ready", "processing", "error", "restricted");
+
   switch (config.status) {
-    case 'idle':
-      dot.classList.add('ready');
+    case "idle":
+      dot.classList.add("ready");
       break;
-    case 'running':
-      dot.classList.add('processing');
+    case "running":
+      dot.classList.add("processing");
       break;
-    case 'error':
-      dot.classList.add('error');
+    case "error":
+      dot.classList.add("error");
       break;
-    case 'restricted':
-      dot.classList.add('restricted');
+    case "restricted":
+      dot.classList.add("restricted");
       break;
   }
-  
+
   // 更新样式徽标
-  const existingBadge = DOM.statusDot.querySelector('.style-badge');
+  const existingBadge = DOM.statusDot.querySelector(".style-badge");
   if (config.showStyleBadge && !existingBadge) {
     // 添加样式徽标
-    const badge = document.createElement('span');
-    badge.className = 'style-badge';
-    badge.textContent = '✨';
-    badge.title = '当前页面有样式生效';
+    const badge = document.createElement("span");
+    badge.className = "style-badge";
+    badge.textContent = "✨";
+    badge.title = "当前页面有样式生效";
     DOM.statusDot.appendChild(badge);
   } else if (!config.showStyleBadge && existingBadge) {
     // 移除样式徽标
@@ -643,15 +648,15 @@ function applyTopBarState(config) {
  * @param {string} title - 会话标题
  */
 function updateTopBarDisplay(domain, title) {
-  const domainEl = document.getElementById('current-domain');
-  const titleEl = document.getElementById('session-title');
-  
+  const domainEl = document.getElementById("current-domain");
+  const titleEl = document.getElementById("session-title");
+
   if (domainEl) {
-    domainEl.textContent = domain || '--';
+    domainEl.textContent = domain || "--";
   }
-  
+
   if (titleEl) {
-    titleEl.textContent = title || '新会话';
+    titleEl.textContent = title || "新会话";
   }
 }
 
@@ -661,32 +666,33 @@ function updateTopBarDisplay(domain, title) {
  */
 function applyChatAreaState(config) {
   if (!DOM.messagesContainer) return;
-  
+
   // 移除所有状态类
-  DOM.messagesContainer.classList.remove('restricted-mode', 'hidden');
-  
+  DOM.messagesContainer.classList.remove("restricted-mode", "hidden");
+
   switch (config.mode) {
-    case 'normal':
+    case "normal":
       // 正常模式
       // 移除受限提示（如果存在）
-      const restrictedTip = DOM.messagesContainer.querySelector('.restricted-tip');
+      const restrictedTip =
+        DOM.messagesContainer.querySelector(".restricted-tip");
       if (restrictedTip) {
         restrictedTip.remove();
       }
       break;
-      
-    case 'streaming':
+
+    case "streaming":
       // 流式输出模式（由 Agent Loop 控制）
       break;
-      
-    case 'restricted':
+
+    case "restricted":
       // 受限页面模式：居中提示
-      DOM.messagesContainer.classList.add('restricted-mode');
-      
+      DOM.messagesContainer.classList.add("restricted-mode");
+
       // 清空并显示受限提示
-      DOM.messagesContainer.innerHTML = '';
-      const tip = document.createElement('div');
-      tip.className = 'restricted-tip';
+      DOM.messagesContainer.innerHTML = "";
+      const tip = document.createElement("div");
+      tip.className = "restricted-tip";
       tip.innerHTML = `
         <div class="restricted-icon">🔒</div>
         <div class="restricted-title">此页面不支持样式修改</div>
@@ -694,10 +700,10 @@ function applyChatAreaState(config) {
       `;
       DOM.messagesContainer.appendChild(tip);
       break;
-      
-    case 'hidden':
+
+    case "hidden":
       // 隐藏模式（引导页时）
-      DOM.messagesContainer.classList.add('hidden');
+      DOM.messagesContainer.classList.add("hidden");
       break;
   }
 }
@@ -707,41 +713,42 @@ function applyChatAreaState(config) {
  * @param {Object} config - 输入区配置
  */
 function applyInputAreaState(config) {
-  if (!DOM.inputArea || !DOM.messageInput || !DOM.sendBtn || !DOM.stopBtn) return;
-  
+  if (!DOM.inputArea || !DOM.messageInput || !DOM.sendBtn || !DOM.stopBtn)
+    return;
+
   // 移除所有状态类
-  DOM.inputArea.classList.remove('processing', 'restricted', 'hidden');
-  DOM.sendBtn.classList.remove('hidden');
-  DOM.stopBtn.classList.add('hidden');
-  
+  DOM.inputArea.classList.remove("processing", "restricted", "hidden");
+  DOM.sendBtn.classList.remove("hidden");
+  DOM.stopBtn.classList.add("hidden");
+
   switch (config.mode) {
-    case 'idle':
+    case "idle":
       // 空闲态：输入框可用 + 发送按钮
       DOM.messageInput.disabled = false;
-      DOM.messageInput.placeholder = '描述你想要的风格...';
+      DOM.messageInput.placeholder = "描述你想要的风格...";
       break;
-      
-    case 'processing':
+
+    case "processing":
       // 处理中：输入框禁用 + 停止按钮
-      DOM.inputArea.classList.add('processing');
+      DOM.inputArea.classList.add("processing");
       DOM.messageInput.disabled = true;
-      DOM.messageInput.placeholder = '正在处理中...';
-      DOM.sendBtn.classList.add('hidden');
-      DOM.stopBtn.classList.remove('hidden');
+      DOM.messageInput.placeholder = "正在处理中...";
+      DOM.sendBtn.classList.add("hidden");
+      DOM.stopBtn.classList.remove("hidden");
       break;
-      
-    case 'restricted':
+
+    case "restricted":
       // 受限页面：整体置灰 + 提示
-      DOM.inputArea.classList.add('restricted');
+      DOM.inputArea.classList.add("restricted");
       DOM.messageInput.disabled = true;
-      DOM.messageInput.placeholder = '此页面不支持样式修改';
-      DOM.messageInput.value = '';
+      DOM.messageInput.placeholder = "此页面不支持样式修改";
+      DOM.messageInput.value = "";
       DOM.sendBtn.disabled = true;
       break;
-      
-    case 'hidden':
+
+    case "hidden":
       // 隐藏模式（引导页时）
-      DOM.inputArea.classList.add('hidden');
+      DOM.inputArea.classList.add("hidden");
       break;
   }
 }
@@ -752,27 +759,27 @@ function applyInputAreaState(config) {
  */
 function applySkillAreaState(config) {
   if (!DOM.skillArea) return;
-  
+
   // 移除所有状态类
-  DOM.skillArea.classList.remove('disabled', 'hidden');
-  
+  DOM.skillArea.classList.remove("disabled", "hidden");
+
   switch (config.mode) {
-    case 'normal':
+    case "normal":
       // 正常模式：可点击
-      DOM.skillArea.style.pointerEvents = '';
-      DOM.skillArea.style.opacity = '';
+      DOM.skillArea.style.pointerEvents = "";
+      DOM.skillArea.style.opacity = "";
       break;
-      
-    case 'disabled':
+
+    case "disabled":
       // 禁用模式：置灰不可点击
-      DOM.skillArea.classList.add('disabled');
-      DOM.skillArea.style.pointerEvents = 'none';
-      DOM.skillArea.style.opacity = '0.5';
+      DOM.skillArea.classList.add("disabled");
+      DOM.skillArea.style.pointerEvents = "none";
+      DOM.skillArea.style.opacity = "0.5";
       break;
-      
-    case 'hidden':
+
+    case "hidden":
       // 隐藏模式
-      DOM.skillArea.classList.add('hidden');
+      DOM.skillArea.classList.add("hidden");
       break;
   }
 }
@@ -783,7 +790,7 @@ function applySkillAreaState(config) {
  */
 function applyErrorBannerState(config) {
   if (!DOM.errorBanner) return;
-  
+
   if (config.show) {
     showErrorBanner(config.type);
   } else {
@@ -797,8 +804,8 @@ function applyErrorBannerState(config) {
  * @param {boolean} isProcessing - 是否处理中
  */
 function setProcessingState(isProcessing) {
-  stateManager.set('agentStatus', isProcessing ? 'running' : 'idle');
-  stateManager.set('currentError', null); // 清除错误
+  stateManager.set("agentStatus", isProcessing ? "running" : "idle");
+  stateManager.set("currentError", null); // 清除错误
   applyGlobalState();
 }
 
@@ -807,7 +814,7 @@ function setProcessingState(isProcessing) {
  * @param {boolean} isRestricted - 是否为受限页面
  */
 function setRestrictedPageState(isRestricted) {
-  stateManager.set('pageStatus', isRestricted ? 'restricted' : 'ready');
+  stateManager.set("pageStatus", isRestricted ? "restricted" : "ready");
   applyGlobalState();
 }
 
@@ -816,9 +823,9 @@ function setRestrictedPageState(isRestricted) {
  * @param {string|null} errorType - 错误类型：'API_KEY_INVALID' | 'NETWORK_ERROR' | 'API_ERROR' | null
  */
 function setErrorState(errorType) {
-  stateManager.set('currentError', errorType);
+  stateManager.set("currentError", errorType);
   if (errorType) {
-    stateManager.set('agentStatus', 'error');
+    stateManager.set("agentStatus", "error");
   }
   applyGlobalState();
 }
@@ -827,9 +834,9 @@ function setErrorState(errorType) {
  * 清除错误状态
  */
 function clearErrorState() {
-  stateManager.set('currentError', null);
-  if (stateManager.get('agentStatus') === 'error') {
-    stateManager.set('agentStatus', 'idle');
+  stateManager.set("currentError", null);
+  if (stateManager.get("agentStatus") === "error") {
+    stateManager.set("agentStatus", "idle");
   }
   applyGlobalState();
 }
@@ -839,7 +846,7 @@ function clearErrorState() {
  * @param {boolean} hasStyles - 是否有样式生效
  */
 function setHasActiveStyles(hasStyles) {
-  stateManager.set('hasActiveStyles', hasStyles);
+  stateManager.set("hasActiveStyles", hasStyles);
   applyGlobalState();
 }
 
@@ -848,7 +855,7 @@ function setHasActiveStyles(hasStyles) {
  * @param {string} status - API Key 状态：'valid' | 'invalid' | 'missing'
  */
 function setApiKeyStatus(status) {
-  stateManager.set('apiKeyStatus', status);
+  stateManager.set("apiKeyStatus", status);
   applyGlobalState();
 }
 
@@ -859,20 +866,20 @@ function setApiKeyStatus(status) {
 function initStateSync() {
   // 监听关键状态变化，自动应用全局状态
   const watchedKeys = [
-    'agentStatus',
-    'apiKeyStatus',
-    'pageStatus',
-    'hasActiveStyles',
-    'currentError'
+    "agentStatus",
+    "apiKeyStatus",
+    "pageStatus",
+    "hasActiveStyles",
+    "currentError",
   ];
-  
-  watchedKeys.forEach(key => {
+
+  watchedKeys.forEach((key) => {
     stateManager.subscribe(key, () => {
       applyGlobalState();
     });
   });
-  
-  console.log('[Panel] State sync initialized');
+
+  console.log("[Panel] State sync initialized");
 }
 
 // ============================================================================
@@ -884,19 +891,19 @@ function initStateSync() {
  */
 function initOnboarding() {
   // 获取 DOM 元素
-  DOM.apiKeyInput = document.getElementById('api-key-input');
-  DOM.apiBaseInput = document.getElementById('api-base-input');
-  DOM.modelInput = document.getElementById('model-input');
-  DOM.startBtn = document.getElementById('start-btn');
-  DOM.setupError = document.getElementById('setup-error');
+  DOM.apiKeyInput = document.getElementById("api-key-input");
+  DOM.apiBaseInput = document.getElementById("api-base-input");
+  DOM.modelInput = document.getElementById("model-input");
+  DOM.startBtn = document.getElementById("start-btn");
+  DOM.setupError = document.getElementById("setup-error");
 
   // 监听输入变化
-  DOM.apiKeyInput.addEventListener('input', validateOnboardingForm);
-  DOM.apiBaseInput.addEventListener('input', validateOnboardingForm);
-  DOM.modelInput.addEventListener('input', validateOnboardingForm);
+  DOM.apiKeyInput.addEventListener("input", validateOnboardingForm);
+  DOM.apiBaseInput.addEventListener("input", validateOnboardingForm);
+  DOM.modelInput.addEventListener("input", validateOnboardingForm);
 
   // 监听开始按钮
-  DOM.startBtn.addEventListener('click', handleStartClick);
+  DOM.startBtn.addEventListener("click", handleStartClick);
 
   // 设置默认值
   DOM.apiBaseInput.value = DEFAULT_API_BASE;
@@ -913,9 +920,9 @@ function initOnboarding() {
 function validateOnboardingForm() {
   const apiKey = DOM.apiKeyInput.value.trim();
   const isValid = apiKey.length > 0;
-  
+
   DOM.startBtn.disabled = !isValid;
-  
+
   // 清除之前的错误提示
   if (isValid) {
     hideSetupError();
@@ -928,14 +935,14 @@ function validateOnboardingForm() {
  */
 function showSetupError(message) {
   DOM.setupError.textContent = message;
-  DOM.setupError.classList.remove('hidden');
+  DOM.setupError.classList.remove("hidden");
 }
 
 /**
  * 隐藏引导页错误
  */
 function hideSetupError() {
-  DOM.setupError.classList.add('hidden');
+  DOM.setupError.classList.add("hidden");
 }
 
 /**
@@ -948,7 +955,7 @@ async function handleStartClick() {
 
   // 基本验证
   if (!apiKey) {
-    showSetupError('请输入 API Key');
+    showSetupError("请输入 API Key");
     return;
   }
 
@@ -969,7 +976,7 @@ async function handleStartClick() {
   try {
     new URL(apiBase);
   } catch {
-    showSetupError('API 地址格式不正确');
+    showSetupError("API 地址格式不正确");
     return;
   }
 
@@ -984,36 +991,35 @@ async function handleStartClick() {
 
     if (!result.ok) {
       // 连接失败
-      let errorMsg = '连接验证失败';
+      let errorMsg = "连接验证失败";
 
       if (result.error) {
         // 网络错误
         errorMsg = `连接失败: ${result.error}`;
       } else if (result.status === 401) {
-        errorMsg = 'API Key 无效，请检查是否正确';
+        errorMsg = "API Key 无效，请检查是否正确";
       } else if (result.status === 403) {
-        errorMsg = '访问被拒绝，请检查 API Key 权限';
+        errorMsg = "访问被拒绝，请检查 API Key 权限";
       } else if (result.status) {
         errorMsg = `连接失败 (HTTP ${result.status})`;
       }
 
       showSetupError(errorMsg);
-      AppState.apiKeyStatus = 'invalid';
+      AppState.apiKeyStatus = "invalid";
       return;
     }
 
     // 连接成功，保存设置
     await saveSettings({ apiKey, apiBase, model });
-    AppState.apiKeyStatus = 'valid';
+    AppState.apiKeyStatus = "valid";
 
-    console.log('[Panel] API Key validated and saved');
+    console.log("[Panel] API Key validated and saved");
 
     // 切换到主界面
-    switchView('main');
+    switchView("main");
     initMainView();
-
   } catch (err) {
-    console.error('[Panel] Setup error:', err);
+    console.error("[Panel] Setup error:", err);
     showSetupError(`保存设置失败: ${err.message}`);
   } finally {
     showLoading(false);
@@ -1027,7 +1033,7 @@ async function handleStartClick() {
 
 /**
  * 初始化主界面
- * 
+ *
  * 完整初始化流程（设计参考：§16.8 完整使用流程）：
  * 1. 获取当前 Tab 域名（通过 Content Script）
  * 2. 加载/创建会话
@@ -1036,105 +1042,108 @@ async function handleStartClick() {
  */
 async function initMainView() {
   // 获取 DOM 元素
-  DOM.statusDot = document.getElementById('status-dot');
-  DOM.currentDomain = document.getElementById('current-domain');
-  DOM.sessionTitle = document.getElementById('session-title');
-  DOM.messagesContainer = document.getElementById('messages-container');
-  DOM.messageInput = document.getElementById('message-input');
-  DOM.sendBtn = document.getElementById('send-btn');
-  DOM.stopBtn = document.getElementById('stop-btn');
-  DOM.inputArea = document.getElementById('input-area');
-  DOM.inputWrapper = document.getElementById('input-wrapper');
-  
+  DOM.statusDot = document.getElementById("status-dot");
+  DOM.currentDomain = document.getElementById("current-domain");
+  DOM.sessionTitle = document.getElementById("session-title");
+  DOM.messagesContainer = document.getElementById("messages-container");
+  DOM.messageInput = document.getElementById("message-input");
+  DOM.sendBtn = document.getElementById("send-btn");
+  DOM.stopBtn = document.getElementById("stop-btn");
+  DOM.inputArea = document.getElementById("input-area");
+  DOM.inputWrapper = document.getElementById("input-wrapper");
+
   // 获取元素选择器 DOM 元素
-  DOM.pickerBtn = document.getElementById('picker-btn');
-  DOM.pickedElementBar = document.getElementById('picked-element-bar');
-  DOM.pickedElementLabel = document.getElementById('picked-element-label');
-  DOM.pickedElementClear = document.getElementById('picked-element-clear');
-  
+  DOM.pickerBtn = document.getElementById("picker-btn");
+  DOM.pickedElementBar = document.getElementById("picked-element-bar");
+  DOM.pickedElementLabel = document.getElementById("picked-element-label");
+  DOM.pickedElementClear = document.getElementById("picked-element-clear");
+
   // 获取技能区 DOM 元素
-  DOM.skillArea = document.getElementById('skill-area');
-  DOM.skillChips = document.getElementById('skill-chips');
-  DOM.skillAreaToggle = document.getElementById('skill-area-toggle');
-  
+  DOM.skillArea = document.getElementById("skill-area");
+  DOM.skillChips = document.getElementById("skill-chips");
+  DOM.skillAreaToggle = document.getElementById("skill-area-toggle");
+
   // 获取错误横幅 DOM 元素
-  DOM.errorBanner = document.getElementById('error-banner');
-  DOM.errorBannerMessage = document.getElementById('error-banner-message');
-  DOM.errorBannerAction = document.getElementById('error-banner-action');
-  DOM.errorBannerClose = document.getElementById('error-banner-close');
-  
+  DOM.errorBanner = document.getElementById("error-banner");
+  DOM.errorBannerMessage = document.getElementById("error-banner-message");
+  DOM.errorBannerAction = document.getElementById("error-banner-action");
+  DOM.errorBannerClose = document.getElementById("error-banner-close");
+
   // 初始化状态同步系统
   initStateSync();
-  
+
   // 设置初始状态
-  stateManager.set('agentStatus', 'idle');
-  stateManager.set('apiKeyStatus', 'valid'); // 进入主界面说明已有有效 Key
-  stateManager.set('pageStatus', 'ready');
-  
+  stateManager.set("agentStatus", "idle");
+  stateManager.set("apiKeyStatus", "valid"); // 进入主界面说明已有有效 Key
+  stateManager.set("pageStatus", "ready");
+
   // 应用初始全局状态
   applyGlobalState();
-  
+
   // 更新顶栏显示
-  updateTopBarDisplay('--', '新会话');
-  
+  updateTopBarDisplay("--", "新会话");
+
   // 绑定顶栏交互事件
   bindTopBarEvents();
-  
+
   // 初始化错误横幅事件
   initErrorBanner();
-  
+
   // 绑定新建会话按钮事件
-  const newSessionBtn = document.getElementById('new-session-btn');
+  const newSessionBtn = document.getElementById("new-session-btn");
   if (newSessionBtn) {
-    newSessionBtn.addEventListener('click', handleNewSession);
+    newSessionBtn.addEventListener("click", handleNewSession);
   }
-  
+
   // 初始化输入区
   initInputArea();
-  
+
   // 初始化元素选择器
   initElementPicker();
-  
+
   // 初始化技能快捷区
   initSkillArea();
-  
+
   // 显示空状态（默认）
   showEmptyState();
-  
+
   // === Step 4: 获取域名 ===
   try {
-    const { getTargetDomain, sendToContentScript } = await import('./tools.js');
-    
+    const { getTargetDomain, sendToContentScript } = await import("./tools.js");
+
     // 获取域名（同时检测页面是否受限）
     let domain = null;
     try {
       // 尝试向 Content Script 发送消息获取域名
-      domain = await sendToContentScript({ tool: 'get_domain' });
+      domain = await sendToContentScript({ tool: "get_domain" });
     } catch (contentScriptError) {
       // Content Script 不可达，可能是受限页面
-      console.log('[Panel] Content Script not reachable:', contentScriptError.message);
-      stateManager.set('pageStatus', 'restricted');
-      stateManager.set('currentDomain', null);
+      console.log(
+        "[Panel] Content Script not reachable:",
+        contentScriptError.message,
+      );
+      stateManager.set("pageStatus", "restricted");
+      stateManager.set("currentDomain", null);
       applyGlobalState();
       return;
     }
-    
-    if (domain && domain !== 'unknown') {
-      console.log('[Panel] Current domain:', domain);
-      stateManager.set('currentDomain', domain);
-      
+
+    if (domain && domain !== "unknown") {
+      console.log("[Panel] Current domain:", domain);
+      stateManager.set("currentDomain", domain);
+
       // 更新顶栏显示
-      updateTopBarDisplay(domain, '新会话');
-      
+      updateTopBarDisplay(domain, "新会话");
+
       // === Step 5: 加载会话 ===
       await loadSessionForDomain(domain);
     } else {
-      console.warn('[Panel] Failed to get domain');
+      console.warn("[Panel] Failed to get domain");
       // 无法获取域名时，显示空状态
       showEmptyState();
     }
   } catch (err) {
-    console.error('[Panel] Failed to get domain or load session:', err);
+    console.error("[Panel] Failed to get domain or load session:", err);
     // 继续显示空状态
     showEmptyState();
   }
@@ -1143,64 +1152,71 @@ async function initMainView() {
 /**
  * 为指定域名加载会话
  * 设计参考：§8.2 会话生命周期
- * 
+ *
  * @param {string} domain - 域名
  */
 async function loadSessionForDomain(domain) {
   try {
     // 动态导入依赖模块
-    const session = await import('./session.js');
-    
+    const session = await import("./session.js");
+
     // 获取或创建会话
     const sessionId = await session.getOrCreateSession(domain);
-    console.log('[Panel] Session loaded:', sessionId);
-    
+    console.log("[Panel] Session loaded:", sessionId);
+
     // 创建 SessionContext 并设置为当前会话
     const currentSession = new session.SessionContext(domain, sessionId);
     session.setCurrentSession(currentSession);
-    
+
     // 更新全局状态中的会话 ID
-    stateManager.set('currentSessionId', sessionId);
-    
+    stateManager.set("currentSessionId", sessionId);
+
     // 加载会话元数据
     const meta = await session.loadSessionMeta(domain, sessionId);
-    
+
     // 更新顶栏显示（如果有标题）
     if (meta.title) {
       updateTopBarDisplay(domain, meta.title);
     }
-    
+
     // 加载会话历史（新格式 { messages, snapshots }）
     const historyData = await session.loadAndPrepareHistory(domain, sessionId);
-    
+
     if (historyData.messages && historyData.messages.length > 0) {
       renderHistoryMessages(historyData.messages);
-      console.log(`[Panel] Loaded ${historyData.messages.length} history messages`);
+      console.log(
+        `[Panel] Loaded ${historyData.messages.length} history messages`,
+      );
     } else {
       showEmptyState();
     }
-    
+
     // 加载会话样式到 Content Script（接管 early-inject.js 的样式）
     const stylesKey = currentSession.stylesKey;
-    const { [stylesKey]: sessionStyles = '' } = await chrome.storage.local.get(stylesKey);
-    
+    const { [stylesKey]: sessionStyles = "" } =
+      await chrome.storage.local.get(stylesKey);
+
     if (sessionStyles && sessionStyles.trim()) {
       try {
-        const { sendToContentScript } = await import('./tools.js');
-        await sendToContentScript({ 
-          tool: 'load_session_css', 
-          args: { css: sessionStyles } 
+        const { sendToContentScript } = await import("./tools.js");
+        await sendToContentScript({
+          tool: "load_session_css",
+          args: { css: sessionStyles },
         });
       } catch (error) {
-        console.warn('[Panel] Failed to load session CSS on init:', error.message);
+        console.warn(
+          "[Panel] Failed to load session CSS on init:",
+          error.message,
+        );
       }
       // 同步 active_styles（确保与当前会话一致）
-      await chrome.storage.local.set({ [currentSession.activeStylesKey]: sessionStyles });
+      await chrome.storage.local.set({
+        [currentSession.activeStylesKey]: sessionStyles,
+      });
       setHasActiveStyles(true);
     }
-    
   } catch (err) {
-    console.error('[Panel] Failed to load session for domain:', domain, err);
+    console.error("[Panel] Failed to load session for domain:", domain, err);
     // 失败时显示空状态
     showEmptyState();
   }
@@ -1217,7 +1233,7 @@ async function loadSessionForDomain(domain) {
 function resizeMessageInput() {
   const el = DOM.messageInput;
   if (!el) return;
-  el.style.height = 'auto';
+  el.style.height = "auto";
   const maxH = 200; // 与 CSS --input-max-height 一致
   const h = Math.min(Math.max(el.scrollHeight, 44), maxH);
   el.style.height = `${h}px`;
@@ -1229,23 +1245,23 @@ function resizeMessageInput() {
 function initInputArea() {
   // 绑定发送按钮点击事件
   if (DOM.sendBtn) {
-    DOM.sendBtn.addEventListener('click', handleSendClick);
+    DOM.sendBtn.addEventListener("click", handleSendClick);
   }
-  
+
   // 绑定停止按钮点击事件
   if (DOM.stopBtn) {
-    DOM.stopBtn.addEventListener('click', handleStopClick);
+    DOM.stopBtn.addEventListener("click", handleStopClick);
   }
-  
+
   if (DOM.messageInput) {
-    DOM.messageInput.addEventListener('keydown', handleInputKeydown);
+    DOM.messageInput.addEventListener("keydown", handleInputKeydown);
     // 输入时自动增高，便于长文本
-    DOM.messageInput.addEventListener('input', resizeMessageInput);
-    DOM.messageInput.addEventListener('focus', resizeMessageInput);
+    DOM.messageInput.addEventListener("input", resizeMessageInput);
+    DOM.messageInput.addEventListener("focus", resizeMessageInput);
   }
-  
+
   // 初始化为空闲态
-  updateInputAreaState('idle');
+  updateInputAreaState("idle");
 }
 
 /**
@@ -1254,52 +1270,53 @@ function initInputArea() {
  * @deprecated 请使用 setProcessingState / setRestrictedPageState / applyGlobalState
  */
 function updateInputAreaState(state) {
-  if (!DOM.inputArea || !DOM.messageInput || !DOM.sendBtn || !DOM.stopBtn) return;
-  
+  if (!DOM.inputArea || !DOM.messageInput || !DOM.sendBtn || !DOM.stopBtn)
+    return;
+
   // 移除所有状态类
-  DOM.inputArea.classList.remove('processing', 'restricted');
-  DOM.sendBtn.classList.remove('hidden');
-  DOM.stopBtn.classList.add('hidden');
-  
+  DOM.inputArea.classList.remove("processing", "restricted");
+  DOM.sendBtn.classList.remove("hidden");
+  DOM.stopBtn.classList.add("hidden");
+
   switch (state) {
-    case 'idle':
+    case "idle":
       // 空闲态：输入框可用 + 发送按钮
       DOM.messageInput.disabled = false;
-      DOM.messageInput.placeholder = '描述你想要的风格...';
-      DOM.messageInput.value = '';
+      DOM.messageInput.placeholder = "描述你想要的风格...";
+      DOM.messageInput.value = "";
       DOM.sendBtn.disabled = false;
       break;
-      
-    case 'processing':
+
+    case "processing":
       // 处理中：输入框禁用 + 停止按钮
-      DOM.inputArea.classList.add('processing');
+      DOM.inputArea.classList.add("processing");
       DOM.messageInput.disabled = true;
-      DOM.messageInput.placeholder = '正在处理中...';
-      DOM.messageInput.value = '';
-      DOM.sendBtn.classList.add('hidden');
-      DOM.stopBtn.classList.remove('hidden');
+      DOM.messageInput.placeholder = "正在处理中...";
+      DOM.messageInput.value = "";
+      DOM.sendBtn.classList.add("hidden");
+      DOM.stopBtn.classList.remove("hidden");
       break;
-      
-    case 'restricted':
+
+    case "restricted":
       // 受限页面：整体置灰 + 提示
-      DOM.inputArea.classList.add('restricted');
+      DOM.inputArea.classList.add("restricted");
       DOM.messageInput.disabled = true;
-      DOM.messageInput.placeholder = '此页面不支持样式修改';
-      DOM.messageInput.value = '';
+      DOM.messageInput.placeholder = "此页面不支持样式修改";
+      DOM.messageInput.value = "";
       DOM.sendBtn.disabled = true;
       break;
-      
+
     default:
-      console.warn('[Panel] Unknown input area state:', state);
+      console.warn("[Panel] Unknown input area state:", state);
       return;
   }
-  
-  console.log('[Panel] Input area state changed to:', state);
+
+  console.log("[Panel] Input area state changed to:", state);
 }
 
 /**
  * 处理发送按钮点击
- * 
+ *
  * 完整流程：
  * 1. 清空输入框
  * 2. 渲染用户消息气泡
@@ -1312,24 +1329,24 @@ function updateInputAreaState(state) {
  */
 async function handleSendClick() {
   const message = DOM.messageInput?.value?.trim();
-  
+
   if (!message) {
-    console.log('[Panel] Empty message, ignored');
+    console.log("[Panel] Empty message, ignored");
     return;
   }
-  
+
   // 禁止在处理中状态发送
-  if (AppState.agentStatus === 'running') {
-    console.warn('[Panel] Agent is running, cannot send message');
+  if (AppState.agentStatus === "running") {
+    console.warn("[Panel] Agent is running, cannot send message");
     return;
   }
-  
+
   // 禁止在受限页面发送
-  if (AppState.pageStatus === 'restricted') {
-    console.warn('[Panel] Page is restricted, cannot send message');
+  if (AppState.pageStatus === "restricted") {
+    console.warn("[Panel] Page is restricted, cannot send message");
     return;
   }
-  
+
   // 如果有选中的元素，将其信息附加到 prompt 中
   let finalMessage = message;
   const pickedInfo = _pickedElementInfo;
@@ -1339,64 +1356,72 @@ async function handleSendClick() {
       `选择器: ${pickedInfo.fullPath}`,
       `标签: ${pickedInfo.tag}`,
       pickedInfo.id ? `ID: ${pickedInfo.id}` : null,
-      pickedInfo.classes.length ? `Classes: ${pickedInfo.classes.join(' ')}` : null,
+      pickedInfo.classes.length
+        ? `Classes: ${pickedInfo.classes.join(" ")}`
+        : null,
       pickedInfo.text ? `文本: "${pickedInfo.text}"` : null,
       `尺寸: ${pickedInfo.rect.width}×${pickedInfo.rect.height}`,
       `\n元素及子元素结构:\n${pickedInfo.treeText}`,
-    ].filter(Boolean).join('\n');
-    finalMessage = message + '\n' + elementContext;
+    ]
+      .filter(Boolean)
+      .join("\n");
+    finalMessage = message + "\n" + elementContext;
     clearPickedElement();
   }
-  
-  console.log('[Panel] Sending message:', message);
-  
+
+  console.log("[Panel] Sending message:", message);
+
   // 清空输入框并恢复高度
-  DOM.messageInput.value = '';
+  DOM.messageInput.value = "";
   resizeMessageInput();
-  
+
   // 隐藏确认浮层（如果有）- 用户发新消息视为隐式确认上一步
   if (isConfirmationOverlayVisible()) {
     hideConfirmationOverlay(false);
   }
-  
+
   // 移除空状态提示（如果存在）
-  const emptyState = DOM.messagesContainer?.querySelector('.chat-area-empty');
+  const emptyState = DOM.messagesContainer?.querySelector(".chat-area-empty");
   if (emptyState) {
     emptyState.remove();
   }
-  
+
   // 渲染用户消息气泡（附带元素定位标记）
   const displayMessage = pickedInfo
     ? `${message}\n🎯 ${pickedInfo.selector}`
     : message;
   const userMessageEl = renderUserMessage(displayMessage);
   addMessageToContainer(userMessageEl);
-  
+
   // 切换为处理中状态
   setProcessingState(true);
-  
+
+  // 清除上一次的任务列表显示
+  todoCardManager.clear();
+
   // 创建首个助手消息容器（用于流式输出）
   let curAssistantEl = renderAssistantMessageContainer();
-  let curBubble = curAssistantEl.querySelector('.message-bubble');
-  let curReasoningBlock = curAssistantEl.querySelector('.reasoning-block');
-  let curReasoningContentEl = curAssistantEl.querySelector('.reasoning-content');
-  let curReasoningHeader = curAssistantEl.querySelector('.reasoning-header');
-  let curReasoningTitleEl = curAssistantEl.querySelector('.reasoning-title');
+  let curBubble = curAssistantEl.querySelector(".message-bubble");
+  let curReasoningBlock = curAssistantEl.querySelector(".reasoning-block");
+  let curReasoningContentEl =
+    curAssistantEl.querySelector(".reasoning-content");
+  let curReasoningHeader = curAssistantEl.querySelector(".reasoning-header");
+  let curReasoningTitleEl = curAssistantEl.querySelector(".reasoning-title");
   addMessageToContainer(curAssistantEl);
-  
+
   // 创建流式文本渲染器
   let streamingRenderer = createStreamingRenderer(curBubble);
-  
+
   // 创建推理内容流式渲染器
   let reasoningRenderer = createStreamingRenderer(curReasoningContentEl, {
     showCursor: true,
     autoScroll: true,
   });
   let reasoningCharCount = 0;
-  
+
   // 工具输入暂存 Map（toolId -> input），在 showToolResult 时使用
   const toolInputMap = new Map();
-  
+
   // 样式应用计数器（用于确认浮层）
   let applyStylesCount = 0;
 
@@ -1407,8 +1432,8 @@ async function handleSendClick() {
   function finalizeCurrentBubble() {
     if (reasoningCharCount > 0) {
       reasoningRenderer.finish();
-      curReasoningBlock.classList.add('finished', 'collapsed');
-      curReasoningHeader.setAttribute('aria-expanded', 'false');
+      curReasoningBlock.classList.add("finished", "collapsed");
+      curReasoningHeader.setAttribute("aria-expanded", "false");
       if (curReasoningTitleEl) {
         curReasoningTitleEl.textContent = `思考过程（${reasoningCharCount} 字）`;
       }
@@ -1424,11 +1449,11 @@ async function handleSendClick() {
   function createNewAssistantBubble() {
     finalizeCurrentBubble();
     curAssistantEl = renderAssistantMessageContainer();
-    curBubble = curAssistantEl.querySelector('.message-bubble');
-    curReasoningBlock = curAssistantEl.querySelector('.reasoning-block');
-    curReasoningContentEl = curAssistantEl.querySelector('.reasoning-content');
-    curReasoningHeader = curAssistantEl.querySelector('.reasoning-header');
-    curReasoningTitleEl = curAssistantEl.querySelector('.reasoning-title');
+    curBubble = curAssistantEl.querySelector(".message-bubble");
+    curReasoningBlock = curAssistantEl.querySelector(".reasoning-block");
+    curReasoningContentEl = curAssistantEl.querySelector(".reasoning-content");
+    curReasoningHeader = curAssistantEl.querySelector(".reasoning-header");
+    curReasoningTitleEl = curAssistantEl.querySelector(".reasoning-title");
     addMessageToContainer(curAssistantEl);
     streamingRenderer = createStreamingRenderer(curBubble);
     reasoningRenderer = createStreamingRenderer(curReasoningContentEl, {
@@ -1437,11 +1462,11 @@ async function handleSendClick() {
     });
     reasoningCharCount = 0;
   }
-  
+
   // 动态导入 agent-loop 模块
   try {
-    const { agentLoop, cancelAgentLoop } = await import('./agent-loop.js');
-    
+    const { agentLoop, cancelAgentLoop } = await import("./agent-loop.js");
+
     // UI 回调函数
     const uiCallbacks = {
       /**
@@ -1458,7 +1483,7 @@ async function handleSendClick() {
       appendReasoning: (delta) => {
         if (!delta) return;
         if (reasoningCharCount === 0) {
-          curReasoningBlock.classList.add('visible');
+          curReasoningBlock.classList.add("visible");
         }
         reasoningCharCount += delta.length;
         reasoningRenderer.appendText(delta);
@@ -1471,29 +1496,29 @@ async function handleSendClick() {
       appendText: (delta) => {
         streamingRenderer.appendText(delta);
       },
-      
+
       /**
        * 显示工具调用（开始时）
        * @param {Object} block - 工具调用块
        */
       showToolCall: (block) => {
-        if (block.type === 'tool_use') {
+        if (block.type === "tool_use") {
           toolInputMap.set(block.id, block.input);
           createToolCard(block.id, block.name);
-          if (block.name === 'apply_styles' && block.input?.mode === 'save') {
+          if (block.name === "apply_styles" && block.input?.mode === "save") {
             applyStylesCount++;
           }
         }
       },
-      
+
       /**
        * 显示工具执行中状态
        * @param {string} toolName - 工具名称
        */
       showToolExecuting: (toolName) => {
-        console.log('[Panel] Tool executing:', toolName);
+        console.log("[Panel] Tool executing:", toolName);
       },
-      
+
       /**
        * 显示工具执行结果
        * @param {string} toolId - 工具调用 ID
@@ -1504,18 +1529,26 @@ async function handleSendClick() {
         const toolName = card?.dataset.toolName || null;
         const toolInput = toolInputMap.get(toolId) ?? null;
         completeToolCard(toolId, toolName, toolInput, output);
-      }
+      },
+
+      /**
+       * 更新任务列表显示
+       * @param {Array<{id: string, content: string, status: string}>} todos - 任务列表
+       */
+      onTodoUpdate: (todos) => {
+        todoCardManager.updateTodos(todos);
+      },
     };
-    
+
     // 调用 Agent Loop
     const response = await agentLoop(finalMessage, uiCallbacks);
-    
+
     // 完成最后一个气泡的推理流式输出
     if (reasoningCharCount > 0) {
       reasoningRenderer.finish();
-      curReasoningBlock.classList.add('finished');
-      curReasoningBlock.classList.add('collapsed');
-      curReasoningHeader.setAttribute('aria-expanded', 'false');
+      curReasoningBlock.classList.add("finished");
+      curReasoningBlock.classList.add("collapsed");
+      curReasoningHeader.setAttribute("aria-expanded", "false");
       if (curReasoningTitleEl) {
         curReasoningTitleEl.textContent = `思考过程（${reasoningCharCount} 字）`;
       }
@@ -1523,76 +1556,79 @@ async function handleSendClick() {
 
     // 完成最后一个气泡的流式文本输出
     streamingRenderer.finish();
-    
+
     // 结束工具卡片组
     finalizeToolCardGroup();
-    
+
     // 恢复就绪状态
     setProcessingState(false);
-    
+
     if (applyStylesCount > 0) {
       showConfirmationOverlay({
         applyCount: applyStylesCount,
         onConfirm: () => {
-          console.log('[Panel] 样式已确认');
+          console.log("[Panel] 样式已确认");
         },
         onUndo: async () => {
           try {
-            const { executeTool } = await import('./tools.js');
-            await executeTool('apply_styles', { mode: 'rollback_last' });
-            console.log('[Panel] 已直接撤销最后一步样式');
+            const { executeTool } = await import("./tools.js");
+            await executeTool("apply_styles", { mode: "rollback_last" });
+            console.log("[Panel] 已直接撤销最后一步样式");
           } catch (error) {
-            console.error('[Panel] 撤销失败:', error);
+            console.error("[Panel] 撤销失败:", error);
           }
         },
         onUndoAll: async () => {
           try {
-            const { executeTool } = await import('./tools.js');
-            await executeTool('apply_styles', { mode: 'rollback_all' });
+            const { executeTool } = await import("./tools.js");
+            await executeTool("apply_styles", { mode: "rollback_all" });
             setHasActiveStyles(false);
-            console.log('[Panel] 已直接撤销所有样式');
+            console.log("[Panel] 已直接撤销所有样式");
           } catch (error) {
-            console.error('[Panel] 全部撤销失败:', error);
+            console.error("[Panel] 全部撤销失败:", error);
           }
-        }
+        },
       });
     }
-    
-    console.log('[Panel] Agent response:', response);
-    
+
+    console.log("[Panel] Agent response:", response);
   } catch (error) {
-    console.error('[Panel] Agent loop error:', error);
-    
+    console.error("[Panel] Agent loop error:", error);
+
     // 完成流式输出
     streamingRenderer.finish();
-    
+
     // 结束工具卡片组
     finalizeToolCardGroup();
-    
+
     // 恢复就绪状态
     setProcessingState(false);
-    
+
     // 处理错误类型
-    if (error.message?.includes('401') || error.message?.includes('API Key')) {
-      setErrorState('API_KEY_INVALID');
-      showErrorBanner('API_KEY_INVALID');
-    } else if (error.message?.includes('network') || error.message?.includes('Network') || error instanceof TypeError) {
-      setErrorState('NETWORK_ERROR');
-      showErrorBanner('NETWORK_ERROR', {
+    if (error.message?.includes("401") || error.message?.includes("API Key")) {
+      setErrorState("API_KEY_INVALID");
+      showErrorBanner("API_KEY_INVALID");
+    } else if (
+      error.message?.includes("network") ||
+      error.message?.includes("Network") ||
+      error instanceof TypeError
+    ) {
+      setErrorState("NETWORK_ERROR");
+      showErrorBanner("NETWORK_ERROR", {
         onRetry: () => {
           // 重新发送消息
           DOM.messageInput.value = message;
           handleSendClick();
-        }
+        },
       });
     } else {
-      setErrorState('API_ERROR');
-      showErrorBanner('API_ERROR', {
-        customMessage: error.message || 'API 调用失败',
+      setErrorState("API_ERROR");
+      showErrorBanner("API_ERROR", {
+        customMessage: error.message || "API 调用失败",
         onRetry: () => {
           DOM.messageInput.value = message;
           handleSendClick();
-        }
+        },
       });
     }
   }
@@ -1600,31 +1636,30 @@ async function handleSendClick() {
 
 /**
  * 处理停止按钮点击
- * 
+ *
  * 调用 cancelAgentLoop 取消当前处理
  * 已应用的样式保留
  */
 async function handleStopClick() {
-  console.log('[Panel] Stop button clicked');
-  
+  console.log("[Panel] Stop button clicked");
+
   try {
     // 动态导入 agent-loop 模块
-    const { cancelAgentLoop } = await import('./agent-loop.js');
-    
+    const { cancelAgentLoop } = await import("./agent-loop.js");
+
     // 取消 Agent Loop
     cancelAgentLoop();
-    
+
     // 结束工具卡片组
     finalizeToolCardGroup();
-    
+
     // 恢复空闲态
     setProcessingState(false);
-    
-    console.log('[Panel] Agent loop cancelled');
-    
+
+    console.log("[Panel] Agent loop cancelled");
   } catch (error) {
-    console.error('[Panel] Failed to cancel agent loop:', error);
-    
+    console.error("[Panel] Failed to cancel agent loop:", error);
+
     // 即使出错也要恢复空闲态
     setProcessingState(false);
   }
@@ -1636,7 +1671,7 @@ async function handleStopClick() {
  */
 function handleInputKeydown(e) {
   // Enter 键发送（Shift+Enter 换行）
-  if (e.key === 'Enter' && !e.shiftKey) {
+  if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     handleSendClick();
   }
@@ -1652,17 +1687,17 @@ function handleInputKeydown(e) {
  */
 function initElementPicker() {
   if (DOM.pickerBtn) {
-    DOM.pickerBtn.addEventListener('click', togglePicker);
+    DOM.pickerBtn.addEventListener("click", togglePicker);
   }
   if (DOM.pickedElementClear) {
-    DOM.pickedElementClear.addEventListener('click', clearPickedElement);
+    DOM.pickedElementClear.addEventListener("click", clearPickedElement);
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'element_picked') {
+    if (message.type === "element_picked") {
       onElementPicked(message.data);
       sendResponse({ ok: true });
-    } else if (message.type === 'picker_cancelled') {
+    } else if (message.type === "picker_cancelled") {
       setPickerActive(false);
       sendResponse({ ok: true });
     }
@@ -1674,20 +1709,20 @@ function initElementPicker() {
  * 切换元素选择器激活状态
  */
 async function togglePicker() {
-  if (AppState.agentStatus === 'running') return;
-  if (AppState.pageStatus === 'restricted') return;
+  if (AppState.agentStatus === "running") return;
+  if (AppState.pageStatus === "restricted") return;
 
   try {
-    const { sendToContentScript } = await import('./tools.js');
+    const { sendToContentScript } = await import("./tools.js");
     if (_pickerActive) {
-      await sendToContentScript({ tool: 'stop_picker' });
+      await sendToContentScript({ tool: "stop_picker" });
       setPickerActive(false);
     } else {
-      await sendToContentScript({ tool: 'start_picker' });
+      await sendToContentScript({ tool: "start_picker" });
       setPickerActive(true);
     }
   } catch (err) {
-    console.error('[Panel] Picker toggle failed:', err);
+    console.error("[Panel] Picker toggle failed:", err);
     setPickerActive(false);
   }
 }
@@ -1698,7 +1733,7 @@ async function togglePicker() {
 function setPickerActive(active) {
   _pickerActive = active;
   if (DOM.pickerBtn) {
-    DOM.pickerBtn.classList.toggle('active', active);
+    DOM.pickerBtn.classList.toggle("active", active);
   }
 }
 
@@ -1713,7 +1748,7 @@ function onElementPicked(info) {
     const label = info.fullPath || info.selector || info.tag;
     DOM.pickedElementLabel.textContent = label;
     DOM.pickedElementLabel.title = label;
-    DOM.pickedElementBar.classList.remove('hidden');
+    DOM.pickedElementBar.classList.remove("hidden");
   }
 }
 
@@ -1723,7 +1758,7 @@ function onElementPicked(info) {
 function clearPickedElement() {
   _pickedElementInfo = null;
   if (DOM.pickedElementBar) {
-    DOM.pickedElementBar.classList.add('hidden');
+    DOM.pickedElementBar.classList.add("hidden");
   }
 }
 
@@ -1744,8 +1779,18 @@ function getPickedElementInfo() {
  * These are static skills bundled with the extension
  */
 const BUILT_IN_SKILLS = [
-  { id: 'dark-mode-template', name: 'Dark Mode', icon: '🌙', prompt: 'Apply dark mode style' },
-  { id: 'minimal-template', name: 'Minimal', icon: '✨', prompt: 'Apply minimal style' },
+  {
+    id: "dark-mode-template",
+    name: "Dark Mode",
+    icon: "🌙",
+    prompt: "Apply dark mode style",
+  },
+  {
+    id: "minimal-template",
+    name: "Minimal",
+    icon: "✨",
+    prompt: "Apply minimal style",
+  },
 ];
 
 /**
@@ -1754,9 +1799,9 @@ const BUILT_IN_SKILLS = [
 function initSkillArea() {
   // Bind toggle event
   if (DOM.skillAreaToggle) {
-    DOM.skillAreaToggle.addEventListener('click', toggleSkillArea);
+    DOM.skillAreaToggle.addEventListener("click", toggleSkillArea);
   }
-  
+
   // Render skill chips
   renderSkillChips();
 }
@@ -1766,7 +1811,7 @@ function initSkillArea() {
  */
 function toggleSkillArea() {
   if (DOM.skillArea) {
-    DOM.skillArea.classList.toggle('collapsed');
+    DOM.skillArea.classList.toggle("collapsed");
   }
 }
 
@@ -1775,32 +1820,32 @@ function toggleSkillArea() {
  */
 async function renderSkillChips() {
   if (!DOM.skillChips) return;
-  
+
   // Clear existing chips
-  DOM.skillChips.innerHTML = '';
-  
+  DOM.skillChips.innerHTML = "";
+
   // 1. Render built-in skills (filled chips)
   for (const skill of BUILT_IN_SKILLS) {
     const chip = createBuiltInChip(skill);
     DOM.skillChips.appendChild(chip);
   }
-  
+
   // 2. Load and render user skills (outlined chips)
   try {
     const userSkills = await StyleSkillStore.list();
-    
+
     for (const skill of userSkills) {
       const chip = createUserSkillChip(skill);
       DOM.skillChips.appendChild(chip);
     }
-    
+
     // 3. If no user skills, show "create from current" action
     if (userSkills.length === 0) {
       const emptyChip = createEmptyActionChip();
       DOM.skillChips.appendChild(emptyChip);
     }
   } catch (err) {
-    console.warn('[Panel] Failed to load user skills:', err);
+    console.warn("[Panel] Failed to load user skills:", err);
     // Show empty action on error
     const emptyChip = createEmptyActionChip();
     DOM.skillChips.appendChild(emptyChip);
@@ -1813,19 +1858,19 @@ async function renderSkillChips() {
  * @returns {HTMLElement}
  */
 function createBuiltInChip(skill) {
-  const chip = document.createElement('div');
-  chip.className = 'skill-chip built-in';
+  const chip = document.createElement("div");
+  chip.className = "skill-chip built-in";
   chip.dataset.skillId = skill.id;
-  chip.dataset.skillType = 'built-in';
+  chip.dataset.skillType = "built-in";
   chip.dataset.prompt = skill.prompt;
-  
+
   chip.innerHTML = `
     <span class="skill-icon">${skill.icon}</span>
     <span class="skill-name">${skill.name}</span>
   `;
-  
-  chip.addEventListener('click', () => handleSkillChipClick(skill));
-  
+
+  chip.addEventListener("click", () => handleSkillChipClick(skill));
+
   return chip;
 }
 
@@ -1836,66 +1881,69 @@ function createBuiltInChip(skill) {
  * @returns {HTMLElement}
  */
 function createUserSkillChip(skill) {
-  const chip = document.createElement('div');
-  chip.className = 'skill-chip user-skill';
+  const chip = document.createElement("div");
+  chip.className = "skill-chip user-skill";
   chip.dataset.skillId = skill.id;
-  chip.dataset.skillType = 'user';
-  
+  chip.dataset.skillType = "user";
+
   // Generate prompt text
   const prompt = `Apply my "${skill.name}" style`;
   chip.dataset.prompt = prompt;
-  
+
   // Truncate source domain if too long
-  const sourceDomain = skill.sourceDomain || 'unknown';
-  const displayDomain = sourceDomain.length > 15 
-    ? sourceDomain.substring(0, 12) + '...' 
-    : sourceDomain;
-  
+  const sourceDomain = skill.sourceDomain || "unknown";
+  const displayDomain =
+    sourceDomain.length > 15
+      ? sourceDomain.substring(0, 12) + "..."
+      : sourceDomain;
+
   chip.innerHTML = `
     <span class="skill-name">${skill.name}</span>
     <span class="skill-source">${displayDomain}</span>
   `;
-  
+
   // Click handler (short tap)
-  chip.addEventListener('click', () => handleSkillChipClick({
-    id: skill.id,
-    name: skill.name,
-    type: 'user',
-    prompt
-  }));
-  
+  chip.addEventListener("click", () =>
+    handleSkillChipClick({
+      id: skill.id,
+      name: skill.name,
+      type: "user",
+      prompt,
+    }),
+  );
+
   // Long press handler for context menu
   let longPressTimer = null;
   let isLongPress = false;
-  
-  chip.addEventListener('mousedown', (e) => {
+
+  chip.addEventListener("mousedown", (e) => {
     isLongPress = false;
     longPressTimer = setTimeout(() => {
       isLongPress = true;
       showSkillContextMenu(e, skill);
     }, 500); // 500ms threshold for long press
   });
-  
-  chip.addEventListener('mouseup', () => {
+
+  chip.addEventListener("mouseup", () => {
     if (longPressTimer) {
       clearTimeout(longPressTimer);
       longPressTimer = null;
     }
   });
-  
-  chip.addEventListener('mouseleave', () => {
+
+  chip.addEventListener("mouseleave", () => {
     if (longPressTimer) {
       clearTimeout(longPressTimer);
       longPressTimer = null;
     }
   });
-  
+
   // Context menu (right-click)
-  chip.addEventListener('contextmenu', (e) => {
+  chip.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     showSkillContextMenu(e, skill);
   });
-  
+
   return chip;
 }
 
@@ -1904,17 +1952,17 @@ function createUserSkillChip(skill) {
  * @returns {HTMLElement}
  */
 function createEmptyActionChip() {
-  const chip = document.createElement('div');
-  chip.className = 'skill-chip empty-action';
-  chip.dataset.skillType = 'empty-action';
-  
+  const chip = document.createElement("div");
+  chip.className = "skill-chip empty-action";
+  chip.dataset.skillType = "empty-action";
+
   chip.innerHTML = `
     <span class="skill-icon">+</span>
     <span class="skill-name">Create from current style</span>
   `;
-  
-  chip.addEventListener('click', handleEmptyActionClick);
-  
+
+  chip.addEventListener("click", handleEmptyActionClick);
+
   return chip;
 }
 
@@ -1926,17 +1974,17 @@ function createEmptyActionChip() {
  */
 function handleSkillChipClick(skill) {
   if (!DOM.messageInput) return;
-  
+
   // Don't allow interaction when agent is running
-  if (AppState.agentStatus === 'running') {
+  if (AppState.agentStatus === "running") {
     return;
   }
-  
+
   // Fill input with skill prompt
   DOM.messageInput.value = skill.prompt;
-  
-  console.log('[Panel] Skill chip clicked:', skill.name);
-  
+
+  console.log("[Panel] Skill chip clicked:", skill.name);
+
   // Auto-send the message
   // Use setTimeout to ensure the input is filled before sending
   setTimeout(() => {
@@ -1950,17 +1998,17 @@ function handleSkillChipClick(skill) {
  */
 function handleEmptyActionClick() {
   if (!DOM.messageInput) return;
-  
+
   // Don't allow interaction when agent is running
-  if (AppState.agentStatus === 'running') {
+  if (AppState.agentStatus === "running") {
     return;
   }
-  
+
   // Fill input with save style prompt
-  DOM.messageInput.value = 'Save current style as a reusable skill';
+  DOM.messageInput.value = "Save current style as a reusable skill";
   DOM.messageInput.focus();
-  
-  console.log('[Panel] Empty action chip clicked');
+
+  console.log("[Panel] Empty action chip clicked");
 }
 
 // ============================================================================
@@ -1981,10 +2029,10 @@ let skillContextMenu = null;
 function showSkillContextMenu(e, skill) {
   // Remove existing menu if any
   hideSkillContextMenu();
-  
+
   // Create context menu
-  const menu = document.createElement('div');
-  menu.className = 'skill-context-menu';
+  const menu = document.createElement("div");
+  menu.className = "skill-context-menu";
   menu.innerHTML = `
     <div class="context-menu-item" data-action="apply">
       <span class="menu-icon">✨</span>
@@ -1999,31 +2047,31 @@ function showSkillContextMenu(e, skill) {
       <span>删除</span>
     </div>
   `;
-  
+
   // Position the menu
   const rect = e.target.getBoundingClientRect();
-  menu.style.position = 'fixed';
+  menu.style.position = "fixed";
   menu.style.left = `${rect.left}px`;
   menu.style.top = `${rect.bottom + 4}px`;
-  menu.style.zIndex = '1000';
-  
+  menu.style.zIndex = "1000";
+
   // Add event listeners for menu items
-  menu.querySelectorAll('.context-menu-item').forEach(item => {
-    item.addEventListener('click', (event) => {
+  menu.querySelectorAll(".context-menu-item").forEach((item) => {
+    item.addEventListener("click", (event) => {
       event.stopPropagation();
       const action = item.dataset.action;
       handleContextMenuAction(action, skill);
       hideSkillContextMenu();
     });
   });
-  
+
   // Append to body
   document.body.appendChild(menu);
   skillContextMenu = menu;
-  
+
   // Close menu when clicking outside
   setTimeout(() => {
-    document.addEventListener('click', handleContextMenuOutsideClick);
+    document.addEventListener("click", handleContextMenuOutsideClick);
   }, 0);
 }
 
@@ -2034,7 +2082,7 @@ function hideSkillContextMenu() {
   if (skillContextMenu) {
     skillContextMenu.remove();
     skillContextMenu = null;
-    document.removeEventListener('click', handleContextMenuOutsideClick);
+    document.removeEventListener("click", handleContextMenuOutsideClick);
   }
 }
 
@@ -2055,22 +2103,22 @@ function handleContextMenuOutsideClick(e) {
  */
 async function handleContextMenuAction(action, skill) {
   switch (action) {
-    case 'apply':
+    case "apply":
       // Apply the skill
       handleSkillChipClick({
         id: skill.id,
         name: skill.name,
-        type: 'user',
-        prompt: `Apply my "${skill.name}" style`
+        type: "user",
+        prompt: `Apply my "${skill.name}" style`,
       });
       break;
-      
-    case 'view':
+
+    case "view":
       // View skill details in a modal
       await viewSkillDetails(skill);
       break;
-      
-    case 'delete':
+
+    case "delete":
       // Delete skill with confirmation
       await deleteSkillWithConfirmation(skill);
       break;
@@ -2085,15 +2133,15 @@ async function viewSkillDetails(skill) {
   try {
     // Load skill content
     const content = await StyleSkillStore.load(skill.id);
-    
+
     if (!content) {
-      showError('无法加载技能详情');
+      showError("无法加载技能详情");
       return;
     }
-    
+
     // Create modal
-    const modal = document.createElement('div');
-    modal.className = 'skill-detail-modal';
+    const modal = document.createElement("div");
+    modal.className = "skill-detail-modal";
     modal.innerHTML = `
       <div class="modal-overlay"></div>
       <div class="modal-content">
@@ -2103,34 +2151,33 @@ async function viewSkillDetails(skill) {
         </div>
         <div class="modal-body">
           <div class="skill-meta">
-            <span class="skill-source">来源: ${escapeHtml(skill.sourceDomain || 'unknown')}</span>
-            <span class="skill-date">创建于: ${new Date(skill.createdAt).toLocaleDateString('zh-CN')}</span>
+            <span class="skill-source">来源: ${escapeHtml(skill.sourceDomain || "unknown")}</span>
+            <span class="skill-date">创建于: ${new Date(skill.createdAt).toLocaleDateString("zh-CN")}</span>
           </div>
-          ${skill.mood ? `<div class="skill-mood">风格: ${escapeHtml(skill.mood)}</div>` : ''}
+          ${skill.mood ? `<div class="skill-mood">风格: ${escapeHtml(skill.mood)}</div>` : ""}
           <div class="skill-content">
             <pre>${escapeHtml(content)}</pre>
           </div>
         </div>
       </div>
     `;
-    
+
     // Add event listeners
-    const closeBtn = modal.querySelector('.modal-close-btn');
-    const overlay = modal.querySelector('.modal-overlay');
-    
+    const closeBtn = modal.querySelector(".modal-close-btn");
+    const overlay = modal.querySelector(".modal-overlay");
+
     const closeModal = () => {
       modal.remove();
     };
-    
-    closeBtn.addEventListener('click', closeModal);
-    overlay.addEventListener('click', closeModal);
-    
+
+    closeBtn.addEventListener("click", closeModal);
+    overlay.addEventListener("click", closeModal);
+
     // Append to body
     document.body.appendChild(modal);
-    
   } catch (err) {
-    console.error('[Panel] Failed to view skill details:', err);
-    showError('加载技能详情失败');
+    console.error("[Panel] Failed to view skill details:", err);
+    showError("加载技能详情失败");
   }
 }
 
@@ -2140,8 +2187,8 @@ async function viewSkillDetails(skill) {
  */
 async function deleteSkillWithConfirmation(skill) {
   // Create confirmation modal
-  const modal = document.createElement('div');
-  modal.className = 'skill-delete-modal';
+  const modal = document.createElement("div");
+  modal.className = "skill-delete-modal";
   modal.innerHTML = `
     <div class="modal-overlay"></div>
     <div class="modal-content">
@@ -2158,39 +2205,38 @@ async function deleteSkillWithConfirmation(skill) {
       </div>
     </div>
   `;
-  
+
   // Add event listeners
-  const cancelBtn = modal.querySelector('.btn-cancel');
-  const deleteBtn = modal.querySelector('.btn-danger');
-  const overlay = modal.querySelector('.modal-overlay');
-  
+  const cancelBtn = modal.querySelector(".btn-cancel");
+  const deleteBtn = modal.querySelector(".btn-danger");
+  const overlay = modal.querySelector(".modal-overlay");
+
   const closeModal = () => {
     modal.remove();
   };
-  
-  cancelBtn.addEventListener('click', closeModal);
-  overlay.addEventListener('click', closeModal);
-  
-  deleteBtn.addEventListener('click', async () => {
+
+  cancelBtn.addEventListener("click", closeModal);
+  overlay.addEventListener("click", closeModal);
+
+  deleteBtn.addEventListener("click", async () => {
     try {
       // Delete skill
       await StyleSkillStore.remove(skill.id);
-      
+
       // Close modal
       closeModal();
-      
+
       // Refresh skill chips
       await renderSkillChips();
-      
+
       // Show success message
-      console.log('[Panel] Skill deleted:', skill.name);
-      
+      console.log("[Panel] Skill deleted:", skill.name);
     } catch (err) {
-      console.error('[Panel] Failed to delete skill:', err);
-      showError('删除技能失败');
+      console.error("[Panel] Failed to delete skill:", err);
+      showError("删除技能失败");
     }
   });
-  
+
   // Append to body
   document.body.appendChild(modal);
 }
@@ -2200,47 +2246,48 @@ async function deleteSkillWithConfirmation(skill) {
  */
 function bindTopBarEvents() {
   // 会话标题区域点击 - 展开/收起会话列表
-  const sessionHeader = document.getElementById('session-header');
-  const sessionListToggle = document.getElementById('session-list-toggle');
-  
+  const sessionHeader = document.getElementById("session-header");
+  const sessionListToggle = document.getElementById("session-list-toggle");
+
   if (sessionHeader) {
-    sessionHeader.addEventListener('click', toggleSessionList);
+    sessionHeader.addEventListener("click", toggleSessionList);
   }
-  
+
   if (sessionListToggle) {
-    sessionListToggle.addEventListener('click', (e) => {
+    sessionListToggle.addEventListener("click", (e) => {
       e.stopPropagation();
       toggleSessionList();
     });
   }
-  
+
   // 新建会话按钮
-  const newSessionBtn = document.getElementById('new-session-btn');
+  const newSessionBtn = document.getElementById("new-session-btn");
   if (newSessionBtn) {
-    newSessionBtn.addEventListener('click', (e) => {
+    newSessionBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       handleNewSession();
     });
   }
-  
+
   // 设置按钮
-  const settingsBtn = document.getElementById('settings-btn');
+  const settingsBtn = document.getElementById("settings-btn");
   if (settingsBtn) {
-    settingsBtn.addEventListener('click', () => {
+    settingsBtn.addEventListener("click", () => {
       initSettingsView();
-      switchView('settings');
+      switchView("settings");
     });
   }
-  
+
   // 点击会话列表外部关闭
-  document.addEventListener('click', (e) => {
-    const panel = document.getElementById('session-list-panel');
-    const sessionHeader = document.getElementById('session-header');
-    
+  document.addEventListener("click", (e) => {
+    const panel = document.getElementById("session-list-panel");
+    const sessionHeader = document.getElementById("session-header");
+
     if (panel && sessionHeader) {
-      const isClickInside = panel.contains(e.target) || sessionHeader.contains(e.target);
-      if (!isClickInside && !panel.classList.contains('hidden')) {
-        panel.classList.add('hidden');
+      const isClickInside =
+        panel.contains(e.target) || sessionHeader.contains(e.target);
+      if (!isClickInside && !panel.classList.contains("hidden")) {
+        panel.classList.add("hidden");
       }
     }
   });
@@ -2250,17 +2297,17 @@ function bindTopBarEvents() {
  * 切换会话列表面板
  */
 function toggleSessionList() {
-  const panel = document.getElementById('session-list-panel');
+  const panel = document.getElementById("session-list-panel");
   if (!panel) return;
-  
-  const isHidden = panel.classList.contains('hidden');
-  
+
+  const isHidden = panel.classList.contains("hidden");
+
   if (isHidden) {
     // 显示面板前先加载会话列表
     renderSessionList();
-    panel.classList.remove('hidden');
+    panel.classList.remove("hidden");
   } else {
-    panel.classList.add('hidden');
+    panel.classList.add("hidden");
   }
 }
 
@@ -2273,49 +2320,59 @@ function toggleSessionList() {
  * 显示当前域名的所有会话，包括标题、日期、预览
  */
 async function renderSessionList() {
-  const listContainer = document.getElementById('session-list');
+  const listContainer = document.getElementById("session-list");
   if (!listContainer) return;
-  
+
   // 获取当前域名
   const domain = AppState.currentDomain;
   if (!domain) {
-    listContainer.innerHTML = '<div class="session-list-empty">未检测到当前域名</div>';
+    listContainer.innerHTML =
+      '<div class="session-list-empty">未检测到当前域名</div>';
     return;
   }
-  
+
   try {
     // 动态导入 session 模块
-    const session = await import('./session.js');
-    
+    const session = await import("./session.js");
+
     // 读取会话索引
     const indexKey = `sessions:${domain}:index`;
     const { [indexKey]: index = [] } = await chrome.storage.local.get(indexKey);
-    
+
     if (!Array.isArray(index) || index.length === 0) {
-      listContainer.innerHTML = '<div class="session-list-empty">暂无会话记录</div>';
+      listContainer.innerHTML =
+        '<div class="session-list-empty">暂无会话记录</div>';
       return;
     }
-    
+
     // 按创建时间降序排序
-    const sorted = [...index].sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-    
+    const sorted = [...index].sort(
+      (a, b) => (b.created_at || 0) - (a.created_at || 0),
+    );
+
     // 清空列表
-    listContainer.innerHTML = '';
-    
+    listContainer.innerHTML = "";
+
     // 获取当前会话 ID
     const currentSessionId = session.getCurrentSession()?.sessionId;
-    
+
     // 渲染每个会话
     for (const sessionItem of sorted) {
-      const card = await createSessionCard(sessionItem, domain, currentSessionId);
+      const card = await createSessionCard(
+        sessionItem,
+        domain,
+        currentSessionId,
+      );
       listContainer.appendChild(card);
     }
-    
-    console.log(`[Panel] Rendered ${sorted.length} sessions for domain: ${domain}`);
-    
+
+    console.log(
+      `[Panel] Rendered ${sorted.length} sessions for domain: ${domain}`,
+    );
   } catch (error) {
-    console.error('[Panel] Failed to render session list:', error);
-    listContainer.innerHTML = '<div class="session-list-empty">加载会话失败</div>';
+    console.error("[Panel] Failed to render session list:", error);
+    listContainer.innerHTML =
+      '<div class="session-list-empty">加载会话失败</div>';
   }
 }
 
@@ -2328,152 +2385,162 @@ async function renderSessionList() {
  */
 async function createSessionCard(sessionItem, domain, currentSessionId) {
   const { id, created_at } = sessionItem;
-  
+
   // 动态导入 session 模块
-  const session = await import('./session.js');
-  
+  const session = await import("./session.js");
+
   // 加载会话元数据
   const meta = await session.loadSessionMeta(domain, id);
-  
+
   // 加载首条用户消息（用于预览）
   const historyData = await session.loadAndPrepareHistory(domain, id);
-  const firstUserMessage = historyData.messages.find(msg => msg.role === 'user');
-  const preview = firstUserMessage?.content || '（无内容）';
-  
+  const firstUserMessage = historyData.messages.find(
+    (msg) => msg.role === "user",
+  );
+  const preview = firstUserMessage?.content || "（无内容）";
+
   // 创建卡片元素
-  const card = document.createElement('div');
-  card.className = `session-card ${id === currentSessionId ? 'active' : ''}`;
+  const card = document.createElement("div");
+  card.className = `session-card ${id === currentSessionId ? "active" : ""}`;
   card.dataset.sessionId = id;
   card.dataset.domain = domain;
-  
+
   // 格式化日期
   const date = new Date(created_at || Date.now());
-  const dateStr = date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
-  
+  const dateStr = date.toLocaleDateString("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+  });
+
   // 组装卡片内容
   card.innerHTML = `
     <div class="session-info">
-      <div class="session-title">${escapeHtml(meta.title || '新会话')}</div>
+      <div class="session-title">${escapeHtml(meta.title || "新会话")}</div>
       <div class="session-date">${dateStr}</div>
       <div class="session-preview">${escapeHtml(preview.slice(0, 50))}</div>
     </div>
     <div class="session-actions">
-      <button class="session-delete-btn" title="删除会话" ${id === currentSessionId ? 'disabled' : ''}>
+      <button class="session-delete-btn" title="删除会话" ${id === currentSessionId ? "disabled" : ""}>
         🗑️
       </button>
     </div>
   `;
-  
+
   // 绑定点击事件（切换会话）
-  card.addEventListener('click', (e) => {
+  card.addEventListener("click", (e) => {
     // 如果点击的是删除按钮，不触发切换
-    if (e.target.closest('.session-delete-btn')) return;
+    if (e.target.closest(".session-delete-btn")) return;
     handleSessionClick(domain, id);
   });
-  
+
   // 绑定删除按钮事件
-  const deleteBtn = card.querySelector('.session-delete-btn');
-  deleteBtn.addEventListener('click', (e) => {
+  const deleteBtn = card.querySelector(".session-delete-btn");
+  deleteBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     if (!deleteBtn.disabled) {
-      handleDeleteSession(domain, id, meta.title || '新会话');
+      handleDeleteSession(domain, id, meta.title || "新会话");
     }
   });
-  
+
   return card;
 }
 
 /**
  * 处理会话点击（切换会话）
- * 
+ *
  * 实现完整的会话切换流程：
  * 1. 卸载当前会话样式（移除 activeStyleEl）
  * 2. 加载目标会话历史（从 IndexedDB）
  * 3. 注入目标会话样式（从 stylesKey 读取）
  * 4. 更新 UI 对话区（渲染历史消息）
  * 5. 替换 SessionContext
- * 
- * 
+ *
+ *
  * 设计参考：§8.2 会话生命周期 — 切换会话
- * 
+ *
  * @param {string} domain - 域名
  * @param {string} sessionId - 会话 ID
  */
 async function handleSessionClick(domain, sessionId) {
   try {
     console.log(`[Panel] Switching to session: ${sessionId}`);
-    
+
     // 动态导入依赖模块
-    const session = await import('./session.js');
-    const { sendToContentScript } = await import('./tools.js');
-    
+    const session = await import("./session.js");
+    const { sendToContentScript } = await import("./tools.js");
+
     // === 1. 卸载当前会话样式 ===
     try {
-      await sendToContentScript({ tool: 'unload_session_css' });
-      console.log('[Panel] Unloaded current session CSS');
+      await sendToContentScript({ tool: "unload_session_css" });
+      console.log("[Panel] Unloaded current session CSS");
     } catch (error) {
-      console.warn('[Panel] Failed to unload session CSS (Content Script may not be ready):', error.message);
+      console.warn(
+        "[Panel] Failed to unload session CSS (Content Script may not be ready):",
+        error.message,
+      );
       // 继续执行，不中断切换流程
     }
-    
+
     // === 2. 创建新的 SessionContext 并设置为当前会话 ===
     const newSession = new session.SessionContext(domain, sessionId);
     session.setCurrentSession(newSession);
-    
+
     // === 3. 加载目标会话样式并注入 ===
     const stylesKey = newSession.stylesKey;
-    const { [stylesKey]: sessionCSS = '' } = await chrome.storage.local.get(stylesKey);
-    
+    const { [stylesKey]: sessionCSS = "" } =
+      await chrome.storage.local.get(stylesKey);
+
     // 同步 active_styles（供页面刷新时 early-inject.js 读取）
     const aKey = newSession.activeStylesKey;
     if (sessionCSS && sessionCSS.trim()) {
       await chrome.storage.local.set({ [aKey]: sessionCSS });
       try {
-        await sendToContentScript({ 
-          tool: 'load_session_css', 
-          args: { css: sessionCSS } 
+        await sendToContentScript({
+          tool: "load_session_css",
+          args: { css: sessionCSS },
         });
-        console.log('[Panel] Loaded target session CSS');
+        console.log("[Panel] Loaded target session CSS");
         setHasActiveStyles(true);
       } catch (error) {
-        console.warn('[Panel] Failed to load session CSS:', error.message);
+        console.warn("[Panel] Failed to load session CSS:", error.message);
       }
     } else {
       await chrome.storage.local.remove(aKey);
       setHasActiveStyles(false);
     }
-    
+
     // === 4. 更新顶栏显示 ===
     const meta = await session.loadSessionMeta(domain, sessionId);
-    updateTopBarDisplay(domain, meta.title || '新会话');
-    
+    updateTopBarDisplay(domain, meta.title || "新会话");
+
     // 更新全局状态中的域名和会话 ID
-    stateManager.set('currentDomain', domain);
-    stateManager.set('currentSessionId', sessionId);
-    
+    stateManager.set("currentDomain", domain);
+    stateManager.set("currentSessionId", sessionId);
+
     // === 5. 关闭下拉面板 ===
-    const panel = document.getElementById('session-list-panel');
-    if (panel) panel.classList.add('hidden');
-    
+    const panel = document.getElementById("session-list-panel");
+    if (panel) panel.classList.add("hidden");
+
     // === 6. 清空当前对话区并加载历史消息 ===
     clearMessages();
-    
+
     // 加载会话历史（新格式 { messages, snapshots }）
     const historyData = await session.loadAndPrepareHistory(domain, sessionId);
-    
+
     // 渲染历史消息
     if (historyData.messages && historyData.messages.length > 0) {
       renderHistoryMessages(historyData.messages);
-      console.log(`[Panel] Loaded ${historyData.messages.length} history messages`);
+      console.log(
+        `[Panel] Loaded ${historyData.messages.length} history messages`,
+      );
     } else {
       showEmptyState();
     }
-    
-    console.log('[Panel] Session switched successfully');
-    
+
+    console.log("[Panel] Session switched successfully");
   } catch (error) {
-    console.error('[Panel] Failed to switch session:', error);
-    showError('切换会话失败');
+    console.error("[Panel] Failed to switch session:", error);
+    showError("切换会话失败");
   }
 }
 
@@ -2482,72 +2549,71 @@ async function handleSessionClick(domain, sessionId) {
  */
 async function handleNewSession() {
   try {
-    console.log('[Panel] Creating new session');
-    
+    console.log("[Panel] Creating new session");
+
     // 获取当前域名
     const domain = AppState.currentDomain;
     if (!domain) {
-      showError('未检测到当前域名');
+      showError("未检测到当前域名");
       return;
     }
-    
+
     // 动态导入 session 模块
-    const session = await import('./session.js');
-    
+    const session = await import("./session.js");
+
     // 生成新会话 ID
     const newSessionId = crypto.randomUUID();
-    
+
     // 更新会话索引
     const indexKey = `sessions:${domain}:index`;
     const { [indexKey]: index = [] } = await chrome.storage.local.get(indexKey);
-    
+
     const now = Date.now();
     const newSessionItem = {
       id: newSessionId,
-      created_at: now
+      created_at: now,
     };
-    
+
     // 添加到索引（最新会话放在最前面）
     const newIndex = [newSessionItem, ...index];
     await chrome.storage.local.set({ [indexKey]: newIndex });
-    
+
     // 创建新的 SessionContext
     const newSession = new session.SessionContext(domain, newSessionId);
     session.setCurrentSession(newSession);
-    
+
     // 卸载当前会话样式并清空 active_styles
     try {
-      const { sendToContentScript } = await import('./tools.js');
-      await sendToContentScript({ tool: 'unload_session_css' });
+      const { sendToContentScript } = await import("./tools.js");
+      await sendToContentScript({ tool: "unload_session_css" });
     } catch (error) {
-      console.warn('[Panel] Failed to unload session CSS:', error.message);
+      console.warn("[Panel] Failed to unload session CSS:", error.message);
     }
     await chrome.storage.local.remove(newSession.activeStylesKey);
     setHasActiveStyles(false);
-    
+
     // 创建默认元数据
     await session.saveSessionMeta(domain, newSessionId, {
       title: null,
       created_at: now,
-      message_count: 0
+      message_count: 0,
     });
-    
+
     // 更新顶栏显示
-    updateTopBarDisplay(domain, '新会话');
-    
+    updateTopBarDisplay(domain, "新会话");
+
     // 关闭下拉面板
-    const panel = document.getElementById('session-list-panel');
-    if (panel) panel.classList.add('hidden');
-    
+    const panel = document.getElementById("session-list-panel");
+    if (panel) panel.classList.add("hidden");
+
     // 清空当前对话区
     clearMessages();
     showEmptyState();
-    
+
     console.log(`[Panel] New session created: ${newSessionId}`);
-    
   } catch (error) {
-    console.error('[Panel] Failed to create new session:', error);
-    showError('创建会话失败');
+    console.error("[Panel] Failed to create new session:", error);
+    showError("创建会话失败");
   }
 }
 
@@ -2560,15 +2626,15 @@ async function handleNewSession() {
 async function handleDeleteSession(domain, sessionId, sessionTitle) {
   try {
     // 动态导入 session 模块
-    const session = await import('./session.js');
-    
+    const session = await import("./session.js");
+
     // 先执行删除（不立即删除，等待确认）
     const indexKey = `sessions:${domain}:index`;
     const { [indexKey]: index = [] } = await chrome.storage.local.get(indexKey);
-    
+
     // 判断是否为最后一个会话
     const isLastSession = index.length === 1;
-    
+
     if (isLastSession) {
       // 最后一个会话，显示特殊提示
       showLastSessionModal(domain, sessionId, sessionTitle);
@@ -2576,10 +2642,9 @@ async function handleDeleteSession(domain, sessionId, sessionTitle) {
       // 普通删除，显示标准确认弹窗
       showDeleteConfirmationModal(domain, sessionId, sessionTitle);
     }
-    
   } catch (error) {
-    console.error('[Panel] Failed to handle delete session:', error);
-    showError('删除会话失败');
+    console.error("[Panel] Failed to handle delete session:", error);
+    showError("删除会话失败");
   }
 }
 
@@ -2591,13 +2656,13 @@ async function handleDeleteSession(domain, sessionId, sessionTitle) {
  */
 function showDeleteConfirmationModal(domain, sessionId, sessionTitle) {
   // 创建遮罩
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+
   // 创建弹窗
-  const modal = document.createElement('div');
-  modal.className = 'modal-container';
-  
+  const modal = document.createElement("div");
+  modal.className = "modal-container";
+
   modal.innerHTML = `
     <div class="modal-header">
       <h3 class="modal-title">删除「${escapeHtml(sessionTitle)}」？</h3>
@@ -2610,30 +2675,30 @@ function showDeleteConfirmationModal(domain, sessionId, sessionTitle) {
       <button class="modal-btn modal-btn-danger" data-action="confirm">确认删除</button>
     </div>
   `;
-  
+
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
-  
+
   // 绑定事件
   const handleAction = async (action) => {
-    if (action === 'confirm') {
+    if (action === "confirm") {
       await executeDeleteSession(domain, sessionId);
     }
     // 关闭弹窗
     overlay.remove();
   };
-  
-  modal.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-action]');
+
+  modal.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-action]");
     if (btn) {
       handleAction(btn.dataset.action);
     }
   });
-  
+
   // 点击遮罩关闭
-  overlay.addEventListener('click', (e) => {
+  overlay.addEventListener("click", (e) => {
     if (e.target === overlay) {
-      handleAction('cancel');
+      handleAction("cancel");
     }
   });
 }
@@ -2645,12 +2710,12 @@ function showDeleteConfirmationModal(domain, sessionId, sessionTitle) {
  * @param {string} sessionTitle - 会话标题
  */
 function showLastSessionModal(domain, sessionId, sessionTitle) {
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  
-  const modal = document.createElement('div');
-  modal.className = 'modal-container';
-  
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+
+  const modal = document.createElement("div");
+  modal.className = "modal-container";
+
   modal.innerHTML = `
     <div class="modal-header">
       <h3 class="modal-title">这是 ${domain} 的最后一个会话</h3>
@@ -2663,25 +2728,25 @@ function showLastSessionModal(domain, sessionId, sessionTitle) {
       <button class="modal-btn modal-btn-danger" data-action="delete">确认删除</button>
     </div>
   `;
-  
+
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
-  
+
   const handleAction = async (action) => {
-    if (action === 'delete') {
+    if (action === "delete") {
       await executeDeleteSession(domain, sessionId);
     }
     overlay.remove();
   };
-  
-  modal.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-action]');
+
+  modal.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-action]");
     if (btn) {
       handleAction(btn.dataset.action);
     }
   });
-  
-  overlay.addEventListener('click', (e) => {
+
+  overlay.addEventListener("click", (e) => {
     if (e.target === overlay) {
       overlay.remove();
     }
@@ -2696,22 +2761,21 @@ function showLastSessionModal(domain, sessionId, sessionTitle) {
 async function executeDeleteSession(domain, sessionId) {
   try {
     console.log(`[Panel] Deleting session: ${sessionId}`);
-    
-    const session = await import('./session.js');
+
+    const session = await import("./session.js");
     const result = await session.deleteSession(domain, sessionId);
-    
+
     const currentSession = session.getCurrentSession();
     if (currentSession && currentSession.sessionId === sessionId) {
       await handleNewSession();
     } else {
       await renderSessionList();
     }
-    
-    console.log('[Panel] Session deleted successfully');
-    
+
+    console.log("[Panel] Session deleted successfully");
   } catch (error) {
-    console.error('[Panel] Failed to delete session:', error);
-    showError('删除会话失败');
+    console.error("[Panel] Failed to delete session:", error);
+    showError("删除会话失败");
   }
 }
 
@@ -2721,7 +2785,7 @@ async function executeDeleteSession(domain, sessionId) {
  * @returns {string} - 转义后的文本
  */
 function escapeHtml(text) {
-  const div = document.createElement('div');
+  const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
 }
@@ -2733,25 +2797,25 @@ function escapeHtml(text) {
  */
 function updateStatusIndicator(status) {
   // 兼容旧接口：仅更新 agentStatus
-  stateManager.set('agentStatus', status);
+  stateManager.set("agentStatus", status);
   // 直接更新指示灯，不触发完整联动（避免循环）
-  const dot = DOM.statusDot?.querySelector('.dot');
+  const dot = DOM.statusDot?.querySelector(".dot");
   if (!dot) return;
-  
-  dot.classList.remove('ready', 'processing', 'error', 'restricted');
-  
+
+  dot.classList.remove("ready", "processing", "error", "restricted");
+
   switch (status) {
-    case 'idle':
-      dot.classList.add('ready');
+    case "idle":
+      dot.classList.add("ready");
       break;
-    case 'running':
-      dot.classList.add('processing');
+    case "running":
+      dot.classList.add("processing");
       break;
-    case 'error':
-      dot.classList.add('error');
+    case "error":
+      dot.classList.add("error");
       break;
-    case 'restricted':
-      dot.classList.add('restricted');
+    case "restricted":
+      dot.classList.add("restricted");
       break;
   }
 }
@@ -2765,66 +2829,66 @@ function updateStatusIndicator(status) {
  */
 async function initSettingsView() {
   // 获取设置页 DOM 元素
-  DOM.settingsApiKey = document.getElementById('settings-api-key');
-  DOM.settingsApiBase = document.getElementById('settings-api-base');
-  DOM.settingsModel = document.getElementById('settings-model');
-  DOM.verifyConnectionBtn = document.getElementById('verify-connection-btn');
-  DOM.connectionStatus = document.getElementById('connection-status');
+  DOM.settingsApiKey = document.getElementById("settings-api-key");
+  DOM.settingsApiBase = document.getElementById("settings-api-base");
+  DOM.settingsModel = document.getElementById("settings-model");
+  DOM.verifyConnectionBtn = document.getElementById("verify-connection-btn");
+  DOM.connectionStatus = document.getElementById("connection-status");
 
   // 防止重复绑定事件监听器（使用 data 属性标记）
-  const settingsView = document.getElementById('settings-view');
-  if (settingsView && settingsView.dataset.listenersAttached === 'true') {
+  const settingsView = document.getElementById("settings-view");
+  if (settingsView && settingsView.dataset.listenersAttached === "true") {
     // 仅重新加载数据，不重复绑定事件
     await loadCurrentSettings();
     await loadStorageUsage();
     return;
   }
-  if (settingsView) settingsView.dataset.listenersAttached = 'true';
+  if (settingsView) settingsView.dataset.listenersAttached = "true";
 
   // 返回按钮
-  const backBtn = document.getElementById('settings-back-btn');
+  const backBtn = document.getElementById("settings-back-btn");
   if (backBtn) {
-    backBtn.addEventListener('click', async () => {
+    backBtn.addEventListener("click", async () => {
       await handleSettingsBack();
     });
   }
 
   // 验证连接按钮
   if (DOM.verifyConnectionBtn) {
-    DOM.verifyConnectionBtn.addEventListener('click', handleVerifyConnection);
+    DOM.verifyConnectionBtn.addEventListener("click", handleVerifyConnection);
   }
-  
+
   // 切换 API Key 可见性
-  const toggleKeyBtn = document.getElementById('toggle-key-visibility');
+  const toggleKeyBtn = document.getElementById("toggle-key-visibility");
   if (toggleKeyBtn) {
-    toggleKeyBtn.addEventListener('click', () => {
+    toggleKeyBtn.addEventListener("click", () => {
       const type = DOM.settingsApiKey.type;
-      DOM.settingsApiKey.type = type === 'password' ? 'text' : 'password';
-      toggleKeyBtn.textContent = type === 'password' ? '🙈' : '👁';
+      DOM.settingsApiKey.type = type === "password" ? "text" : "password";
+      toggleKeyBtn.textContent = type === "password" ? "🙈" : "👁";
     });
   }
 
   // 输入框变化时标记有未保存的更改
   const settingsInputs = [
-    document.getElementById('settings-api-key'),
-    document.getElementById('settings-api-base'),
-    document.getElementById('settings-model'),
+    document.getElementById("settings-api-key"),
+    document.getElementById("settings-api-base"),
+    document.getElementById("settings-model"),
   ];
-  settingsInputs.forEach(input => {
+  settingsInputs.forEach((input) => {
     if (input) {
-      input.addEventListener('input', () => markSettingsDirty());
+      input.addEventListener("input", () => markSettingsDirty());
     }
   });
-  
+
   // 清理历史数据按钮
-  const clearStorageBtn = document.getElementById('clear-storage-btn');
+  const clearStorageBtn = document.getElementById("clear-storage-btn");
   if (clearStorageBtn) {
-    clearStorageBtn.addEventListener('click', handleClearStorage);
+    clearStorageBtn.addEventListener("click", handleClearStorage);
   }
 
   // 加载当前设置
   await loadCurrentSettings();
-  
+
   // 加载存储用量
   await loadStorageUsage();
 }
@@ -2833,12 +2897,12 @@ async function initSettingsView() {
  * 标记设置有未保存的更改
  */
 function markSettingsDirty() {
-  const saveHint = document.getElementById('settings-save-hint');
+  const saveHint = document.getElementById("settings-save-hint");
   if (saveHint) {
-    saveHint.classList.remove('hidden');
+    saveHint.classList.remove("hidden");
   }
   if (DOM.connectionStatus) {
-    DOM.connectionStatus.classList.add('hidden');
+    DOM.connectionStatus.classList.add("hidden");
   }
 }
 
@@ -2857,39 +2921,39 @@ async function handleSettingsBack() {
       await saveSettings({ apiKey, apiBase, model });
       showSaveSuccess();
     } catch (err) {
-      console.warn('[Panel] Auto-save on back failed:', err);
+      console.warn("[Panel] Auto-save on back failed:", err);
     }
   }
 
   // 根据是否有 API Key 决定返回哪个视图
   if (!apiKey) {
-    switchView('onboarding');
+    switchView("onboarding");
     return;
   }
 
   // 若之前是 missing 状态但现在填入了 Key，需要初始化主界面
-  if (AppState.apiKeyStatus === 'missing') {
-    AppState.apiKeyStatus = 'valid';
+  if (AppState.apiKeyStatus === "missing") {
+    AppState.apiKeyStatus = "valid";
     try {
       await initMainView();
     } catch (err) {
-      console.warn('[Panel] initMainView on back failed:', err);
+      console.warn("[Panel] initMainView on back failed:", err);
     }
   }
-  switchView('main');
+  switchView("main");
 }
 
 /**
  * 显示保存成功的简短提示（不跳转）
  */
 function showSaveSuccess() {
-  const saveHint = document.getElementById('settings-save-hint');
+  const saveHint = document.getElementById("settings-save-hint");
   if (saveHint) {
-    saveHint.textContent = '✓ 已保存';
-    saveHint.classList.remove('hidden', 'unsaved');
-    saveHint.classList.add('saved');
+    saveHint.textContent = "✓ 已保存";
+    saveHint.classList.remove("hidden", "unsaved");
+    saveHint.classList.add("saved");
     setTimeout(() => {
-      saveHint.classList.add('hidden');
+      saveHint.classList.add("hidden");
     }, 2000);
   }
 }
@@ -2901,7 +2965,7 @@ async function loadCurrentSettings() {
   try {
     const settings = await getSettings();
     if (DOM.settingsApiKey) {
-      DOM.settingsApiKey.value = settings.apiKey || '';
+      DOM.settingsApiKey.value = settings.apiKey || "";
     }
     if (DOM.settingsApiBase) {
       DOM.settingsApiBase.value = settings.apiBase || DEFAULT_API_BASE;
@@ -2910,7 +2974,7 @@ async function loadCurrentSettings() {
       DOM.settingsModel.value = settings.model || DEFAULT_MODEL;
     }
   } catch (err) {
-    console.warn('[Panel] No existing settings');
+    console.warn("[Panel] No existing settings");
   }
 }
 
@@ -2923,35 +2987,35 @@ async function handleVerifyConnection() {
   const model = DOM.settingsModel.value.trim() || DEFAULT_MODEL;
 
   if (!apiKey) {
-    showConnectionStatus('请输入 API Key', 'error');
+    showConnectionStatus("请输入 API Key", "error");
     return;
   }
 
   DOM.verifyConnectionBtn.disabled = true;
-  showConnectionStatus('正在验证...', 'info');
+  showConnectionStatus("正在验证...", "info");
 
   try {
     const result = await validateConnection(apiKey, apiBase, model);
 
     if (result.ok) {
-      showConnectionStatus('✓ 连接成功，已保存', 'success');
+      showConnectionStatus("✓ 连接成功，已保存", "success");
       // 保存所有设置
       await saveSettings({ apiKey, apiBase, model });
-      AppState.apiKeyStatus = 'valid';
+      AppState.apiKeyStatus = "valid";
       // 隐藏未保存提示
-      const saveHint = document.getElementById('settings-save-hint');
-      if (saveHint) saveHint.classList.add('hidden');
+      const saveHint = document.getElementById("settings-save-hint");
+      if (saveHint) saveHint.classList.add("hidden");
     } else {
-      let msg = '连接失败';
-      if (result.status === 401) msg = 'API Key 无效';
-      else if (result.status === 403) msg = '访问被拒绝';
+      let msg = "连接失败";
+      if (result.status === 401) msg = "API Key 无效";
+      else if (result.status === 403) msg = "访问被拒绝";
       else if (result.error) msg = result.error;
 
-      showConnectionStatus(`✗ ${msg}`, 'error');
-      AppState.apiKeyStatus = 'invalid';
+      showConnectionStatus(`✗ ${msg}`, "error");
+      AppState.apiKeyStatus = "invalid";
     }
   } catch (err) {
-    showConnectionStatus(`✗ ${err.message}`, 'error');
+    showConnectionStatus(`✗ ${err.message}`, "error");
   } finally {
     DOM.verifyConnectionBtn.disabled = false;
   }
@@ -2964,20 +3028,29 @@ async function handleVerifyConnection() {
  */
 function showConnectionStatus(message, type) {
   if (!DOM.connectionStatus) return;
-  
+
   DOM.connectionStatus.textContent = message;
-  DOM.connectionStatus.classList.remove('hidden', 'status-success', 'status-error', 'status-info');
+  DOM.connectionStatus.classList.remove(
+    "hidden",
+    "status-success",
+    "status-error",
+    "status-info",
+  );
   DOM.connectionStatus.classList.add(`status-${type}`);
-  
+
   // 设置颜色（保留内联样式作为回退）
-  DOM.connectionStatus.style.color = 
-    type === 'success' ? 'var(--color-success)' :
-    type === 'error' ? 'var(--color-error)' :
-    'var(--color-text-secondary)';
+  DOM.connectionStatus.style.color =
+    type === "success"
+      ? "var(--color-success)"
+      : type === "error"
+        ? "var(--color-error)"
+        : "var(--color-text-secondary)";
   DOM.connectionStatus.style.backgroundColor =
-    type === 'success' ? 'var(--color-success-bg)' :
-    type === 'error' ? 'var(--color-error-bg)' :
-    'var(--color-info-bg)';
+    type === "success"
+      ? "var(--color-success-bg)"
+      : type === "error"
+        ? "var(--color-error-bg)"
+        : "var(--color-info-bg)";
 }
 
 /**
@@ -2986,52 +3059,51 @@ function showConnectionStatus(message, type) {
 async function loadStorageUsage() {
   try {
     // 动态导入 session 模块
-    const session = await import('./session.js');
-    
+    const session = await import("./session.js");
+
     // 获取存储用量
     const usage = await session.getStorageUsage();
-    
+
     // 更新进度条
-    const progressBar = document.getElementById('storage-progress');
+    const progressBar = document.getElementById("storage-progress");
     if (progressBar) {
       progressBar.style.width = `${usage.percent}%`;
-      
+
       // 根据使用率设置颜色
       if (usage.percent >= 90) {
-        progressBar.style.backgroundColor = 'var(--color-error)';
+        progressBar.style.backgroundColor = "var(--color-error)";
       } else if (usage.percent >= 70) {
-        progressBar.style.backgroundColor = 'var(--color-warning)';
+        progressBar.style.backgroundColor = "var(--color-warning)";
       } else {
-        progressBar.style.backgroundColor = 'var(--color-primary)';
+        progressBar.style.backgroundColor = "var(--color-primary)";
       }
     }
-    
+
     // 更新百分比文本
-    const percentText = document.getElementById('storage-percent');
+    const percentText = document.getElementById("storage-percent");
     if (percentText) {
       percentText.textContent = `${usage.percent}%`;
     }
-    
+
     // 更新详细文本
-    const detailText = document.getElementById('storage-detail');
+    const detailText = document.getElementById("storage-detail");
     if (detailText) {
       const usedMB = (usage.bytes / (1024 * 1024)).toFixed(2);
       const maxMB = (usage.maxBytes / (1024 * 1024)).toFixed(0);
       detailText.textContent = `${usedMB} MB / ${maxMB} MB`;
     }
-    
   } catch (error) {
-    console.error('[Panel] Failed to load storage usage:', error);
-    
+    console.error("[Panel] Failed to load storage usage:", error);
+
     // 显示错误状态
-    const percentText = document.getElementById('storage-percent');
+    const percentText = document.getElementById("storage-percent");
     if (percentText) {
-      percentText.textContent = '--';
+      percentText.textContent = "--";
     }
-    
-    const detailText = document.getElementById('storage-detail');
+
+    const detailText = document.getElementById("storage-detail");
     if (detailText) {
-      detailText.textContent = '无法获取存储信息';
+      detailText.textContent = "无法获取存储信息";
     }
   }
 }
@@ -3042,45 +3114,44 @@ async function loadStorageUsage() {
 async function handleClearStorage() {
   // 确认对话框
   const confirmed = confirm(
-    '确定要清理历史数据吗？\n\n' +
-    '这将删除：\n' +
-    '• 超过 90 天的会话\n' +
-    '• 每个域名超过 20 个的旧会话\n' +
-    '• 超过 50 个的旧风格技能\n\n' +
-    '此操作不可撤销。'
+    "确定要清理历史数据吗？\n\n" +
+      "这将删除：\n" +
+      "• 超过 90 天的会话\n" +
+      "• 每个域名超过 20 个的旧会话\n" +
+      "• 超过 50 个的旧风格技能\n\n" +
+      "此操作不可撤销。",
   );
-  
+
   if (!confirmed) return;
-  
+
   try {
     // 动态导入 session 模块
-    const session = await import('./session.js');
-    
+    const session = await import("./session.js");
+
     // 显示加载状态
-    const clearBtn = document.getElementById('clear-storage-btn');
+    const clearBtn = document.getElementById("clear-storage-btn");
     if (clearBtn) {
       clearBtn.disabled = true;
-      clearBtn.textContent = '清理中...';
+      clearBtn.textContent = "清理中...";
     }
-    
+
     // 执行清理
     await session.cleanupStorage();
-    
+
     // 刷新存储用量显示
     await loadStorageUsage();
-    
+
     // 显示成功提示
-    alert('历史数据清理完成！');
-    
+    alert("历史数据清理完成！");
   } catch (error) {
-    console.error('[Panel] Failed to clear storage:', error);
-    alert('清理失败：' + error.message);
+    console.error("[Panel] Failed to clear storage:", error);
+    alert("清理失败：" + error.message);
   } finally {
     // 恢复按钮状态
-    const clearBtn = document.getElementById('clear-storage-btn');
+    const clearBtn = document.getElementById("clear-storage-btn");
     if (clearBtn) {
       clearBtn.disabled = false;
-      clearBtn.textContent = '清理历史数据';
+      clearBtn.textContent = "清理历史数据";
     }
   }
 }
@@ -3091,7 +3162,7 @@ async function handleClearStorage() {
 
 /**
  * 应用初始化入口
- * 
+ *
  * 完整初始化流程（设计参考：§16.8 完整使用流程 / §7.5 清理触发时机）：
  * 1. checkAndMigrateStorage - 存储 Schema 版本迁移
  * 2. checkFirstRun - 检测 API Key
@@ -3102,73 +3173,73 @@ async function handleClearStorage() {
  * 7. 后台执行 cleanupStorage（不阻塞 UI）
  */
 async function init() {
-  console.log('[Panel] Initializing...');
-  
+  console.log("[Panel] Initializing...");
+
   // === Step 1: 存储 Schema 版本迁移 ===
   try {
-    const session = await import('./session.js');
+    const session = await import("./session.js");
     await session.checkAndMigrateStorage();
-    console.log('[Panel] Storage migration checked');
+    console.log("[Panel] Storage migration checked");
   } catch (err) {
-    console.error('[Panel] Storage migration failed:', err);
+    console.error("[Panel] Storage migration failed:", err);
     // 继续执行，不中断初始化
   }
-  
+
   // 缓存 DOM 元素
-  DOM.onboardingView = document.getElementById('onboarding-view');
-  DOM.mainView = document.getElementById('main-view');
-  DOM.settingsView = document.getElementById('settings-view');
-  DOM.loadingOverlay = document.getElementById('loading-overlay');
-  DOM.errorToast = document.getElementById('error-toast');
-  DOM.errorMessage = document.getElementById('error-message');
-  
+  DOM.onboardingView = document.getElementById("onboarding-view");
+  DOM.mainView = document.getElementById("main-view");
+  DOM.settingsView = document.getElementById("settings-view");
+  DOM.loadingOverlay = document.getElementById("loading-overlay");
+  DOM.errorToast = document.getElementById("error-toast");
+  DOM.errorMessage = document.getElementById("error-message");
+
   // 错误提示关闭按钮
-  const dismissErrorBtn = document.getElementById('dismiss-error');
+  const dismissErrorBtn = document.getElementById("dismiss-error");
   if (dismissErrorBtn) {
-    dismissErrorBtn.addEventListener('click', hideError);
+    dismissErrorBtn.addEventListener("click", hideError);
   }
-  
+
   // 设置按钮
-  const settingsBtn = document.getElementById('settings-btn');
+  const settingsBtn = document.getElementById("settings-btn");
   if (settingsBtn) {
-    settingsBtn.addEventListener('click', () => {
+    settingsBtn.addEventListener("click", () => {
       initSettingsView();
-      switchView('settings');
+      switchView("settings");
     });
   }
-  
+
   // === Step 2: 检测 API Key ===
   try {
     const { needsSetup } = await checkFirstRun();
-    
+
     if (needsSetup) {
       // === Step 3a: 首次使用，显示引导页 ===
-      console.log('[Panel] First run detected, showing onboarding');
+      console.log("[Panel] First run detected, showing onboarding");
       initOnboarding();
-      switchView('onboarding');
-      AppState.apiKeyStatus = 'missing';
+      switchView("onboarding");
+      AppState.apiKeyStatus = "missing";
     } else {
       // === Step 3b: 已有配置，进入主界面 ===
-      console.log('[Panel] Existing settings found, entering main view');
-      AppState.apiKeyStatus = 'valid';
-      
+      console.log("[Panel] Existing settings found, entering main view");
+      AppState.apiKeyStatus = "valid";
+
       // 初始化主界面（包含获取域名、加载会话、加载技能 chip）
       await initMainView();
-      
-      switchView('main');
-      
+
+      switchView("main");
+
       // === Step 7: 后台执行 cleanupStorage（不阻塞 UI）===
-      import('./session.js').then(session => {
-        session.cleanupStorage().catch(err => {
-          console.error('[Panel] Background cleanup failed:', err);
+      import("./session.js").then((session) => {
+        session.cleanupStorage().catch((err) => {
+          console.error("[Panel] Background cleanup failed:", err);
         });
       });
     }
   } catch (err) {
-    console.error('[Panel] Init error:', err);
+    console.error("[Panel] Init error:", err);
     // 出错时显示引导页
     initOnboarding();
-    switchView('onboarding');
+    switchView("onboarding");
   }
 }
 
@@ -3177,7 +3248,7 @@ async function init() {
 // ============================================================================
 
 // DOM 加载完成后初始化
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener("DOMContentLoaded", init);
 
 // ============================================================================
 // 消息渲染函数
@@ -3192,23 +3263,23 @@ document.addEventListener('DOMContentLoaded', init);
  * @returns {HTMLElement} - 消息 DOM 元素
  */
 function renderUserMessage(content, options = {}) {
-  const messageDiv = document.createElement('div');
-  messageDiv.className = 'message message-user';
-  
-  const bubbleDiv = document.createElement('div');
-  bubbleDiv.className = 'message-bubble';
+  const messageDiv = document.createElement("div");
+  messageDiv.className = "message message-user";
+
+  const bubbleDiv = document.createElement("div");
+  bubbleDiv.className = "message-bubble";
   bubbleDiv.textContent = content;
-  
+
   if (options.turn != null) {
     bubbleDiv.dataset.turn = options.turn;
   }
 
   if (options.showRewind && options.turn != null) {
-    const rewindBtn = document.createElement('button');
-    rewindBtn.className = 'rewind-btn';
-    rewindBtn.title = '回到这一轮';
-    rewindBtn.innerHTML = '↩';
-    rewindBtn.addEventListener('click', (e) => {
+    const rewindBtn = document.createElement("button");
+    rewindBtn.className = "rewind-btn";
+    rewindBtn.title = "回到这一轮";
+    rewindBtn.innerHTML = "↩";
+    rewindBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       handleRewindClick(options.turn);
     });
@@ -3224,35 +3295,35 @@ function renderUserMessage(content, options = {}) {
  * @returns {HTMLElement} - 消息 DOM 元素（包含推理块和气泡容器）
  */
 function renderAssistantMessageContainer() {
-  const messageDiv = document.createElement('div');
-  messageDiv.className = 'message message-assistant';
+  const messageDiv = document.createElement("div");
+  messageDiv.className = "message message-assistant";
 
   // 推理思考块（初始隐藏，有 reasoning_content 时才显示）
-  const reasoningBlock = document.createElement('div');
-  reasoningBlock.className = 'reasoning-block';
+  const reasoningBlock = document.createElement("div");
+  reasoningBlock.className = "reasoning-block";
 
-  const reasoningHeader = document.createElement('button');
-  reasoningHeader.className = 'reasoning-header';
-  reasoningHeader.setAttribute('aria-expanded', 'true');
+  const reasoningHeader = document.createElement("button");
+  reasoningHeader.className = "reasoning-header";
+  reasoningHeader.setAttribute("aria-expanded", "true");
   reasoningHeader.innerHTML =
     '<span class="reasoning-spinner"></span>' +
     '<span class="reasoning-title">思考中…</span>' +
     '<span class="reasoning-chevron"></span>';
 
-  const reasoningContent = document.createElement('div');
-  reasoningContent.className = 'reasoning-content';
+  const reasoningContent = document.createElement("div");
+  reasoningContent.className = "reasoning-content";
 
-  reasoningHeader.addEventListener('click', () => {
-    const expanded = reasoningHeader.getAttribute('aria-expanded') === 'true';
-    reasoningHeader.setAttribute('aria-expanded', String(!expanded));
-    reasoningBlock.classList.toggle('collapsed', expanded);
+  reasoningHeader.addEventListener("click", () => {
+    const expanded = reasoningHeader.getAttribute("aria-expanded") === "true";
+    reasoningHeader.setAttribute("aria-expanded", String(!expanded));
+    reasoningBlock.classList.toggle("collapsed", expanded);
   });
 
   reasoningBlock.appendChild(reasoningHeader);
   reasoningBlock.appendChild(reasoningContent);
 
-  const bubbleDiv = document.createElement('div');
-  bubbleDiv.className = 'message-bubble streaming-text';
+  const bubbleDiv = document.createElement("div");
+  bubbleDiv.className = "message-bubble streaming-text";
 
   messageDiv.appendChild(reasoningBlock);
   messageDiv.appendChild(bubbleDiv);
@@ -3274,100 +3345,100 @@ class StreamingTextRenderer {
    */
   constructor(container, options = {}) {
     this.container = container;
-    this.buffer = '';              // 原始文本缓冲
-    this.renderedHTML = '';        // 已渲染的 HTML
-    this.cursor = null;            // 光标元素
-    this.isStreaming = false;      // 是否正在流式输出
-    
+    this.buffer = ""; // 原始文本缓冲
+    this.renderedHTML = ""; // 已渲染的 HTML
+    this.cursor = null; // 光标元素
+    this.isStreaming = false; // 是否正在流式输出
+
     // 配置选项
     this.options = {
-      showCursor: options.showCursor !== false,  // 默认显示光标
-      autoScroll: options.autoScroll !== false,  // 默认自动滚动
-      scrollContainer: options.scrollContainer || null,  // 滚动容器
+      showCursor: options.showCursor !== false, // 默认显示光标
+      autoScroll: options.autoScroll !== false, // 默认自动滚动
+      scrollContainer: options.scrollContainer || null, // 滚动容器
     };
-    
+
     // 初始化光标
     if (this.options.showCursor) {
       this._initCursor();
     }
   }
-  
+
   /**
    * 初始化光标元素
    * @private
    */
   _initCursor() {
-    this.cursor = document.createElement('span');
-    this.cursor.className = 'typing-cursor';
+    this.cursor = document.createElement("span");
+    this.cursor.className = "typing-cursor";
     this.container.appendChild(this.cursor);
   }
-  
+
   /**
    * 追加文本（流式）
    * @param {string} text - 要追加的文本
    */
   appendText(text) {
     if (!text) return;
-    
+
     this.buffer += text;
     this.isStreaming = true;
-    
+
     // 渲染 Markdown 并更新 DOM
     const html = this._renderMarkdown(this.buffer);
-    
+
     // 保留光标元素
     if (this.cursor && this.cursor.parentNode === this.container) {
       this.container.removeChild(this.cursor);
     }
-    
+
     this.container.innerHTML = html;
-    
+
     // 重新添加光标
     if (this.options.showCursor && this.isStreaming) {
       this.container.appendChild(this.cursor);
     }
-    
+
     // 自动滚动
     if (this.options.autoScroll) {
       this._scrollToBottom();
     }
   }
-  
+
   /**
    * 完成流式输出
    */
   finish() {
     this.isStreaming = false;
-    
+
     // 移除光标
     if (this.cursor && this.cursor.parentNode === this.container) {
       this.container.removeChild(this.cursor);
     }
-    
+
     // 最终渲染
     const html = this._renderMarkdown(this.buffer);
     this.container.innerHTML = html;
-    
+
     // 确保滚动到底部
     if (this.options.autoScroll) {
       this._scrollToBottom();
     }
   }
-  
+
   /**
    * 清空内容
    */
   clear() {
-    this.buffer = '';
-    this.renderedHTML = '';
-    this.container.innerHTML = '';
-    
+    this.buffer = "";
+    this.renderedHTML = "";
+    this.container.innerHTML = "";
+
     // 重新添加光标
     if (this.options.showCursor && this.cursor) {
       this.container.appendChild(this.cursor);
     }
   }
-  
+
   /**
    * 渲染基础 Markdown
    * @param {string} text - 原始文本
@@ -3375,45 +3446,48 @@ class StreamingTextRenderer {
    * @private
    */
   _renderMarkdown(text) {
-    if (!text) return '';
-    
+    if (!text) return "";
+
     let html = this._escapeHtml(text);
-    
+
     // 代码块（``` ... ```）
     html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
-      const langAttr = lang ? ` class="language-${lang}"` : '';
+      const langAttr = lang ? ` class="language-${lang}"` : "";
       return `<pre><code${langAttr}>${code.trim()}</code></pre>`;
     });
-    
+
     // 行内代码（`code`）
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-    
+    html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+
     // 加粗（**text** 或 __text__）
-    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-    
+    html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    html = html.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+
     // 斜体（*text* 或 _text_）
-    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
-    
+    html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+    html = html.replace(/_([^_]+)_/g, "<em>$1</em>");
+
     // 删除线（~~text~~）
-    html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-    
+    html = html.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+
     // 链接（[text](url)）
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-    
+    html = html.replace(
+      /\[([^\]]+)\]\(([^)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener">$1</a>',
+    );
+
     // 换行处理
-    html = html.replace(/\n\n/g, '</p><p>');
-    html = html.replace(/\n/g, '<br>');
-    
+    html = html.replace(/\n\n/g, "</p><p>");
+    html = html.replace(/\n/g, "<br>");
+
     // 包裹段落
-    if (!html.startsWith('<pre>')) {
+    if (!html.startsWith("<pre>")) {
       html = `<p>${html}</p>`;
     }
-    
+
     return html;
   }
-  
+
   /**
    * 转义 HTML 特殊字符
    * @param {string} text - 原始文本
@@ -3421,17 +3495,18 @@ class StreamingTextRenderer {
    * @private
    */
   _escapeHtml(text) {
-    const div = document.createElement('div');
+    const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
   }
-  
+
   /**
    * 滚动到底部
    * @private
    */
   _scrollToBottom() {
-    const scrollContainer = this.options.scrollContainer || DOM.messagesContainer;
+    const scrollContainer =
+      this.options.scrollContainer || DOM.messagesContainer;
     if (scrollContainer) {
       // 使用 requestAnimationFrame 确保平滑滚动
       requestAnimationFrame(() => {
@@ -3458,7 +3533,7 @@ function addMessageToContainer(messageElement) {
  */
 function clearMessages() {
   if (DOM.messagesContainer) {
-    DOM.messagesContainer.innerHTML = '';
+    DOM.messagesContainer.innerHTML = "";
   }
 }
 
@@ -3471,7 +3546,7 @@ function scrollToBottom() {
     requestAnimationFrame(() => {
       DOM.messagesContainer.scrollTo({
         top: DOM.messagesContainer.scrollHeight,
-        behavior: 'smooth'
+        behavior: "smooth",
       });
     });
   }
@@ -3489,9 +3564,9 @@ function createStreamingRenderer(container, options = {}) {
     showCursor: true,
     autoScroll: true,
     scrollContainer: DOM.messagesContainer,
-    ...options
+    ...options,
   };
-  
+
   return new StreamingTextRenderer(container, defaultOptions);
 }
 
@@ -3501,30 +3576,30 @@ function createStreamingRenderer(container, options = {}) {
  */
 function showEmptyState() {
   if (!DOM.messagesContainer) return;
-  
-  const existing = DOM.messagesContainer.querySelector('.chat-area-empty');
+
+  const existing = DOM.messagesContainer.querySelector(".chat-area-empty");
   if (existing) existing.remove();
-  
-  const emptyState = document.createElement('div');
-  emptyState.className = 'chat-area-empty';
+
+  const emptyState = document.createElement("div");
+  emptyState.className = "chat-area-empty";
   emptyState.innerHTML = `
     <div class="empty-state-icon">💬</div>
     <div class="empty-state-title">开始对话</div>
     <div class="empty-state-description">描述你想要的样式效果，或点击上方技能快捷按钮</div>
   `;
-  
+
   DOM.messagesContainer.appendChild(emptyState);
 }
 
 /**
  * 渲染历史消息到对话区
- * 
+ *
  * 用于会话切换时恢复对话历史。
  * 支持 Anthropic Messages API 的消息格式。
- * 
+ *
  * @param {Array} history - 对话历史数组，格式为 [{ role, content }, ...]
  * @returns {void}
- * 
+ *
  * @example
  * const history = [
  *   { role: 'user', content: '把背景改成深蓝色' },
@@ -3534,34 +3609,34 @@ function showEmptyState() {
  */
 function renderHistoryMessages(history) {
   if (!DOM.messagesContainer) return;
-  
+
   // 清空当前对话区
   clearMessages();
-  
+
   // 兼容新旧格式：可传入 messages 数组或 { messages, snapshots } 对象
-  const messages = Array.isArray(history) ? history : (history?.messages || []);
-  
+  const messages = Array.isArray(history) ? history : history?.messages || [];
+
   if (!messages || messages.length === 0) {
     showEmptyState();
     return;
   }
-  
+
   // 统计总轮次数（用于决定是否显示回退按钮）
   let totalTurns = 0;
   for (const msg of messages) {
-    if (msg.role === 'user' && typeof msg.content === 'string') totalTurns++;
+    if (msg.role === "user" && typeof msg.content === "string") totalTurns++;
   }
-  
+
   // 预先构建 tool_use_id -> tool_result 的映射，供渲染工具卡片时使用
   const toolResultMap = new Map();
   for (const msg of messages) {
-    if (msg.role === 'user' && Array.isArray(msg.content)) {
+    if (msg.role === "user" && Array.isArray(msg.content)) {
       for (const block of msg.content) {
-        if (block.type === 'tool_result' && block.tool_use_id) {
+        if (block.type === "tool_result" && block.tool_use_id) {
           const content = block.content;
           toolResultMap.set(
             block.tool_use_id,
-            typeof content === 'string' ? content : JSON.stringify(content)
+            typeof content === "string" ? content : JSON.stringify(content),
           );
         }
       }
@@ -3569,44 +3644,52 @@ function renderHistoryMessages(history) {
   }
 
   let currentTurn = 0;
-  
+
   // 遍历历史消息并渲染
   for (const message of messages) {
-    if (message.role === 'user') {
+    if (message.role === "user") {
       // 渲染用户消息
-      const userContent = typeof message.content === 'string' 
-        ? message.content 
-        : message.content?.[0]?.text || '';
-      
+      const userContent =
+        typeof message.content === "string"
+          ? message.content
+          : message.content?.[0]?.text || "";
+
       if (userContent) {
         // 用户文本消息（非 tool_result）才计入轮次
-        if (typeof message.content === 'string') {
+        if (typeof message.content === "string") {
           currentTurn++;
         }
-        const showRewind = typeof message.content === 'string' && currentTurn < totalTurns;
+        const showRewind =
+          typeof message.content === "string" && currentTurn < totalTurns;
         const userMessageEl = renderUserMessage(userContent, {
-          turn: typeof message.content === 'string' ? currentTurn : undefined,
+          turn: typeof message.content === "string" ? currentTurn : undefined,
           showRewind,
         });
         addMessageToContainer(userMessageEl);
       }
-    } else if (message.role === 'assistant') {
+    } else if (message.role === "assistant") {
       // 渲染助手消息
       const assistantMessageEl = renderAssistantMessageContainer();
-      const bubble = assistantMessageEl.querySelector('.message-bubble');
-      
+      const bubble = assistantMessageEl.querySelector(".message-bubble");
+
       // 渲染推理文本（_reasoning 字段由 agent-loop 在完整历史中保存）
       if (message._reasoning) {
-        const reasoningBlock = assistantMessageEl.querySelector('.reasoning-block');
-        const reasoningContentEl = assistantMessageEl.querySelector('.reasoning-content');
-        const reasoningHeader = assistantMessageEl.querySelector('.reasoning-header');
-        const reasoningTitleEl = assistantMessageEl.querySelector('.reasoning-title');
+        const reasoningBlock =
+          assistantMessageEl.querySelector(".reasoning-block");
+        const reasoningContentEl =
+          assistantMessageEl.querySelector(".reasoning-content");
+        const reasoningHeader =
+          assistantMessageEl.querySelector(".reasoning-header");
+        const reasoningTitleEl =
+          assistantMessageEl.querySelector(".reasoning-title");
         const charCount = message._reasoning.length;
-        const reasoningRenderer = createStreamingRenderer(reasoningContentEl, { showCursor: false });
+        const reasoningRenderer = createStreamingRenderer(reasoningContentEl, {
+          showCursor: false,
+        });
         reasoningRenderer.appendText(message._reasoning);
         reasoningRenderer.finish();
-        reasoningBlock.classList.add('visible', 'finished', 'collapsed');
-        reasoningHeader.setAttribute('aria-expanded', 'false');
+        reasoningBlock.classList.add("visible", "finished", "collapsed");
+        reasoningHeader.setAttribute("aria-expanded", "false");
         if (reasoningTitleEl) {
           reasoningTitleEl.textContent = `思考过程（${charCount} 字）`;
         }
@@ -3614,28 +3697,30 @@ function renderHistoryMessages(history) {
 
       // 处理 content 数组
       if (Array.isArray(message.content)) {
-        let textContent = '';
+        let textContent = "";
         const toolCalls = [];
-        
+
         for (const block of message.content) {
-          if (block.type === 'text') {
-            textContent += block.text || '';
-          } else if (block.type === 'tool_use') {
+          if (block.type === "text") {
+            textContent += block.text || "";
+          } else if (block.type === "tool_use") {
             toolCalls.push(block);
           }
         }
-        
+
         // 渲染文本内容
         if (textContent) {
-          const renderer = createStreamingRenderer(bubble, { showCursor: false });
+          const renderer = createStreamingRenderer(bubble, {
+            showCursor: false,
+          });
           renderer.appendText(textContent);
           renderer.finish();
         }
-        
+
         // 渲染工具调用卡片（从后续 tool_result 消息中查找实际输出）
         if (toolCalls.length > 0) {
           const cardGroup = toolCardManager.createCardGroup();
-          
+
           for (const toolCall of toolCalls) {
             toolCardManager.addToolCard(toolCall.id, toolCall.name);
             const actualOutput = toolResultMap.get(toolCall.id) ?? null;
@@ -3643,26 +3728,26 @@ function renderHistoryMessages(history) {
               toolCall.id,
               toolCall.name,
               toolCall.input,
-              actualOutput
+              actualOutput,
             );
           }
-          
+
           addMessageToContainer(cardGroup);
           toolCardManager.finalizeCardGroup();
         }
-      } else if (typeof message.content === 'string') {
+      } else if (typeof message.content === "string") {
         const renderer = createStreamingRenderer(bubble, { showCursor: false });
         renderer.appendText(message.content);
         renderer.finish();
       }
-      
+
       addMessageToContainer(assistantMessageEl);
     }
   }
-  
+
   // 滚动到底部
   scrollToBottom();
-  
+
   console.log(`[Panel] Rendered ${messages.length} history messages`);
 }
 
@@ -3673,26 +3758,26 @@ function renderHistoryMessages(history) {
 /**
  * 处理回退按钮点击
  * 弹出确认对话框，确认后截断历史、恢复样式、重新渲染 UI
- * 
+ *
  * @param {number} targetTurn - 要回退到的轮次号
  */
 async function handleRewindClick(targetTurn) {
-  if (AppState.agentStatus === 'running') {
-    console.warn('[Panel] Agent is running, cannot rewind');
+  if (AppState.agentStatus === "running") {
+    console.warn("[Panel] Agent is running, cannot rewind");
     return;
   }
 
-  const confirmed = confirm('回到这一轮？之后的对话和样式修改将被丢弃。');
+  const confirmed = confirm("回到这一轮？之后的对话和样式修改将被丢弃。");
   if (!confirmed) return;
 
   try {
-    const session = await import('./session.js');
-    const { sendToContentScript } = await import('./tools.js');
+    const session = await import("./session.js");
+    const { sendToContentScript } = await import("./tools.js");
 
-    const domain = stateManager.get('currentDomain');
-    const sessionId = stateManager.get('currentSessionId');
+    const domain = stateManager.get("currentDomain");
+    const sessionId = stateManager.get("currentSessionId");
     if (!domain || !sessionId) {
-      console.error('[Panel] Cannot rewind: no active session');
+      console.error("[Panel] Cannot rewind: no active session");
       return;
     }
 
@@ -3700,9 +3785,12 @@ async function handleRewindClick(targetTurn) {
 
     // 注入回退后的 CSS 到页面
     try {
-      await sendToContentScript({ tool: 'load_session_css', args: { css: result.css || '' } });
+      await sendToContentScript({
+        tool: "load_session_css",
+        args: { css: result.css || "" },
+      });
     } catch (err) {
-      console.warn('[Panel] Failed to load rewound CSS:', err.message);
+      console.warn("[Panel] Failed to load rewound CSS:", err.message);
     }
 
     setHasActiveStyles(!!result.css?.trim());
@@ -3717,7 +3805,7 @@ async function handleRewindClick(targetTurn) {
 
     console.log(`[Panel] Rewound to turn ${targetTurn}`);
   } catch (error) {
-    console.error('[Panel] Rewind failed:', error);
+    console.error("[Panel] Rewind failed:", error);
   }
 }
 
@@ -3729,17 +3817,17 @@ async function handleRewindClick(targetTurn) {
  * 工具名称映射表（友好的显示名称）
  */
 const TOOL_DISPLAY_NAMES = {
-  'get_page_structure': '查看页面结构',
-  'grep': '搜索页面元素',
-  'apply_styles': '应用样式',
-  'get_user_profile': '获取用户画像',
-  'update_user_profile': '更新用户画像',
-  'load_skill': '加载知识',
-  'save_style_skill': '保存风格技能',
-  'list_style_skills': '列出风格技能',
-  'delete_style_skill': '删除风格技能',
-  'TodoWrite': '任务规划',
-  'Task': '子任务',
+  get_page_structure: "查看页面结构",
+  grep: "搜索页面元素",
+  apply_styles: "应用样式",
+  get_user_profile: "获取用户画像",
+  update_user_profile: "更新用户画像",
+  load_skill: "加载知识",
+  save_style_skill: "保存风格技能",
+  list_style_skills: "列出风格技能",
+  delete_style_skill: "删除风格技能",
+  TodoWrite: "任务规划",
+  Task: "子任务",
 };
 
 /**
@@ -3773,12 +3861,12 @@ class ToolCardManager {
       this.finalizeCardGroup();
     }
 
-    const group = document.createElement('div');
-    group.className = 'tool-card-group';
-    
+    const group = document.createElement("div");
+    group.className = "tool-card-group";
+
     this.currentCardGroup = group;
     this.cardMap.clear();
-    
+
     return group;
   }
 
@@ -3793,8 +3881,8 @@ class ToolCardManager {
       this.createCardGroup();
     }
 
-    const card = document.createElement('div');
-    card.className = 'tool-card processing';
+    const card = document.createElement("div");
+    card.className = "tool-card processing";
     card.dataset.toolId = toolId;
     card.dataset.toolName = toolName;
 
@@ -3836,12 +3924,12 @@ class ToolCardManager {
     const displayName = getToolDisplayName(toolName);
 
     // 更新卡片状态
-    card.classList.remove('processing');
-    card.classList.add('completed', 'collapsed');
+    card.classList.remove("processing");
+    card.classList.add("completed", "collapsed");
 
     // 格式化输入参数
     const inputDisplay = this.formatInput(input);
-    
+
     // 格式化输出（截断长文本）
     const outputDisplay = this.formatOutput(output);
 
@@ -3866,8 +3954,8 @@ class ToolCardManager {
     `;
 
     // 绑定展开/折叠事件
-    const header = card.querySelector('.tool-card-header');
-    header.addEventListener('click', () => this.toggleCard(card));
+    const header = card.querySelector(".tool-card-header");
+    header.addEventListener("click", () => this.toggleCard(card));
 
     // 更新映射
     this.cardMap.set(toolId, card);
@@ -3878,19 +3966,19 @@ class ToolCardManager {
    * @param {HTMLElement} card - 卡片元素
    */
   toggleCard(card) {
-    const isCollapsed = card.classList.contains('collapsed');
-    
+    const isCollapsed = card.classList.contains("collapsed");
+
     if (isCollapsed) {
       // 展开前，折叠同组的其他卡片
       if (this.currentCardGroup) {
-        const allCards = this.currentCardGroup.querySelectorAll('.tool-card');
-        allCards.forEach(c => c.classList.add('collapsed'));
+        const allCards = this.currentCardGroup.querySelectorAll(".tool-card");
+        allCards.forEach((c) => c.classList.add("collapsed"));
       }
-      card.classList.remove('collapsed');
-      card.classList.add('expanded');
+      card.classList.remove("collapsed");
+      card.classList.add("expanded");
     } else {
-      card.classList.remove('expanded');
-      card.classList.add('collapsed');
+      card.classList.remove("expanded");
+      card.classList.add("collapsed");
     }
   }
 
@@ -3900,7 +3988,7 @@ class ToolCardManager {
   finalizeCardGroup() {
     if (this.currentCardGroup) {
       // 检查卡片组内是否有卡片
-      const cards = this.currentCardGroup.querySelectorAll('.tool-card');
+      const cards = this.currentCardGroup.querySelectorAll(".tool-card");
       if (cards.length === 0) {
         this.currentCardGroup.remove();
       }
@@ -3921,7 +4009,7 @@ class ToolCardManager {
 
     // 特殊处理：显示关键参数
     const keyParams = [];
-    
+
     // 常见参数处理
     if (input.query) {
       keyParams.push(`query: "${input.query}"`);
@@ -3937,14 +4025,13 @@ class ToolCardManager {
     }
     if (input.css) {
       // CSS 截断显示
-      const cssPreview = input.css.length > 50 
-        ? input.css.substring(0, 50) + '...' 
-        : input.css;
+      const cssPreview =
+        input.css.length > 50 ? input.css.substring(0, 50) + "..." : input.css;
       keyParams.push(`css: "${cssPreview}"`);
     }
 
     if (keyParams.length > 0) {
-      return `<code>${keyParams.join(', ')}</code>`;
+      return `<code>${keyParams.join(", ")}</code>`;
     }
 
     // 默认：JSON 格式
@@ -3971,9 +4058,9 @@ class ToolCardManager {
 
     // 转义HTML
     const escaped = this.escapeHtml(output);
-    
+
     // 保留换行
-    const formatted = escaped.replace(/\n/g, '<br>');
+    const formatted = escaped.replace(/\n/g, "<br>");
 
     return `<span class="tool-card-text">${formatted}</span>`;
   }
@@ -3984,7 +4071,7 @@ class ToolCardManager {
    * @returns {string} - 转义后的文本
    */
   escapeHtml(text) {
-    const div = document.createElement('div');
+    const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
   }
@@ -4002,8 +4089,157 @@ class ToolCardManager {
    * @returns {boolean}
    */
   hasActiveCardGroup() {
-    return this.currentCardGroup !== null && 
-           this.currentCardGroup.querySelectorAll('.tool-card').length > 0;
+    return (
+      this.currentCardGroup !== null &&
+      this.currentCardGroup.querySelectorAll(".tool-card").length > 0
+    );
+  }
+}
+
+// ============================================================================
+// 任务列表卡片渲染
+// ============================================================================
+
+/**
+ * 任务状态图标映射
+ */
+const TODO_STATUS_ICONS = {
+  pending: "⏳",
+  in_progress: "🔄",
+  completed: "✅",
+};
+
+/**
+ * 任务卡片管理器
+ * 用于管理悬浮在输入框上方的任务列表显示
+ */
+class TodoCardManager {
+  constructor() {
+    /** @type {HTMLElement|null} 当前任务卡片容器 */
+    this.todoContainer = null;
+    /** @type {HTMLElement|null} 输入框区域引用 */
+    this.inputArea = null;
+  }
+
+  /**
+   * 获取输入框区域元素
+   * @returns {HTMLElement|null}
+   */
+  getInputArea() {
+    if (!this.inputArea) {
+      this.inputArea = document.getElementById("input-area");
+    }
+    return this.inputArea;
+  }
+
+  /**
+   * 创建任务列表容器并插入到输入框上方
+   * @returns {HTMLElement} 任务卡片容器
+   */
+  createTodoContainer() {
+    if (this.todoContainer) {
+      this.todoContainer.remove();
+    }
+
+    const container = document.createElement("div");
+    container.className = "todo-floating-container";
+
+    const inputArea = this.getInputArea();
+    if (inputArea && inputArea.parentNode) {
+      inputArea.parentNode.insertBefore(container, inputArea);
+    }
+
+    this.todoContainer = container;
+    return container;
+  }
+
+  /**
+   * 更新任务列表显示
+   * @param {Array<{id: string, content: string, status: string}>} todos - 任务列表
+   */
+  updateTodos(todos) {
+    if (!todos || todos.length === 0) {
+      // 没有任务时移除容器
+      this.hide();
+      return;
+    }
+
+    // 检查是否所有任务都已完成
+    const allCompleted = todos.every((t) => t.status === "completed");
+
+    // 确保有容器
+    if (!this.todoContainer) {
+      this.createTodoContainer();
+    }
+
+    // 计算进度
+    const completed = todos.filter((t) => t.status === "completed").length;
+    const total = todos.length;
+    const progressPercent =
+      total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    // 生成任务列表 HTML
+    const todosHtml = todos
+      .map((todo) => {
+        const icon = TODO_STATUS_ICONS[todo.status] || "⏳";
+        const statusClass = `todo-item-${todo.status}`;
+        return `
+        <div class="todo-item ${statusClass}">
+          <span class="todo-icon">${icon}</span>
+          <span class="todo-content">${this.escapeHtml(todo.content)}</span>
+        </div>
+      `;
+      })
+      .join("");
+
+    this.todoContainer.innerHTML = `
+      <div class="todo-card-header">
+        <span class="todo-card-title">📋 任务进度</span>
+        <span class="todo-progress">${completed}/${total}</span>
+      </div>
+      <div class="todo-progress-bar">
+        <div class="todo-progress-fill" style="width: ${progressPercent}%"></div>
+      </div>
+      <div class="todo-list">
+        ${todosHtml}
+      </div>
+    `;
+
+    // 如果所有任务完成，延迟隐藏
+    if (allCompleted) {
+      this.todoContainer.classList.add("all-completed");
+      setTimeout(() => {
+        this.hide();
+      }, 1500);
+    }
+  }
+
+  /**
+   * 隐藏任务列表
+   */
+  hide() {
+    if (this.todoContainer) {
+      this.todoContainer.remove();
+      this.todoContainer = null;
+    }
+  }
+
+  /**
+   * 清除任务列表（别名）
+   */
+  clear() {
+    this.hide();
+  }
+
+  /**
+   * 转义HTML特殊字符
+   * @param {string} text - 原始文本
+   * @returns {string} - 转义后的文本
+   */
+  escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
   }
 }
 
@@ -4011,6 +4247,11 @@ class ToolCardManager {
  * 全局工具卡片管理器实例
  */
 const toolCardManager = new ToolCardManager();
+
+/**
+ * 全局任务卡片管理器实例
+ */
+const todoCardManager = new TodoCardManager();
 
 /**
  * 创建工具调用卡片（处理中状态）
@@ -4024,9 +4265,9 @@ function createToolCard(toolId, toolName) {
     const group = toolCardManager.createCardGroup();
     addMessageToContainer(group);
   }
-  
+
   toolCardManager.addToolCard(toolId, toolName);
-  
+
   return toolCardManager.getCurrentCardGroup();
 }
 
@@ -4062,41 +4303,41 @@ function createToolCardGroup() {
 
 /**
  * 操作确认浮层管理类
- * 
+ *
  * 负责：
  * - 显示确认/撤销按钮
  * - 处理单次/多次样式应用的确认
  * - 60秒超时自动消失
  * - 撤销操作触发
- * 
+ *
  * 设计参考：§16.3 ④ 操作确认浮层
  */
 class ConfirmationOverlay {
   constructor() {
     /** @type {HTMLElement|null} 浮层 DOM 元素 */
     this.overlay = null;
-    
+
     /** @type {number|null} 超时定时器 ID */
     this.timeoutId = null;
-    
+
     /** @type {number|null} 进度条动画帧 ID */
     this.progressAnimationId = null;
-    
+
     /** @type {number} 超时时长（毫秒） */
     this.timeoutDuration = 60000;
-    
+
     /** @type {number} 样式应用次数 */
     this.applyCount = 0;
-    
+
     /** @type {HTMLElement|null} 下拉菜单元素 */
     this.dropdown = null;
-    
+
     /** @type {Function|null} 撤销回调 */
     this.onUndo = null;
-    
+
     /** @type {Function|null} 全部撤销回调 */
     this.onUndoAll = null;
-    
+
     /** @type {Function|null} 确认回调 */
     this.onConfirm = null;
   }
@@ -4111,28 +4352,28 @@ class ConfirmationOverlay {
    */
   show(options = {}) {
     const { applyCount = 1, onUndo, onUndoAll, onConfirm } = options;
-    
+
     this.applyCount = applyCount;
     this.onUndo = onUndo;
     this.onUndoAll = onUndoAll;
     this.onConfirm = onConfirm;
-    
+
     // 如果已有浮层，先移除
     this.hide(false);
-    
+
     // 创建浮层
     this.overlay = this._createOverlayElement();
-    
+
     // 插入到输入区之前
-    const inputArea = document.getElementById('input-area');
+    const inputArea = document.getElementById("input-area");
     if (inputArea && inputArea.parentNode) {
       inputArea.parentNode.insertBefore(this.overlay, inputArea);
     }
-    
+
     // 启动超时计时器
     this._startTimeout();
-    
-    console.log('[ConfirmationOverlay] 浮层已显示，样式应用次数:', applyCount);
+
+    console.log("[ConfirmationOverlay] 浮层已显示，样式应用次数:", applyCount);
   }
 
   /**
@@ -4145,19 +4386,19 @@ class ConfirmationOverlay {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
     }
-    
+
     // 清除进度条动画
     if (this.progressAnimationId) {
       cancelAnimationFrame(this.progressAnimationId);
       this.progressAnimationId = null;
     }
-    
+
     // 移除浮层
     if (this.overlay) {
       if (animate) {
         // 添加淡出动画
-        this.overlay.classList.add('fade-out');
-        
+        this.overlay.classList.add("fade-out");
+
         // 动画结束后移除元素
         setTimeout(() => {
           if (this.overlay && this.overlay.parentNode) {
@@ -4173,7 +4414,7 @@ class ConfirmationOverlay {
         this.overlay = null;
       }
     }
-    
+
     // 重置状态
     this.dropdown = null;
     this.applyCount = 0;
@@ -4185,9 +4426,9 @@ class ConfirmationOverlay {
    * @returns {HTMLElement}
    */
   _createOverlayElement() {
-    const overlay = document.createElement('div');
-    overlay.className = 'confirmation-overlay';
-    
+    const overlay = document.createElement("div");
+    overlay.className = "confirmation-overlay";
+
     if (this.applyCount === 1) {
       // 单次样式应用
       overlay.innerHTML = `
@@ -4232,14 +4473,14 @@ class ConfirmationOverlay {
           <div class="confirmation-timeout-bar" style="width: 100%"></div>
         </div>
       `;
-      
+
       // 保存下拉菜单引用
-      this.dropdown = overlay.querySelector('.confirmation-dropdown');
+      this.dropdown = overlay.querySelector(".confirmation-dropdown");
     }
-    
+
     // 绑定事件
     this._bindEvents(overlay);
-    
+
     return overlay;
   }
 
@@ -4249,48 +4490,48 @@ class ConfirmationOverlay {
    * @param {HTMLElement} overlay - 浮层元素
    */
   _bindEvents(overlay) {
-    overlay.addEventListener('click', (e) => {
-      const target = e.target.closest('[data-action]');
+    overlay.addEventListener("click", (e) => {
+      const target = e.target.closest("[data-action]");
       if (!target) return;
-      
+
       const action = target.dataset.action;
-      
+
       switch (action) {
-        case 'confirm':
-        case 'confirm-all':
+        case "confirm":
+        case "confirm-all":
           // 确认 - 隐藏浮层
           this.hide(true);
           if (this.onConfirm) {
             this.onConfirm();
           }
           break;
-          
-        case 'undo':
-        case 'undo-last':
+
+        case "undo":
+        case "undo-last":
           // 撤销最后一步
           this.hide(false);
           if (this.onUndo) {
             this.onUndo();
           }
           break;
-          
-        case 'undo-all':
+
+        case "undo-all":
           // 全部撤销
           this.hide(false);
           if (this.onUndoAll) {
             this.onUndoAll();
           }
           break;
-          
-        case 'dropdown':
+
+        case "dropdown":
           // 切换下拉菜单
           this._toggleDropdown();
           break;
       }
     });
-    
+
     // 点击外部关闭下拉菜单
-    document.addEventListener('click', (e) => {
+    document.addEventListener("click", (e) => {
       if (this.dropdown && !this.overlay.contains(e.target)) {
         this._closeDropdown();
       }
@@ -4303,9 +4544,9 @@ class ConfirmationOverlay {
    */
   _toggleDropdown() {
     if (!this.dropdown) return;
-    
-    const isHidden = this.dropdown.classList.contains('hidden');
-    
+
+    const isHidden = this.dropdown.classList.contains("hidden");
+
     if (isHidden) {
       this._openDropdown();
     } else {
@@ -4319,13 +4560,15 @@ class ConfirmationOverlay {
    */
   _openDropdown() {
     if (!this.dropdown) return;
-    
-    this.dropdown.classList.remove('hidden');
-    
+
+    this.dropdown.classList.remove("hidden");
+
     // 更新触发按钮状态
-    const trigger = this.overlay.querySelector('.confirmation-dropdown-trigger');
+    const trigger = this.overlay.querySelector(
+      ".confirmation-dropdown-trigger",
+    );
     if (trigger) {
-      trigger.classList.add('open');
+      trigger.classList.add("open");
     }
   }
 
@@ -4335,13 +4578,15 @@ class ConfirmationOverlay {
    */
   _closeDropdown() {
     if (!this.dropdown) return;
-    
-    this.dropdown.classList.add('hidden');
-    
+
+    this.dropdown.classList.add("hidden");
+
     // 更新触发按钮状态
-    const trigger = this.overlay.querySelector('.confirmation-dropdown-trigger');
+    const trigger = this.overlay.querySelector(
+      ".confirmation-dropdown-trigger",
+    );
     if (trigger) {
-      trigger.classList.remove('open');
+      trigger.classList.remove("open");
     }
   }
 
@@ -4351,33 +4596,35 @@ class ConfirmationOverlay {
    */
   _startTimeout() {
     const startTime = Date.now();
-    const progressBar = this.overlay?.querySelector('.confirmation-timeout-bar');
-    
+    const progressBar = this.overlay?.querySelector(
+      ".confirmation-timeout-bar",
+    );
+
     // 进度条动画
     const updateProgress = () => {
       if (!this.overlay) return;
-      
+
       const elapsed = Date.now() - startTime;
       const remaining = Math.max(0, this.timeoutDuration - elapsed);
       const percent = (remaining / this.timeoutDuration) * 100;
-      
+
       if (progressBar) {
         progressBar.style.width = `${percent}%`;
       }
-      
+
       if (remaining > 0) {
         this.progressAnimationId = requestAnimationFrame(updateProgress);
       }
     };
-    
+
     // 启动进度条动画
     if (progressBar) {
       updateProgress();
     }
-    
+
     // 超时自动隐藏
     this.timeoutId = setTimeout(() => {
-      console.log('[ConfirmationOverlay] 超时自动隐藏');
+      console.log("[ConfirmationOverlay] 超时自动隐藏");
       this.hide(true);
       if (this.onConfirm) {
         this.onConfirm();
@@ -4440,20 +4687,20 @@ function getConfirmationOverlay() {
  */
 const ERROR_BANNER_CONFIGS = {
   API_KEY_INVALID: {
-    message: 'API Key 无效，请检查设置',
-    actionText: '去设置→',
-    action: 'settings'
+    message: "API Key 无效，请检查设置",
+    actionText: "去设置→",
+    action: "settings",
   },
   NETWORK_ERROR: {
-    message: '网络错误，请检查网络连接',
-    actionText: '重试',
-    action: 'retry'
+    message: "网络错误，请检查网络连接",
+    actionText: "重试",
+    action: "retry",
   },
   API_ERROR: {
-    message: 'API 调用失败',
-    actionText: '重试',
-    action: 'retry'
-  }
+    message: "API 调用失败",
+    actionText: "重试",
+    action: "retry",
+  },
 };
 
 /**
@@ -4465,43 +4712,43 @@ const ERROR_BANNER_CONFIGS = {
  */
 function showErrorBanner(errorType, options = {}) {
   if (!DOM.errorBanner) return;
-  
+
   const config = ERROR_BANNER_CONFIGS[errorType];
   if (!config) {
-    console.error('[Panel] Unknown error type:', errorType);
+    console.error("[Panel] Unknown error type:", errorType);
     return;
   }
-  
+
   // 设置错误消息
   const message = options.customMessage || config.message;
   DOM.errorBannerMessage.textContent = message;
-  
+
   // 设置操作按钮
   if (config.actionText && config.action) {
     DOM.errorBannerAction.textContent = config.actionText;
-    DOM.errorBannerAction.classList.remove('hidden');
+    DOM.errorBannerAction.classList.remove("hidden");
     DOM.errorBannerAction.dataset.action = config.action;
-    
+
     // 如果是重试操作，保存回调
-    if (config.action === 'retry' && options.onRetry) {
-      DOM.errorBannerAction.dataset.hasCallback = 'true';
+    if (config.action === "retry" && options.onRetry) {
+      DOM.errorBannerAction.dataset.hasCallback = "true";
       // 使用闭包保存回调
       DOM.errorBannerAction._retryCallback = options.onRetry;
     } else {
-      DOM.errorBannerAction.dataset.hasCallback = 'false';
+      DOM.errorBannerAction.dataset.hasCallback = "false";
       DOM.errorBannerAction._retryCallback = null;
     }
   } else {
-    DOM.errorBannerAction.classList.add('hidden');
+    DOM.errorBannerAction.classList.add("hidden");
   }
-  
+
   // 显示横幅
-  DOM.errorBanner.classList.remove('hidden');
-  
+  DOM.errorBanner.classList.remove("hidden");
+
   // 更新状态指示灯为错误状态
-  updateStatusIndicator('error');
-  
-  console.log('[Panel] Error banner shown:', errorType, message);
+  updateStatusIndicator("error");
+
+  console.log("[Panel] Error banner shown:", errorType, message);
 }
 
 /**
@@ -4509,20 +4756,20 @@ function showErrorBanner(errorType, options = {}) {
  */
 function hideErrorBanner() {
   if (!DOM.errorBanner) return;
-  
-  DOM.errorBanner.classList.add('hidden');
-  
+
+  DOM.errorBanner.classList.add("hidden");
+
   // 清除重试回调
   if (DOM.errorBannerAction) {
     DOM.errorBannerAction._retryCallback = null;
   }
-  
+
   // 恢复状态指示灯
-  if (AppState.agentStatus === 'error') {
-    updateStatusIndicator('idle');
+  if (AppState.agentStatus === "error") {
+    updateStatusIndicator("idle");
   }
-  
-  console.log('[Panel] Error banner hidden');
+
+  console.log("[Panel] Error banner hidden");
 }
 
 /**
@@ -4531,25 +4778,25 @@ function hideErrorBanner() {
 function initErrorBanner() {
   // 关闭按钮
   if (DOM.errorBannerClose) {
-    DOM.errorBannerClose.addEventListener('click', () => {
+    DOM.errorBannerClose.addEventListener("click", () => {
       hideErrorBanner();
     });
   }
-  
+
   // 操作按钮
   if (DOM.errorBannerAction) {
-    DOM.errorBannerAction.addEventListener('click', () => {
+    DOM.errorBannerAction.addEventListener("click", () => {
       const action = DOM.errorBannerAction.dataset.action;
-      
+
       switch (action) {
-        case 'settings':
+        case "settings":
           // 跳转到设置页
           hideErrorBanner();
           initSettingsView();
-          switchView('settings');
+          switchView("settings");
           break;
-          
-        case 'retry':
+
+        case "retry":
           // 执行重试回调
           if (DOM.errorBannerAction._retryCallback) {
             hideErrorBanner();
@@ -4566,10 +4813,10 @@ function initErrorBanner() {
 // ============================================================================
 
 export {
-  AppState, 
+  AppState,
   stateManager,
-  switchView, 
-  showError, 
+  switchView,
+  showError,
   updateStatusIndicator,
   updateInputAreaState,
   setRestrictedPageState,

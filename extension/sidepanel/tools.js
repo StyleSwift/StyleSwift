@@ -4,22 +4,23 @@
  */
 
 // 导入依赖模块
-import { currentSession, updateStylesSummary } from './session.js';
-import { mergeCSS } from './css-merge.js';
-import { StyleSkillStore } from './style-skill.js';
+import { currentSession, updateStylesSummary } from "./session.js";
+import { mergeCSS } from "./css-merge.js";
+import { StyleSkillStore } from "./style-skill.js";
 
 // =============================================================================
 // §3.1 get_page_structure - 获取页面结构
 // =============================================================================
 
 const GET_PAGE_STRUCTURE_TOOL = {
-  name: 'get_page_structure',
-  description: '获取当前页面的结构概览。返回树形结构，包含标签、选择器、关键样式。',
+  name: "get_page_structure",
+  description:
+    "获取当前页面的结构概览。返回树形结构，包含标签、选择器、关键样式。",
   input_schema: {
-    type: 'object',
+    type: "object",
     properties: {},
-    required: []
-  }
+    required: [],
+  },
 };
 
 // =============================================================================
@@ -27,7 +28,7 @@ const GET_PAGE_STRUCTURE_TOOL = {
 // =============================================================================
 
 const GREP_TOOL = {
-  name: 'grep',
+  name: "grep",
   description: `在当前页面中搜索元素，返回匹配元素的详细信息（完整样式、属性、子元素）。
 
 搜索方式（自动检测）：
@@ -39,18 +40,22 @@ const GREP_TOOL = {
 - 查找具有特定样式值的元素
 - 确认某个选择器是否存在、有多少匹配`,
   input_schema: {
-    type: 'object',
+    type: "object",
     properties: {
-      query: { type: 'string', description: 'CSS 选择器或关键词' },
+      query: { type: "string", description: "CSS 选择器或关键词" },
       scope: {
-        type: 'string',
-        enum: ['self', 'children', 'subtree'],
-        description: '返回详情范围：self=仅匹配元素本身，children=含直接子元素（默认），subtree=含完整子树（慎用）'
+        type: "string",
+        enum: ["self", "children", "subtree"],
+        description:
+          "返回详情范围：self=仅匹配元素本身，children=含直接子元素（默认），subtree=含完整子树（慎用）",
       },
-      max_results: { type: 'integer', description: '最多返回几个匹配元素，默认 5，最大 20' }
+      max_results: {
+        type: "integer",
+        description: "最多返回几个匹配元素，默认 5，最大 20",
+      },
     },
-    required: ['query']
-  }
+    required: ["query"],
+  },
 };
 
 // =============================================================================
@@ -58,7 +63,7 @@ const GREP_TOOL = {
 // =============================================================================
 
 const APPLY_STYLES_TOOL = {
-  name: 'apply_styles',
+  name: "apply_styles",
   description: `应用或回滚CSS样式。
 
 mode 说明：
@@ -67,17 +72,20 @@ mode 说明：
 
 修改已有样式请用 edit_css 工具（更精准、省token）。`,
   input_schema: {
-    type: 'object',
+    type: "object",
     properties: {
-      css: { type: 'string', description: 'CSS代码（save 模式必填，rollback 模式不需要）' },
+      css: {
+        type: "string",
+        description: "CSS代码（save 模式必填，rollback 模式不需要）",
+      },
       mode: {
-        type: 'string',
-        enum: ['save', 'rollback_all'],
-        description: 'save=应用并保存, rollback_all=全部回滚'
-      }
+        type: "string",
+        enum: ["save", "rollback_all"],
+        description: "save=应用并保存, rollback_all=全部回滚",
+      },
     },
-    required: ['mode']
-  }
+    required: ["mode"],
+  },
 };
 
 // =============================================================================
@@ -85,16 +93,16 @@ mode 说明：
 // =============================================================================
 
 const GET_USER_PROFILE_TOOL = {
-  name: 'get_user_profile',
+  name: "get_user_profile",
   description: `获取用户的风格偏好画像。包含用户在历史对话中表现出的风格偏好。
 新用户可能为空。建议在以下情况获取：
 - 新会话开始时，了解用户已知偏好
 - 用户请求模糊（如"好看点"），需参考历史偏好`,
   input_schema: {
-    type: 'object',
+    type: "object",
     properties: {},
-    required: []
-  }
+    required: [],
+  },
 };
 
 // =============================================================================
@@ -102,7 +110,7 @@ const GET_USER_PROFILE_TOOL = {
 // =============================================================================
 
 const UPDATE_USER_PROFILE_TOOL = {
-  name: 'update_user_profile',
+  name: "update_user_profile",
   description: `记录从当前对话中学到的用户风格偏好。
 当发现新的偏好信号时调用：
 - 用户明确表达："我喜欢圆角"
@@ -112,12 +120,15 @@ const UPDATE_USER_PROFILE_TOOL = {
 记录有意义的偏好洞察，不记录具体 CSS 代码。
 content 为完整的画像内容（覆盖写入），应在读取现有画像基础上整合新洞察。`,
   input_schema: {
-    type: 'object',
+    type: "object",
     properties: {
-      content: { type: 'string', description: '完整的用户画像内容（覆盖写入）' }
+      content: {
+        type: "string",
+        description: "完整的用户画像内容（覆盖写入）",
+      },
     },
-    required: ['content']
-  }
+    required: ["content"],
+  },
 };
 
 // =============================================================================
@@ -125,7 +136,7 @@ content 为完整的画像内容（覆盖写入），应在读取现有画像基
 // =============================================================================
 
 const LOAD_SKILL_TOOL = {
-  name: 'load_skill',
+  name: "load_skill",
   description: `加载领域知识或用户保存的风格技能。
 
 内置知识：
@@ -142,12 +153,15 @@ const LOAD_SKILL_TOOL = {
 加载用户风格技能后，根据其中的色彩方案、排版、视觉效果等描述，
 结合当前页面的 DOM 结构，生成适配的 CSS。不要直接复制参考 CSS 中的选择器。`,
   input_schema: {
-    type: 'object',
+    type: "object",
     properties: {
-      skill_name: { type: 'string', description: '内置知识名称，或 skill:{id} 加载用户风格技能' }
+      skill_name: {
+        type: "string",
+        description: "内置知识名称，或 skill:{id} 加载用户风格技能",
+      },
     },
-    required: ['skill_name']
-  }
+    required: ["skill_name"],
+  },
 };
 
 // =============================================================================
@@ -155,7 +169,7 @@ const LOAD_SKILL_TOOL = {
 // =============================================================================
 
 const SAVE_STYLE_SKILL_TOOL = {
-  name: 'save_style_skill',
+  name: "save_style_skill",
   description: `从当前会话中提取视觉风格特征，保存为可复用的风格技能。
 
 ⚠️ 重要：此工具**只能**在用户**明确要求**时调用！
@@ -168,12 +182,15 @@ const SAVE_STYLE_SKILL_TOOL = {
 
 ❌ 禁止自动调用：即使你对当前样式效果很满意，也不能主动保存，必须等待用户明确请求。`,
   input_schema: {
-    type: 'object',
+    type: "object",
     properties: {
-      name: { type: 'string', description: '风格名称，如"赛博朋克"、"清新日式"' },
-      mood: { type: 'string', description: '一句话风格描述' },
+      name: {
+        type: "string",
+        description: '风格名称，如"赛博朋克"、"清新日式"',
+      },
+      mood: { type: "string", description: "一句话风格描述" },
       skill_content: {
-        type: 'string',
+        type: "string",
         description: `风格技能文档（markdown 格式），必须包含：
 1. 风格描述（自然语言，说明整体视觉感受和设计理念）
 2. 色彩方案（列出背景/文字/强调/边框等具体色值）
@@ -182,11 +199,11 @@ const SAVE_STYLE_SKILL_TOOL = {
 5. 设计意图（用户想要达到的效果，为什么做这些选择）
 6. 参考 CSS（当前会话生成的 CSS 片段，标注选择器不可直接复用）
 
-重点：提取抽象的风格特征，不是复制具体 CSS。选择器是页面特定的，色彩/排版/效果才是可迁移的。`
-      }
+重点：提取抽象的风格特征，不是复制具体 CSS。选择器是页面特定的，色彩/排版/效果才是可迁移的。`,
+      },
     },
-    required: ['name', 'skill_content']
-  }
+    required: ["name", "skill_content"],
+  },
 };
 
 // =============================================================================
@@ -194,14 +211,14 @@ const SAVE_STYLE_SKILL_TOOL = {
 // =============================================================================
 
 const LIST_STYLE_SKILLS_TOOL = {
-  name: 'list_style_skills',
+  name: "list_style_skills",
   description: `列出用户保存的所有风格技能。
 当用户提到"我之前保存的风格"、"用我的XX风格"时，先调用此工具查看可用技能。`,
   input_schema: {
-    type: 'object',
+    type: "object",
     properties: {},
-    required: []
-  }
+    required: [],
+  },
 };
 
 // =============================================================================
@@ -209,15 +226,15 @@ const LIST_STYLE_SKILLS_TOOL = {
 // =============================================================================
 
 const DELETE_STYLE_SKILL_TOOL = {
-  name: 'delete_style_skill',
-  description: '删除一个用户保存的风格技能。',
+  name: "delete_style_skill",
+  description: "删除一个用户保存的风格技能。",
   input_schema: {
-    type: 'object',
+    type: "object",
     properties: {
-      skill_id: { type: 'string', description: '要删除的技能 ID' }
+      skill_id: { type: "string", description: "要删除的技能 ID" },
     },
-    required: ['skill_id']
-  }
+    required: ["skill_id"],
+  },
 };
 
 // =============================================================================
@@ -225,7 +242,7 @@ const DELETE_STYLE_SKILL_TOOL = {
 // =============================================================================
 
 const GET_CURRENT_STYLES_TOOL = {
-  name: 'get_current_styles',
+  name: "get_current_styles",
   description: `获取当前会话中已应用的全部CSS样式。
 
 典型用途：
@@ -233,10 +250,10 @@ const GET_CURRENT_STYLES_TOOL = {
 - 为 edit_css 获取精确的 old_css 内容
 - 确认某条规则是否已经应用`,
   input_schema: {
-    type: 'object',
+    type: "object",
     properties: {},
-    required: []
-  }
+    required: [],
+  },
 };
 
 // =============================================================================
@@ -244,7 +261,7 @@ const GET_CURRENT_STYLES_TOOL = {
 // =============================================================================
 
 const EDIT_CSS_TOOL = {
-  name: 'edit_css',
+  name: "edit_css",
   description: `精准编辑已应用的CSS样式。通过精确匹配替换CSS片段，支持修改和删除。
 
 使用方式：
@@ -258,13 +275,19 @@ const EDIT_CSS_TOOL = {
 - 删除某条规则
 - 替换某个选择器的整个规则块`,
   input_schema: {
-    type: 'object',
+    type: "object",
     properties: {
-      old_css: { type: 'string', description: '要替换的 CSS 片段，必须与当前已应用样式中的内容精确匹配' },
-      new_css: { type: 'string', description: '替换后的 CSS 内容，空字符串表示删除' }
+      old_css: {
+        type: "string",
+        description: "要替换的 CSS 片段，必须与当前已应用样式中的内容精确匹配",
+      },
+      new_css: {
+        type: "string",
+        description: "替换后的 CSS 内容，空字符串表示删除",
+      },
     },
-    required: ['old_css', 'new_css']
-  }
+    required: ["old_css", "new_css"],
+  },
 };
 
 // =============================================================================
@@ -272,25 +295,55 @@ const EDIT_CSS_TOOL = {
 // =============================================================================
 
 const TODO_WRITE_TOOL = {
-  name: 'TodoWrite',
-  description: '更新任务列表。用于规划和追踪复杂任务的进度。简单任务不需要使用。',
+  name: "TodoWrite",
+  description: `更新任务列表。用于规划和追踪复杂任务的进度。
+
+使用场景：
+- 用户请求涉及多个步骤的复杂任务
+- 需要将大任务分解为子任务
+- 需要追踪任务完成进度
+
+工作模式：
+1. 规划模式（首次调用）：传入完整任务数组，设置所有任务状态为 pending
+   例：todos: [{content: "获取页面结构", status: "pending"}, {content: "修改导航样式", status: "pending"}]
+
+2. 更新模式（后续调用）：传入任务 id 和新状态，更新单个任务进度
+   例：todos: [{id: "todo_1", status: "in_progress"}] 或 [{id: "todo_1", status: "completed"}]
+
+状态流转：pending → in_progress → completed
+- 开始任务时标记为 in_progress
+- 完成任务后标记为 completed
+
+简单任务（单步操作）不需要使用此工具。`,
   input_schema: {
-    type: 'object',
+    type: "object",
     properties: {
       todos: {
-        type: 'array',
+        type: "array",
+        description:
+          "任务数组。规划模式：每项包含 content 和 status；更新模式：每项包含 id 和要更新的字段",
         items: {
-          type: 'object',
+          type: "object",
           properties: {
-            content: { type: 'string', description: '任务描述' },
-            status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] }
+            id: {
+              type: "string",
+              description: "任务 ID（更新模式必填，由首次调用返回）",
+            },
+            content: {
+              type: "string",
+              description: "任务描述（规划模式必填）",
+            },
+            status: {
+              type: "string",
+              enum: ["pending", "in_progress", "completed"],
+              description: "任务状态",
+            },
           },
-          required: ['content', 'status']
-        }
-      }
+        },
+      },
     },
-    required: ['todos']
-  }
+    required: ["todos"],
+  },
 };
 
 // =============================================================================
@@ -298,7 +351,7 @@ const TODO_WRITE_TOOL = {
 // =============================================================================
 
 const TASK_TOOL = {
-  name: 'Task',
+  name: "Task",
   description: `调用子智能体处理复杂任务。
 子智能体在隔离上下文中运行，不会污染主对话历史。
 
@@ -310,14 +363,18 @@ const TASK_TOOL = {
 - 需要多次工具调用的任务
 - 可能产生大量中间输出的任务`,
   input_schema: {
-    type: 'object',
+    type: "object",
     properties: {
-      description: { type: 'string', description: '任务简短描述（3-5字）' },
-      prompt: { type: 'string', description: '详细的任务指令' },
-      agent_type: { type: 'string', enum: ['StyleGenerator'], description: '子智能体类型' }
+      description: { type: "string", description: "任务简短描述（3-5字）" },
+      prompt: { type: "string", description: "详细的任务指令" },
+      agent_type: {
+        type: "string",
+        enum: ["StyleGenerator"],
+        description: "子智能体类型",
+      },
     },
-    required: ['description', 'prompt', 'agent_type']
-  }
+    required: ["description", "prompt", "agent_type"],
+  },
 };
 
 // =============================================================================
@@ -336,21 +393,18 @@ const BASE_TOOLS = [
   SAVE_STYLE_SKILL_TOOL,
   LIST_STYLE_SKILLS_TOOL,
   DELETE_STYLE_SKILL_TOOL,
-  TODO_WRITE_TOOL
+  TODO_WRITE_TOOL,
 ];
 
-const ALL_TOOLS = [
-  ...BASE_TOOLS,
-  TASK_TOOL
-];
+const ALL_TOOLS = [...BASE_TOOLS, TASK_TOOL];
 
 // 导出常量供其他模块使用
 const SKILL_PATHS = {
-  'dark-mode-template': 'skills/style-templates/dark-mode.md',
-  'minimal-template':   'skills/style-templates/minimal.md',
-  'design-principles':  'skills/design-principles.md',
-  'color-theory':       'skills/color-theory.md',
-  'css-selectors':      'skills/css-selectors-guide.md',
+  "dark-mode-template": "skills/style-templates/dark-mode.md",
+  "minimal-template": "skills/style-templates/minimal.md",
+  "design-principles": "skills/design-principles.md",
+  "color-theory": "skills/color-theory.md",
+  "css-selectors": "skills/css-selectors-guide.md",
 };
 
 // =============================================================================
@@ -372,7 +426,7 @@ async function getTargetTabId() {
   if (lockedTabId) return lockedTabId;
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) {
-    throw new Error('没有可用的活跃标签页');
+    throw new Error("没有可用的活跃标签页");
   }
   return tab.id;
 }
@@ -400,12 +454,15 @@ function unlockTab() {
 async function getTargetDomain() {
   const tabId = await getTargetTabId();
   return new Promise((resolve) => {
-    chrome.tabs.sendMessage(tabId, { tool: 'get_domain' }, (response) => {
+    chrome.tabs.sendMessage(tabId, { tool: "get_domain" }, (response) => {
       if (chrome.runtime.lastError) {
-        console.warn('getTargetDomain failed:', chrome.runtime.lastError.message);
-        resolve('unknown');
+        console.warn(
+          "getTargetDomain failed:",
+          chrome.runtime.lastError.message,
+        );
+        resolve("unknown");
       } else {
-        resolve(response || 'unknown');
+        resolve(response || "unknown");
       }
     });
   });
@@ -423,8 +480,12 @@ async function sendToContentScript(message) {
   return new Promise((resolve, reject) => {
     chrome.tabs.sendMessage(tabId, message, (response) => {
       if (chrome.runtime.lastError) {
-        reject(new Error(`Content Script 不可用: ${chrome.runtime.lastError.message}`));
-      } else if (response && typeof response === 'object' && response.error) {
+        reject(
+          new Error(
+            `Content Script 不可用: ${chrome.runtime.lastError.message}`,
+          ),
+        );
+      } else if (response && typeof response === "object" && response.error) {
         reject(new Error(`Content Script 执行错误: ${response.error}`));
       } else {
         resolve(response);
@@ -440,8 +501,8 @@ async function sendToContentScript(message) {
  * @returns {string} 字符串化的返回值
  */
 function normalizeToolResult(value) {
-  if (typeof value === 'string') return value;
-  if (value === null || value === undefined) return '(无结果)';
+  if (typeof value === "string") return value;
+  if (value === null || value === undefined) return "(无结果)";
   return JSON.stringify(value);
 }
 
@@ -458,7 +519,7 @@ async function injectCSSViaScriptingAPI(css) {
   const tabId = await getTargetTabId();
   await chrome.scripting.insertCSS({
     target: { tabId },
-    css
+    css,
   });
 }
 
@@ -469,7 +530,7 @@ async function injectCSSViaScriptingAPI(css) {
 async function syncActiveStyles() {
   const aKey = currentSession.activeStylesKey;
   const sKey = currentSession.stylesKey;
-  const { [sKey]: sessionCSS = '' } = await chrome.storage.local.get(sKey);
+  const { [sKey]: sessionCSS = "" } = await chrome.storage.local.get(sKey);
   if (sessionCSS.trim()) {
     await chrome.storage.local.set({ [aKey]: sessionCSS });
   } else {
@@ -479,61 +540,66 @@ async function syncActiveStyles() {
 
 /**
  * 应用或回滚 CSS 样式
- * 
+ *
  * 跨 Side Panel 和 Content Script 两个执行环境的样式管理函数。
  * 仅维护当前会话的样式，切换会话时自动切换对应样式。
  * 每次操作后同步到 active_styles:{domain}，确保页面刷新后样式不丢失。
- * 
+ *
  * @param {string} css - CSS 代码（save 模式必填，rollback 模式不需要）
  * @param {string} mode - 模式：'save' | 'rollback_all'
  * @returns {Promise<string>} 操作结果消息
  */
 async function runApplyStyles(css, mode) {
   if (!currentSession) {
-    throw new Error('[runApplyStyles] 没有活动的会话');
+    throw new Error("[runApplyStyles] 没有活动的会话");
   }
-  
+
   try {
     // === rollback_all 模式 ===
-    if (mode === 'rollback_all') {
-      await sendToContentScript({ tool: 'rollback_css', args: { scope: 'all' } });
+    if (mode === "rollback_all") {
+      await sendToContentScript({
+        tool: "rollback_css",
+        args: { scope: "all" },
+      });
       await chrome.storage.local.remove(currentSession.stylesKey);
       await syncActiveStyles();
       await updateStylesSummary();
-      return '已回滚所有样式。当前无已应用样式。';
+      return "已回滚所有样式。当前无已应用样式。";
     }
-    
+
     // === save 模式 ===
-    if (mode === 'save') {
+    if (mode === "save") {
       if (!css || !css.trim()) {
-        throw new Error('[runApplyStyles] save 模式需要提供 CSS 代码');
+        throw new Error("[runApplyStyles] save 模式需要提供 CSS 代码");
       }
-      
+
       // 1. 注入 CSS 到页面（带 CSP 降级）
-      const injectResp = await sendToContentScript({ tool: 'inject_css', args: { css } });
-      if (injectResp && injectResp.fallback === 'scripting-api') {
+      const injectResp = await sendToContentScript({
+        tool: "inject_css",
+        args: { css },
+      });
+      if (injectResp && injectResp.fallback === "scripting-api") {
         await injectCSSViaScriptingAPI(injectResp.css);
       }
-      
+
       // 2. 合并并写入会话样式
       const sKey = currentSession.stylesKey;
-      const { [sKey]: existing = '' } = await chrome.storage.local.get(sKey);
+      const { [sKey]: existing = "" } = await chrome.storage.local.get(sKey);
       const merged = mergeCSS(existing, css);
       await chrome.storage.local.set({ [sKey]: merged });
-      
+
       // 3. 同步到 active_styles（供页面刷新时使用）
       await syncActiveStyles();
-      
+
       // 4. 更新样式摘要
       await updateStylesSummary();
-      
+
       return `样式已应用。当前完整样式：\n${merged}`;
     }
-    
+
     throw new Error(`[runApplyStyles] 未知模式: ${mode}`);
-    
   } catch (error) {
-    console.error('[runApplyStyles] 执行失败:', error);
+    console.error("[runApplyStyles] 执行失败:", error);
     throw error;
   }
 }
@@ -544,23 +610,23 @@ async function runApplyStyles(css, mode) {
 
 /**
  * 精准编辑已应用的 CSS 样式
- * 
+ *
  * 通过文本替换方式修改已存储的 CSS，替换后重新注入页面。
- * 
+ *
  * @param {string} oldCSS - 要替换的 CSS 片段（必须精确匹配）
  * @param {string} newCSS - 替换后的内容（空字符串表示删除）
  * @returns {Promise<string>} 操作结果 + 更新后的完整 CSS
  */
 async function runEditCSS(oldCSS, newCSS) {
   if (!currentSession) {
-    throw new Error('[runEditCSS] 没有活动的会话');
+    throw new Error("[runEditCSS] 没有活动的会话");
   }
 
   const sKey = currentSession.stylesKey;
-  const { [sKey]: stored = '' } = await chrome.storage.local.get(sKey);
+  const { [sKey]: stored = "" } = await chrome.storage.local.get(sKey);
 
   if (!stored || !stored.includes(oldCSS)) {
-    return `编辑失败：未找到匹配的 CSS 片段。请确保 old_css 与 [当前已应用样式] 中的内容完全一致。\n\n当前完整样式：\n${stored || '(无)'}`;
+    return `编辑失败：未找到匹配的 CSS 片段。请确保 old_css 与 [当前已应用样式] 中的内容完全一致。\n\n当前完整样式：\n${stored || "(无)"}`;
   }
 
   const updated = stored.replace(oldCSS, newCSS);
@@ -572,14 +638,14 @@ async function runEditCSS(oldCSS, newCSS) {
     await chrome.storage.local.remove(sKey);
   }
 
-  await sendToContentScript({ tool: 'replace_css', args: { css: trimmed } });
+  await sendToContentScript({ tool: "replace_css", args: { css: trimmed } });
   await syncActiveStyles();
   await updateStylesSummary();
 
   if (trimmed) {
     return `样式已更新。当前完整样式：\n${trimmed}`;
   }
-  return '样式已全部删除。当前无已应用样式。';
+  return "样式已全部删除。当前无已应用样式。";
 }
 
 // =============================================================================
@@ -588,35 +654,35 @@ async function runEditCSS(oldCSS, newCSS) {
 
 /**
  * 加载领域知识或用户保存的风格技能
- * 
+ *
  * 支持两种技能类型：
  * 1. 内置静态知识：通过 chrome.runtime.getURL + fetch 加载打包的 .md 文件
  * 2. 用户动态风格技能：通过 StyleSkillStore.load 从 chrome.storage.local 加载
- * 
+ *
  * **内置知识列表：**
  * - dark-mode-template: 深色模式 CSS 模板
  * - minimal-template: 极简风格模板
  * - design-principles: 设计原则（对比度、层级、留白）
  * - color-theory: 配色理论
  * - css-selectors: CSS 选择器最佳实践
- * 
+ *
  * **用户技能格式：**
  * - 使用 skill:{id} 格式加载，如 skill:a1b2c3d4
  * - 通过 list_style_skills 查看可用的用户技能
- * 
+ *
  * @param {string} skillName - 内置知识名称，或 skill:{id} 加载用户风格技能
  * @returns {Promise<string>} 技能内容（markdown 格式）或错误提示
- * 
+ *
  * @example
  * // 加载内置知识
  * const content = await runLoadSkill('dark-mode-template');
  * // → 返回 dark-mode.md 文件内容
- * 
+ *
  * @example
  * // 加载用户技能
  * const content = await runLoadSkill('skill:a1b2c3d4');
  * // → 返回用户保存的技能内容
- * 
+ *
  * @example
  * // 未知名称
  * const content = await runLoadSkill('unknown');
@@ -624,29 +690,30 @@ async function runEditCSS(oldCSS, newCSS) {
  */
 async function runLoadSkill(skillName) {
   // === 用户动态风格技能 ===
-  if (skillName.startsWith('skill:')) {
+  if (skillName.startsWith("skill:")) {
     const id = skillName.slice(6);
     const content = await StyleSkillStore.load(id);
-    
+
     if (!content) {
       return `未找到风格技能: ${id}。使用 list_style_skills 查看可用技能。`;
     }
-    
+
     return content;
   }
-  
+
   // === 内置静态知识 ===
   const path = SKILL_PATHS[skillName];
   if (!path) {
     // 未知名称：返回可用列表
     const userSkills = await StyleSkillStore.list();
-    const userSkillsHint = userSkills.length > 0
-      ? `\n用户风格技能: ${userSkills.map(s => `skill:${s.id} (${s.name})`).join(', ')}`
-      : '';
-    
-    return `未知知识: ${skillName}。可用: ${Object.keys(SKILL_PATHS).join(', ')}${userSkillsHint}`;
+    const userSkillsHint =
+      userSkills.length > 0
+        ? `\n用户风格技能: ${userSkills.map((s) => `skill:${s.id} (${s.name})`).join(", ")}`
+        : "";
+
+    return `未知知识: ${skillName}。可用: ${Object.keys(SKILL_PATHS).join(", ")}${userSkillsHint}`;
   }
-  
+
   // Side Panel 中通过 chrome.runtime.getURL 访问扩展内静态资源
   const url = chrome.runtime.getURL(path);
   const resp = await fetch(url);
@@ -659,30 +726,30 @@ async function runLoadSkill(skillName) {
 
 /**
  * 从当前会话中提取视觉风格特征，保存为可复用的风格技能
- * 
+ *
  * **工作流程：**
  * 1. 生成 8 位 UUID 作为技能 ID
  * 2. 获取当前域名作为来源
  * 3. 组装 header（名称、来源、日期、风格描述）
  * 4. 调用 StyleSkillStore.save 保存技能内容和索引
- * 
+ *
  * **Header 格式：**
  * ```markdown
  * # {name}
- * 
+ *
  * > 来源: {domain} | 创建: {date}
  * > 风格: {mood}
- * 
+ *
  * {skillContent}
  * ```
- * 
+ *
  * 如果 skillContent 已经以 `# ` 开头，则不重复添加 header。
- * 
+ *
  * @param {string} name - 风格名称，如"赛博朋克"、"清新日式"
  * @param {string} mood - 一句话风格描述（可选）
  * @param {string} skillContent - 风格技能文档（markdown 格式）
  * @returns {Promise<string>} 成功消息，包含技能 ID 和使用方法
- * 
+ *
  * @example
  * const result = await runSaveStyleSkill(
  *   '赛博朋克',
@@ -694,19 +761,21 @@ async function runLoadSkill(skillName) {
 async function runSaveStyleSkill(name, mood, skillContent) {
   // 1. 生成 8 位 UUID
   const id = crypto.randomUUID().slice(0, 8);
-  
+
   // 2. 获取来源域名
-  const sourceDomain = currentSession?.domain || 'unknown';
-  
+  const sourceDomain = currentSession?.domain || "unknown";
+
   // 3. 组装 header
-  const header = `# ${name}\n\n> 来源: ${sourceDomain} | 创建: ${new Date().toLocaleDateString()}\n> 风格: ${mood || ''}\n\n`;
-  
+  const header = `# ${name}\n\n> 来源: ${sourceDomain} | 创建: ${new Date().toLocaleDateString()}\n> 风格: ${mood || ""}\n\n`;
+
   // 4. 处理完整内容（避免重复添加 header）
-  const fullContent = skillContent.startsWith('# ') ? skillContent : header + skillContent;
-  
+  const fullContent = skillContent.startsWith("# ")
+    ? skillContent
+    : header + skillContent;
+
   // 5. 保存技能
-  await StyleSkillStore.save(id, name, mood || '', sourceDomain, fullContent);
-  
+  await StyleSkillStore.save(id, name, mood || "", sourceDomain, fullContent);
+
   // 6. 返回成功消息
   return `已保存风格技能「${name}」(id: ${id})，可在任意网站通过 load_skill('skill:${id}') 加载使用。`;
 }
@@ -717,16 +786,16 @@ async function runSaveStyleSkill(name, mood, skillContent) {
 
 /**
  * 列出用户保存的所有风格技能
- * 
+ *
  * 返回格式化的技能列表，每个技能包含 ID、名称、描述、来源域名和创建日期。
- * 
+ *
  * @returns {Promise<string>} 格式化的技能列表，无技能时返回默认提示
- * 
+ *
  * @example
  * // 有技能时
  * const list = await runListStyleSkills();
  * // → '- skill:a1b2c3d4「赛博朋克」— 深色背景+霓虹色调 (来自 github.com, 2026/3/4)'
- * 
+ *
  * @example
  * // 无技能时
  * const list = await runListStyleSkills();
@@ -734,16 +803,19 @@ async function runSaveStyleSkill(name, mood, skillContent) {
  */
 async function runListStyleSkills() {
   const skills = await StyleSkillStore.list();
-  
+
   // 空列表返回默认提示
   if (skills.length === 0) {
-    return '(暂无保存的风格技能)';
+    return "(暂无保存的风格技能)";
   }
-  
+
   // 格式化输出
-  return skills.map(s =>
-    `- skill:${s.id}「${s.name}」${s.mood ? `— ${s.mood}` : ''} (来自 ${s.sourceDomain}, ${new Date(s.createdAt).toLocaleDateString()})`
-  ).join('\n');
+  return skills
+    .map(
+      (s) =>
+        `- skill:${s.id}「${s.name}」${s.mood ? `— ${s.mood}` : ""} (来自 ${s.sourceDomain}, ${new Date(s.createdAt).toLocaleDateString()})`,
+    )
+    .join("\n");
 }
 
 // =============================================================================
@@ -752,15 +824,15 @@ async function runListStyleSkills() {
 
 /**
  * 删除一个用户保存的风格技能
- * 
+ *
  * @param {string} skillId - 要删除的技能 ID
  * @returns {Promise<string>} 操作结果消息
- * 
+ *
  * @example
  * // 删除成功
  * const result = await runDeleteStyleSkill('a1b2c3d4');
  * // → '已删除风格技能「赛博朋克」'
- * 
+ *
  * @example
  * // 技能不存在
  * const result = await runDeleteStyleSkill('notexist');
@@ -769,16 +841,16 @@ async function runListStyleSkills() {
 async function runDeleteStyleSkill(skillId) {
   // 检查技能是否存在
   const skills = await StyleSkillStore.list();
-  const target = skills.find(s => s.id === skillId);
-  
+  const target = skills.find((s) => s.id === skillId);
+
   // 技能不存在时返回错误提示
   if (!target) {
     return `未找到技能: ${skillId}`;
   }
-  
+
   // 删除技能
   await StyleSkillStore.remove(skillId);
-  
+
   return `已删除风格技能「${target.name}」`;
 }
 
@@ -795,35 +867,41 @@ async function runDeleteStyleSkill(skillId) {
 const TOOL_HANDLERS = {
   // —— Content Script 工具（DOM 操作）——
   get_page_structure: async () =>
-    normalizeToolResult(await sendToContentScript({ tool: 'get_page_structure' })),
+    normalizeToolResult(
+      await sendToContentScript({ tool: "get_page_structure" }),
+    ),
 
   grep: async (args) =>
-    normalizeToolResult(await sendToContentScript({
-      tool: 'grep',
-      args: { query: args.query, scope: args.scope || 'children', maxResults: args.max_results || 5 }
-    })),
+    normalizeToolResult(
+      await sendToContentScript({
+        tool: "grep",
+        args: {
+          query: args.query,
+          scope: args.scope || "children",
+          maxResults: args.max_results || 5,
+        },
+      }),
+    ),
 
-  apply_styles: async (args) =>
-    await runApplyStyles(args.css || '', args.mode),
+  apply_styles: async (args) => await runApplyStyles(args.css || "", args.mode),
 
   get_current_styles: async () => {
-    if (!currentSession) return '(无活动会话)';
+    if (!currentSession) return "(无活动会话)";
     const sKey = currentSession.stylesKey;
-    const { [sKey]: css = '' } = await chrome.storage.local.get(sKey);
-    return css.trim() || '(当前无已应用样式)';
+    const { [sKey]: css = "" } = await chrome.storage.local.get(sKey);
+    return css.trim() || "(当前无已应用样式)";
   },
 
-  edit_css: async (args) =>
-    await runEditCSS(args.old_css, args.new_css),
+  edit_css: async (args) => await runEditCSS(args.old_css, args.new_css),
 
   // —— Side Panel 本地工具 ——
   get_user_profile: async () => {
-    const { runGetUserProfile } = await import('./profile.js');
+    const { runGetUserProfile } = await import("./profile.js");
     return await runGetUserProfile();
   },
 
   update_user_profile: async (args) => {
-    const { runUpdateUserProfile } = await import('./profile.js');
+    const { runUpdateUserProfile } = await import("./profile.js");
     return await runUpdateUserProfile(args.content);
   },
 
@@ -836,14 +914,24 @@ const TOOL_HANDLERS = {
 
   delete_style_skill: async (args) => await runDeleteStyleSkill(args.skill_id),
 
-  TodoWrite: async () => '任务列表已更新',
+  TodoWrite: async (args) => {
+    const { updateTodos } = await import("./todo-manager.js");
+    return updateTodos(args.todos);
+  },
 
   Task: async (args, context) => {
-    const { runTask } = await import('./agent-loop.js').catch(() => ({ runTask: null }));
+    const { runTask } = await import("./agent-loop.js").catch(() => ({
+      runTask: null,
+    }));
     if (runTask) {
-      return await runTask(args.description, args.prompt, args.agent_type, context?.abortSignal);
+      return await runTask(
+        args.description,
+        args.prompt,
+        args.agent_type,
+        context?.abortSignal,
+      );
     }
-    return '(子智能体功能尚未实现)';
+    return "(子智能体功能尚未实现)";
   },
 };
 
@@ -888,5 +976,5 @@ export {
   runSaveStyleSkill,
   runListStyleSkills,
   runDeleteStyleSkill,
-  executeTool
+  executeTool,
 };
