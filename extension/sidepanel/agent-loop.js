@@ -220,7 +220,7 @@ async function checkAndCompressHistory(history, lastInputTokens) {
   }
 
   const firstTurnEnd = findFirstTurnEnd(history);
-  const recentStart = findTurnBoundary(history, 5);
+  const recentStart = findTurnBoundary(history, 3);
 
   if (recentStart <= firstTurnEnd) {
     return history;
@@ -539,8 +539,13 @@ async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
       }
     } else if (msg.role === "assistant") {
       // 助手消息
-      const textContent =
-        msg.content?.find((c) => c.type === "text")?.text || "";
+      let textContent = msg.content?.find((c) => c.type === "text")?.text || "";
+
+      // 将推理文本拼接到文本内容前
+      if (msg._reasoning) {
+        textContent = `<think/>\n${msg._reasoning}\n</think/>\n\n${textContent}`;
+      }
+
       const toolCalls = msg.content
         ?.filter((c) => c.type === "tool_use")
         .map((c) => ({
