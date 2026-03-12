@@ -3,7 +3,7 @@
  * Agent 主循环 + 系统提示词定义
  */
 
-import { BASE_TOOLS, ALL_TOOLS } from "./tools.js";
+import { BASE_TOOLS, ALL_TOOLS, getSkillManager } from "./tools.js";
 
 // =============================================================================
 // §10.4 SYSTEM_BASE - 系统提示词常量
@@ -37,9 +37,9 @@ const SYSTEM_BASE = `你是 StyleSwift，网页样式个性化智能体。优先
 【偏好学习】发现明确风格偏好信号时（如"喜欢圆角"、纠正色调选择）调 update_user_profile 记录。
 
 【风格技能】
-- 查看已有技能：list_style_skills
 - 应用技能：load_skill → 结合当前页面结构重新适配选择器（禁止直接复制原选择器）
-- 保存技能：仅在用户明确要求时调 save_style_skill`;
+- 保存技能：仅在用户明确要求时调 save_style_skill
+- 可用技能列表已在系统提示词中提供，无需调用 list_style_skills`;
 
 // =============================================================================
 // §4.1 Agent Types 注册表
@@ -106,6 +106,31 @@ function buildSessionContext(domain, sessionMeta, profileHint) {
   }
 
   return ctx;
+}
+
+/**
+ * 构建技能描述块
+ *
+ * 获取所有可用技能的描述，注入到系统提示词中。
+ * 这样 LLM 在第一轮就能知道有哪些技能可用，无需先调用 list_style_skills。
+ *
+ * @returns {Promise<string>} 格式化的技能描述文本
+ */
+async function buildSkillDescriptions() {
+  try {
+    const manager = await getSkillManager();
+    if (!manager) {
+      return "";
+    }
+    const descriptions = await manager.getDescriptions();
+    if (!descriptions || descriptions === "(no skills available)") {
+      return "";
+    }
+    return `\n[可用技能]\n${descriptions}\n`;
+  } catch (err) {
+    console.warn("[Skill Descriptions] Failed to build:", err);
+    return "";
+  }
 }
 
 // =============================================================================
@@ -1112,11 +1137,14 @@ async function agentLoop(prompt, uiCallbacks) {
     const fullHistory = historyData.messages;
     const snapshots = historyData.snapshots;
 
-    // 2. 构建 system prompt = L0 + L1
+    // 2. 构建 system prompt = L0 + L1 + 技能描述
     const sessionMeta = await loadSessionMeta(domain, sessionId);
     const profileHint = await getProfileOneLiner();
+    const skillDescriptions = await buildSkillDescriptions();
     const system =
-      SYSTEM_BASE + buildSessionContext(domain, sessionMeta, profileHint);
+      SYSTEM_BASE +
+      buildSessionContext(domain, sessionMeta, profileHint) +
+      skillDescriptions;
 
     // 3. Agent Loop（流式 + 迭代上限 + 取消支持）
     // fullHistory: 完整历史，持久化到 IndexedDB
@@ -1322,6 +1350,7 @@ export {
   SYSTEM_BASE,
   AGENT_TYPES,
   buildSessionContext,
+  buildSkillDescriptions,
   TOKEN_BUDGET,
   findFirstTurnEnd,
   checkAndCompressHistory,
@@ -1347,4 +1376,7 @@ export {
   generateToolCallKey,
   detectDeadLoop,
   executeToolWithRetry,
+  // Re-export from tools.js
+  BASE_TOOLS,
+  ALL_TOOLS,
 };

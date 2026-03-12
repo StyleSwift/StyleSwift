@@ -53,7 +53,7 @@ class SkillLoader {
         } catch (err) {
           console.warn(`[SkillLoader] Failed to load ${path}:`, err);
         }
-      })
+      }),
     );
 
     this.initialized = true;
@@ -70,9 +70,18 @@ class SkillLoader {
     // since we can't dynamically list directory contents
     // This list should match the actual files in extension/skills/
     const knownFiles = [
+      // Core design skills (from impeccable-main)
+      "skills/frontend-design.md",
+      "skills/audit.md",
+      "skills/colorize.md",
+      "skills/optimize.md",
+      "skills/polish.md",
+      "skills/normalize.md",
+      // Original skills
       "skills/design-principles.md",
       "skills/color-theory.md",
       "skills/css-selectors-guide.md",
+      // Style templates
       "skills/style-templates/dark-mode.md",
       "skills/style-templates/minimal.md",
     ];
