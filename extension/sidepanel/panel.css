@@ -1027,6 +1027,113 @@ pre code {
   color: var(--color-info);
 }
 
+/* 图片预览条 */
+.attached-images-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
+  background: var(--color-info-bg);
+  border: 1px solid rgba(10, 132, 255, 0.2);
+  border-radius: var(--radius-lg);
+  animation: fadeIn var(--duration-fast) var(--easing-default);
+}
+
+.attached-images-container {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex: 1;
+  overflow-x: auto;
+  padding: var(--spacing-xs) 0;
+}
+
+.attached-image-item {
+  position: relative;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.attached-image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attached-image-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-error);
+  color: var(--color-text-inverse);
+  border: none;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--easing-default);
+}
+
+.attached-image-item:hover .attached-image-remove {
+  opacity: 1;
+}
+
+.attached-images-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-md);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--duration-fast) var(--easing-default);
+}
+
+.attached-images-clear:hover {
+  background: rgba(10, 132, 255, 0.15);
+  color: var(--color-info);
+}
+
+/* 图片上传按钮 */
+.image-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--duration-fast) var(--easing-default);
+}
+
+.image-upload-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.image-upload-btn:active {
+  background: var(--color-bg-active);
+}
+
 /* 输入区 — 金属底条 */
 .input-area {
   flex-shrink: 0;

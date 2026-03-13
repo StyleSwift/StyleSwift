@@ -488,10 +488,18 @@ function sleep(ms) {
  * );
  */
 async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
-  // 动态导入依赖
-  const { getSettings } = await import("./api.js");
+  // 检测消息中是否包含图片
+  const hasImages = messages.some((msg) => {
+    if (msg.role === "user" && Array.isArray(msg.content)) {
+      return msg.content.some((c) => c.type === "image_url");
+    }
+    return false;
+  });
 
-  const { apiKey, model, apiBase } = await getSettings();
+  // 动态导入依赖，根据是否有图片选择不同的设置
+  const { getSettingsForRequest } = await import("./api.js");
+
+  const { apiKey, model, apiBase } = await getSettingsForRequest(hasImages);
 
   // 转换为 OpenAI 格式的消息
   const openaiMessages = [];
@@ -527,13 +535,34 @@ async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
             }
           }
         } else {
-          // 处理多模态内容
-          const textParts = msg.content
-            .filter((c) => c.type === "text")
-            .map((c) => c.text)
-            .join("\n");
-          if (textParts) {
-            openaiMessages.push({ role: "user", content: textParts });
+          // 处理多模态内容（包含文本和图片）
+          const openaiContent = [];
+
+          for (const item of msg.content) {
+            if (item.type === "text") {
+              openaiContent.push({ type: "text", text: item.text });
+            } else if (item.type === "image_url") {
+              // 直接传递 image_url 内容
+              openaiContent.push({
+                type: "image_url",
+                image_url: item.image_url,
+              });
+            }
+          }
+
+          if (openaiContent.length > 0) {
+            // 如果只有一个文本项，简化为字符串
+            if (
+              openaiContent.length === 1 &&
+              openaiContent[0].type === "text"
+            ) {
+              openaiMessages.push({
+                role: "user",
+                content: openaiContent[0].text,
+              });
+            } else {
+              openaiMessages.push({ role: "user", content: openaiContent });
+            }
           }
         }
       }
@@ -1182,14 +1211,38 @@ async function agentLoop(prompt, uiCallbacks) {
       skillDescriptions;
 
     // 3. Agent Loop（流式 + 迭代上限 + 取消支持）
-    // fullHistory: 完整历史，持久化到 IndexedDB
+    // fullHistory: 完整历史，持久化到 IndexedDB（不包含图片）
     // llmHistory: LLM 视图，可被压缩以节省 context
-    const userMsg = { role: "user", content: prompt };
+    // prompt 可以是字符串或多模态内容数组
+
+    // 提取文本内容用于历史记录（不保存图片）
+    let textOnlyContent;
+    if (typeof prompt === "string") {
+      textOnlyContent = prompt;
+    } else if (Array.isArray(prompt)) {
+      // 从多模态内容中提取文本
+      textOnlyContent = prompt
+        .filter((c) => c.type === "text")
+        .map((c) => c.text)
+        .join("\n");
+    } else {
+      textOnlyContent = "";
+    }
+
+    // 历史记录只保存文本（不保存图片，避免后续轮次重复发送）
+    const userMsg = { role: "user", content: textOnlyContent };
     fullHistory.push(userMsg);
     let llmHistory = [...fullHistory];
     let lastInputTokens = 0;
     let response;
     let iterations = 0;
+
+    // 标记是否为第一轮（第一轮可能包含图片，需要使用视觉模型）
+    let isFirstIteration = true;
+
+    // 检测原始 prompt 是否包含图片（用于第一轮调用）
+    const hasImagesInPrompt =
+      Array.isArray(prompt) && prompt.some((c) => c.type === "image_url");
 
     while (iterations++ < MAX_ITERATIONS) {
       // 检查取消信号
@@ -1202,10 +1255,22 @@ async function agentLoop(prompt, uiCallbacks) {
         uiCallbacks.onNewIteration?.();
       }
 
+      // 构建当前轮次的 LLM 历史
+      // 第一轮且包含图片时，使用原始多模态 prompt
+      let currentLlmHistory = llmHistory;
+      if (isFirstIteration && hasImagesInPrompt) {
+        // 临时构建包含图片的历史
+        currentLlmHistory = [
+          ...llmHistory.slice(0, -1),
+          { role: "user", content: prompt },
+        ];
+      }
+      isFirstIteration = false;
+
       // 调用流式 API（带安全重试）
       response = await callLLMStreamSafe(
         system,
-        llmHistory,
+        currentLlmHistory,
         ALL_TOOLS,
         {
           onReasoning: (delta) => uiCallbacks.appendReasoning?.(delta),

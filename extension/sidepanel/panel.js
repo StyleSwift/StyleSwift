@@ -78,12 +78,28 @@ const DOM = {
   settingsApiKey: null,
   settingsApiBase: null,
   settingsModel: null,
+  settingsVisionApiKey: null,
+  settingsVisionApiBase: null,
+  settingsVisionModel: null,
   settingsUserProfile: null,
   profileCharCount: null,
   saveProfileBtn: null,
   profileStatus: null,
   verifyConnectionBtn: null,
   connectionStatus: null,
+
+  // Element picker
+  pickerBtn: null,
+  pickedElementBar: null,
+  pickedElementLabel: null,
+  pickedElementClear: null,
+
+  // Image upload
+  imageUploadBtn: null,
+  imageUploadInput: null,
+  attachedImagesBar: null,
+  attachedImagesContainer: null,
+  attachedImagesClear: null,
 
   // Element picker
   pickerBtn: null,
@@ -288,6 +304,13 @@ let _pickedElementInfo = null;
  * @type {boolean}
  */
 let _pickerActive = false;
+
+/**
+ * 当前附加的图片列表
+ * 每个图片对象包含: { file, dataUrl, preview }
+ * @type {Array<Object>}
+ */
+let _attachedImages = [];
 
 /**
  * 兼容旧代码的 AppState 对象
@@ -1068,6 +1091,15 @@ async function initMainView() {
   DOM.pickedElementLabel = document.getElementById("picked-element-label");
   DOM.pickedElementClear = document.getElementById("picked-element-clear");
 
+  // 获取图片上传 DOM 元素
+  DOM.imageUploadBtn = document.getElementById("image-upload-btn");
+  DOM.imageUploadInput = document.getElementById("image-upload-input");
+  DOM.attachedImagesBar = document.getElementById("attached-images-bar");
+  DOM.attachedImagesContainer = document.getElementById(
+    "attached-images-container",
+  );
+  DOM.attachedImagesClear = document.getElementById("attached-images-clear");
+
   // 获取技能区 DOM 元素
   DOM.skillArea = document.getElementById("skill-area");
   DOM.skillChips = document.getElementById("skill-chips");
@@ -1110,6 +1142,9 @@ async function initMainView() {
 
   // 初始化元素选择器
   initElementPicker();
+
+  // 初始化图片上传
+  initImageUpload();
 
   // 初始化技能快捷区
   initSkillArea();
@@ -1379,11 +1414,39 @@ async function handleSendClick() {
     clearPickedElement();
   }
 
-  console.log("[Panel] Sending message:", message);
+  // 保存图片信息用于显示（在清空前）
+  const imagesToSend = [..._attachedImages];
+  const hasImages = imagesToSend.length > 0;
+
+  // 如果有图片，构建多模态内容
+  let messageContent;
+  if (hasImages) {
+    // 构建多模态内容数组
+    messageContent = [
+      { type: "text", text: finalMessage },
+      ...imagesToSend.map((img) => ({
+        type: "image_url",
+        image_url: {
+          url: img.dataUrl,
+        },
+      })),
+    ];
+  } else {
+    messageContent = finalMessage;
+  }
+
+  console.log(
+    "[Panel] Sending message:",
+    message,
+    hasImages ? `(+ ${imagesToSend.length} images)` : "",
+  );
 
   // 清空输入框并恢复高度
   DOM.messageInput.value = "";
   resizeMessageInput();
+
+  // 清除已附加的图片
+  clearAttachedImages();
 
   // 隐藏确认浮层（如果有）- 用户发新消息视为隐式确认上一步
   if (isConfirmationOverlayVisible()) {
@@ -1396,10 +1459,13 @@ async function handleSendClick() {
     emptyState.remove();
   }
 
-  // 渲染用户消息气泡（附带元素定位标记）
-  const displayMessage = pickedInfo
+  // 渲染用户消息气泡（附带元素定位标记和图片指示）
+  let displayMessage = pickedInfo
     ? `${message}\n🎯 ${pickedInfo.selector}`
     : message;
+  if (hasImages) {
+    displayMessage += `\n🖼 ${imagesToSend.length} 张图片`;
+  }
 
   // 计算当前轮次（统计已有的用户文本消息数量 + 1）
   const existingUserMessages =
@@ -1561,8 +1627,8 @@ async function handleSendClick() {
       },
     };
 
-    // 调用 Agent Loop
-    const response = await agentLoop(finalMessage, uiCallbacks);
+    // 调用 Agent Loop（传递多模态内容）
+    const response = await agentLoop(messageContent, uiCallbacks);
 
     // 完成最后一个气泡的推理流式输出
     if (reasoningCharCount > 0) {
@@ -1789,6 +1855,332 @@ function clearPickedElement() {
  */
 function getPickedElementInfo() {
   return _pickedElementInfo;
+}
+
+// ============================================================================
+// 图片上传逻辑
+// ============================================================================
+
+/**
+ * 最大图片数量
+ * @type {number}
+ */
+const MAX_ATTACHED_IMAGES = 5;
+
+/**
+ * 图片压缩阈值（2MB）
+ * 超过此大小的图片将被压缩
+ * @type {number}
+ */
+const IMAGE_COMPRESSION_THRESHOLD = 2 * 1024 * 1024;
+
+/**
+ * 压缩图片的最大尺寸（像素）
+ * @type {number}
+ */
+const MAX_IMAGE_DIMENSION = 1920;
+
+/**
+ * 压缩图片的质量（0-1）
+ * @type {number}
+ */
+const COMPRESSION_QUALITY = 0.8;
+
+/**
+ * 初始化图片上传功能
+ * 绑定按钮事件和文件选择
+ */
+function initImageUpload() {
+  if (DOM.imageUploadBtn) {
+    DOM.imageUploadBtn.addEventListener("click", () => {
+      DOM.imageUploadInput?.click();
+    });
+  }
+
+  if (DOM.imageUploadInput) {
+    DOM.imageUploadInput.addEventListener("change", handleImageSelect);
+  }
+
+  if (DOM.attachedImagesClear) {
+    DOM.attachedImagesClear.addEventListener("click", clearAttachedImages);
+  }
+
+  // 监听粘贴事件（在输入区域或整个文档）
+  const pasteTarget = DOM.inputArea || document;
+  pasteTarget.addEventListener("paste", handlePaste);
+}
+
+/**
+ * 处理粘贴事件
+ * 从剪贴板提取图片并添加到附件列表
+ * @param {ClipboardEvent} event - 粘贴事件
+ */
+async function handlePaste(event) {
+  const items = event.clipboardData?.items;
+  if (!items) return;
+
+  // 检查数量限制
+  const remaining = MAX_ATTACHED_IMAGES - _attachedImages.length;
+  if (remaining <= 0) {
+    console.warn("[Panel] Max images reached");
+    return;
+  }
+
+  let addedCount = 0;
+
+  for (const item of items) {
+    // 只处理图片类型
+    if (!item.type.startsWith("image/")) continue;
+    if (addedCount >= remaining) break;
+
+    const file = item.getAsFile();
+    if (!file) continue;
+
+    // 验证文件大小（最大 10MB）
+    if (file.size > 10 * 1024 * 1024) {
+      console.warn("[Panel] Pasted image too large:", file.size);
+      continue;
+    }
+
+    try {
+      // 读取图片
+      let dataUrl = await readFileAsDataURL(file);
+
+      // 如果超过 2MB，进行压缩
+      let wasCompressed = false;
+      if (file.size > IMAGE_COMPRESSION_THRESHOLD) {
+        const result = await compressImage(dataUrl, file.size);
+        dataUrl = result.dataUrl;
+        wasCompressed = result.wasCompressed;
+      }
+
+      _attachedImages.push({
+        file,
+        dataUrl,
+        name: file.name || `粘贴图片 ${_attachedImages.length + 1}`,
+        wasCompressed,
+      });
+
+      addedCount++;
+    } catch (err) {
+      console.error("[Panel] Failed to process pasted image:", err);
+    }
+  }
+
+  // 如果添加了图片，阻止默认行为并更新 UI
+  if (addedCount > 0) {
+    event.preventDefault();
+    renderAttachedImages();
+  }
+}
+
+/**
+ * 处理图片选择
+ * @param {Event} event - 文件选择事件
+ */
+async function handleImageSelect(event) {
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
+
+  // 检查数量限制
+  const remaining = MAX_ATTACHED_IMAGES - _attachedImages.length;
+  if (remaining <= 0) {
+    console.warn("[Panel] Max images reached");
+    return;
+  }
+
+  const filesToAdd = files.slice(0, remaining);
+
+  for (const file of filesToAdd) {
+    // 验证文件类型
+    if (!file.type.startsWith("image/")) {
+      console.warn("[Panel] Invalid file type:", file.type);
+      continue;
+    }
+
+    // 验证文件大小（最大 10MB）
+    if (file.size > 10 * 1024 * 1024) {
+      console.warn("[Panel] Image too large:", file.size);
+      continue;
+    }
+
+    try {
+      // 读取原始图片
+      let dataUrl = await readFileAsDataURL(file);
+
+      // 如果超过 2MB，进行压缩
+      let wasCompressed = false;
+      if (file.size > IMAGE_COMPRESSION_THRESHOLD) {
+        const result = await compressImage(dataUrl, file.size);
+        dataUrl = result.dataUrl;
+        wasCompressed = result.wasCompressed;
+      }
+
+      _attachedImages.push({
+        file,
+        dataUrl,
+        name: file.name,
+        wasCompressed,
+      });
+    } catch (err) {
+      console.error("[Panel] Failed to read image:", err);
+    }
+  }
+
+  // 清空 input 以便重复选择同一文件
+  event.target.value = "";
+
+  // 更新 UI
+  renderAttachedImages();
+}
+
+/**
+ * 将文件读取为 Data URL
+ * @param {File} file - 文件对象
+ * @returns {Promise<string>} Data URL
+ */
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * 压缩图片
+ * 如果图片超过阈值，使用 Canvas 进行压缩
+ * @param {string} dataUrl - 原始 Data URL
+ * @param {number} originalSize - 原始文件大小（字节）
+ * @returns {Promise<{dataUrl: string, wasCompressed: boolean}>} 压缩后的 Data URL 和是否进行了压缩
+ */
+function compressImage(dataUrl, originalSize) {
+  return new Promise((resolve, reject) => {
+    // 如果小于阈值，直接返回
+    if (originalSize <= IMAGE_COMPRESSION_THRESHOLD) {
+      resolve({ dataUrl, wasCompressed: false });
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      try {
+        // 计算压缩后的尺寸
+        let width = img.width;
+        let height = img.height;
+
+        // 如果尺寸过大，按比例缩小
+        if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+          const ratio = Math.min(
+            MAX_IMAGE_DIMENSION / width,
+            MAX_IMAGE_DIMENSION / height,
+          );
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+
+        // 创建 Canvas 进行压缩
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // 导出为 JPEG 格式（比 PNG 更小）
+        const compressedDataUrl = canvas.toDataURL(
+          "image/jpeg",
+          COMPRESSION_QUALITY,
+        );
+
+        console.log(
+          `[Panel] Image compressed: ${(originalSize / 1024 / 1024).toFixed(2)}MB -> ` +
+            `${((compressedDataUrl.length * 0.75) / 1024 / 1024).toFixed(2)}MB`,
+        );
+
+        resolve({ dataUrl: compressedDataUrl, wasCompressed: true });
+      } catch (err) {
+        console.error("[Panel] Compression failed, using original:", err);
+        resolve({ dataUrl, wasCompressed: false });
+      }
+    };
+
+    img.onerror = () => {
+      console.error("[Panel] Failed to load image for compression");
+      resolve({ dataUrl, wasCompressed: false });
+    };
+
+    img.src = dataUrl;
+  });
+}
+
+/**
+ * 渲染已附加的图片预览
+ */
+function renderAttachedImages() {
+  if (!DOM.attachedImagesContainer) return;
+
+  DOM.attachedImagesContainer.innerHTML = "";
+
+  if (_attachedImages.length === 0) {
+    DOM.attachedImagesBar?.classList.add("hidden");
+    return;
+  }
+
+  DOM.attachedImagesBar?.classList.remove("hidden");
+
+  _attachedImages.forEach((img, index) => {
+    const item = document.createElement("div");
+    item.className = "attached-image-item";
+
+    const preview = document.createElement("img");
+    preview.src = img.dataUrl;
+    preview.alt = img.name || `图片 ${index + 1}`;
+    item.appendChild(preview);
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "attached-image-remove";
+    removeBtn.textContent = "×";
+    removeBtn.title = "移除图片";
+    removeBtn.addEventListener("click", () => removeAttachedImage(index));
+    item.appendChild(removeBtn);
+
+    DOM.attachedImagesContainer.appendChild(item);
+  });
+}
+
+/**
+ * 移除指定索引的图片
+ * @param {number} index - 图片索引
+ */
+function removeAttachedImage(index) {
+  _attachedImages.splice(index, 1);
+  renderAttachedImages();
+}
+
+/**
+ * 清除所有已附加的图片
+ */
+function clearAttachedImages() {
+  _attachedImages = [];
+  renderAttachedImages();
+}
+
+/**
+ * 获取当前附加的图片列表
+ * @returns {Array<Object>}
+ */
+function getAttachedImages() {
+  return _attachedImages;
+}
+
+/**
+ * 检查是否有附加图片
+ * @returns {boolean}
+ */
+function hasAttachedImages() {
+  return _attachedImages.length > 0;
 }
 
 // ============================================================================
@@ -2942,6 +3334,13 @@ async function initSettingsView() {
   DOM.verifyConnectionBtn = document.getElementById("verify-connection-btn");
   DOM.connectionStatus = document.getElementById("connection-status");
 
+  // 获取视觉模型设置 DOM 元素
+  DOM.settingsVisionApiKey = document.getElementById("settings-vision-api-key");
+  DOM.settingsVisionApiBase = document.getElementById(
+    "settings-vision-api-base",
+  );
+  DOM.settingsVisionModel = document.getElementById("settings-vision-model");
+
   // 防止重复绑定事件监听器（使用 data 属性标记）
   const settingsView = document.getElementById("settings-view");
   if (settingsView && settingsView.dataset.listenersAttached === "true") {
@@ -2981,6 +3380,9 @@ async function initSettingsView() {
     document.getElementById("settings-api-key"),
     document.getElementById("settings-api-base"),
     document.getElementById("settings-model"),
+    document.getElementById("settings-vision-api-key"),
+    document.getElementById("settings-vision-api-base"),
+    document.getElementById("settings-vision-model"),
   ];
   settingsInputs.forEach((input) => {
     if (input) {
@@ -3045,10 +3447,22 @@ async function handleSettingsBack() {
   const apiBase = DOM.settingsApiBase?.value.trim() || DEFAULT_API_BASE;
   const model = DOM.settingsModel?.value.trim() || DEFAULT_MODEL;
 
+  // 获取视觉模型设置
+  const visionApiKey = DOM.settingsVisionApiKey?.value.trim() || undefined;
+  const visionApiBase = DOM.settingsVisionApiBase?.value.trim() || undefined;
+  const visionModel = DOM.settingsVisionModel?.value.trim() || undefined;
+
   // 如果有 API Key，自动保存设置
   if (apiKey) {
     try {
-      await saveSettings({ apiKey, apiBase, model });
+      await saveSettings({
+        apiKey,
+        apiBase,
+        model,
+        visionApiKey,
+        visionApiBase,
+        visionModel,
+      });
       showSaveSuccess();
     } catch (err) {
       console.warn("[Panel] Auto-save on back failed:", err);
@@ -3102,6 +3516,16 @@ async function loadCurrentSettings() {
     }
     if (DOM.settingsModel) {
       DOM.settingsModel.value = settings.model || DEFAULT_MODEL;
+    }
+    // 加载视觉模型设置
+    if (DOM.settingsVisionApiKey) {
+      DOM.settingsVisionApiKey.value = settings.visionApiKey || "";
+    }
+    if (DOM.settingsVisionApiBase) {
+      DOM.settingsVisionApiBase.value = settings.visionApiBase || "";
+    }
+    if (DOM.settingsVisionModel) {
+      DOM.settingsVisionModel.value = settings.visionModel || "";
     }
   } catch (err) {
     console.warn("[Panel] No existing settings");
@@ -5361,4 +5785,8 @@ export {
   // 元素选择器导出
   getPickedElementInfo,
   clearPickedElement,
+  // 图片上传导出
+  getAttachedImages,
+  clearAttachedImages,
+  hasAttachedImages,
 };

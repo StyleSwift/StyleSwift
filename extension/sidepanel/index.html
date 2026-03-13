@@ -131,6 +131,13 @@
           <span id="picked-element-label" class="picked-element-label"></span>
           <button id="picked-element-clear" class="picked-element-clear" title="移除选中元素" aria-label="移除选中元素">×</button>
         </div>
+        <!-- 图片预览条 -->
+        <div id="attached-images-bar" class="attached-images-bar hidden">
+          <div id="attached-images-container" class="attached-images-container">
+            <!-- 动态生成图片预览 -->
+          </div>
+          <button id="attached-images-clear" class="attached-images-clear" title="移除所有图片" aria-label="移除所有图片">×</button>
+        </div>
         <div id="input-wrapper" class="input-wrapper">
           <button id="picker-btn" class="picker-btn" title="选取页面元素" aria-label="选取页面元素">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -138,8 +145,16 @@
               <path d="M9 9L13 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
             </svg>
           </button>
-          <textarea 
-            id="message-input" 
+          <button id="image-upload-btn" class="image-upload-btn" title="上传参考图片" aria-label="上传参考图片">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+              <circle cx="5.5" cy="5.5" r="1.5" fill="currentColor"/>
+              <path d="M2 11L5.5 7.5L8 10L10.5 7.5L14 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <input type="file" id="image-upload-input" accept="image/*" multiple hidden>
+          <textarea
+            id="message-input"
             class="message-input"
             placeholder="描述你想要的风格，例如：标题改成蓝色、整体暗色、字体调大..."
             rows="2"
@@ -152,7 +167,7 @@
             ■
           </button>
         </div>
-        <span class="input-hint" aria-hidden="true">Enter 发送 · Shift+Enter 换行 · 🎯 选取元素</span>
+        <span class="input-hint" aria-hidden="true">Enter 发送 · Shift+Enter 换行 · 🎯 选取元素 · 🖼 上传图片</span>
       </footer>
       
     </section>
@@ -188,6 +203,25 @@
           </div>
           <button id="verify-connection-btn" class="btn-secondary">验证连接</button>
           <div id="connection-status" class="status-message hidden"></div>
+        </div>
+
+        <div class="settings-group">
+          <h3>视觉模型配置</h3>
+          <p class="hint">用于处理图片的视觉模型配置，留空则使用默认 API 配置</p>
+          <div class="form-group">
+            <label for="settings-vision-api-key">视觉模型 API Key (可选)</label>
+            <div class="input-with-action">
+              <input type="password" id="settings-vision-api-key" placeholder="留空则使用上方 API Key">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="settings-vision-api-base">视觉模型 API 地址 (可选)</label>
+            <input type="text" id="settings-vision-api-base" placeholder="留空则使用上方 API 地址">
+          </div>
+          <div class="form-group">
+            <label for="settings-vision-model">视觉模型名称</label>
+            <input type="text" id="settings-vision-model" placeholder="例如: gpt-4o, claude-sonnet-4-20250514">
+          </div>
         </div>
         
         <div class="settings-group">
