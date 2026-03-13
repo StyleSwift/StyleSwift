@@ -1398,7 +1398,18 @@ async function handleSendClick() {
   const displayMessage = pickedInfo
     ? `${message}\n🎯 ${pickedInfo.selector}`
     : message;
-  const userMessageEl = renderUserMessage(displayMessage);
+
+  // 计算当前轮次（统计已有的用户文本消息数量 + 1）
+  const existingUserMessages =
+    DOM.messagesContainer?.querySelectorAll(
+      ".message-user .message-bubble[data-turn]",
+    ) || [];
+  const currentTurn = existingUserMessages.length + 1;
+
+  const userMessageEl = renderUserMessage(displayMessage, {
+    turn: currentTurn,
+    showRewind: true,
+  });
   addMessageToContainer(userMessageEl);
 
   // 切换为处理中状态
@@ -4131,8 +4142,7 @@ function renderHistoryMessages(history) {
         if (typeof message.content === "string") {
           currentTurn++;
         }
-        const showRewind =
-          typeof message.content === "string" && currentTurn < totalTurns;
+        const showRewind = typeof message.content === "string";
         const userMessageEl = renderUserMessage(userContent, {
           turn: typeof message.content === "string" ? currentTurn : undefined,
           showRewind,
@@ -4243,6 +4253,12 @@ async function handleRewindClick(targetTurn) {
   if (!confirmed) return;
 
   try {
+    // 获取被回撤轮次的用户消息内容，以便恢复到输入框
+    const userBubble = DOM.messagesContainer?.querySelector(
+      `.message-user .message-bubble[data-turn="${targetTurn}"]`,
+    );
+    const rewoundMessage = userBubble?.firstChild?.textContent || "";
+
     const session = await import("./session.js");
     const { sendToContentScript } = await import("./tools.js");
 
@@ -4269,6 +4285,12 @@ async function handleRewindClick(targetTurn) {
 
     // 重新渲染对话区
     renderHistoryMessages(result.messages);
+
+    // 将回撤的用户输入恢复到输入框
+    if (rewoundMessage && DOM.messageInput) {
+      DOM.messageInput.value = rewoundMessage;
+      DOM.messageInput.focus();
+    }
 
     // 隐藏确认浮层（如果有）
     if (isConfirmationOverlayVisible()) {
