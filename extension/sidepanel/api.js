@@ -15,7 +15,8 @@
 /**
  * 规范化 API 基础地址
  *
- * 移除尾部斜杠和常见的路径前缀（如 /anthropic, /v1, /api），
+ * 移除尾部斜杠和纯技术路径后缀（/v1、/api），
+ * 保留有语义的 provider 路径段（/anthropic、/openai），
  * 确保最终拼接正确。
  *
  * @param {string} apiBase - 用户输入的 API 地址
@@ -24,10 +25,10 @@
 function normalizeApiBase(apiBase) {
   try {
     const url = new URL(apiBase);
-    // 移除常见的路径前缀
+    // 只移除尾部的 /v1、/api 等纯技术路径后缀，保留 /anthropic、/openai 等 provider 路径段
     let pathname = url.pathname
       .replace(/\/+$/, "") // 移除尾部斜杠
-      .replace(/\/(v1|anthropic|api)(\/|$)/gi, "/") // 移除 /v1, /anthropic, /api 前缀
+      .replace(/\/(v1|api)(\/|$)/gi, "/") // 仅移除 /v1、/api
       .replace(/\/+$/, ""); // 再次移除尾部斜杠
 
     return url.origin + pathname;
@@ -62,6 +63,58 @@ const DEFAULT_VISION_MODEL = "";
  * @type {string}
  */
 const SETTINGS_KEY = "settings";
+
+// ============================================================================
+// Provider 检测
+// ============================================================================
+
+/**
+ * Claude 原生 API 的特征域名列表
+ * @type {string[]}
+ */
+const CLAUDE_API_DOMAINS = ["api.anthropic.com", "anthropic.com"];
+
+/**
+ * 检测给定的 apiBase 是否应使用 Claude 原生 API（/v1/messages 格式）
+ *
+ * 判断依据（满足任一即视为 Claude 原生）：
+ * 1. 域名属于 Anthropic 官方（api.anthropic.com）
+ * 2. URL 路径中包含 "anthropic" 段（如第三方代理 https://api.ppio.com/anthropic）
+ *
+ * 模型名称不作为判断依据——许多第三方 OpenAI 兼容代理也提供 claude-* 模型，
+ * 但接口是 OpenAI 格式（/openai 路径），不应走 Claude 原生路径。
+ *
+ * @param {string} apiBase - 规范化后的 API 基础地址
+ * @param {string} [_model] - 模型名称（保留参数，暂不使用）
+ * @returns {"claude"|"openai"} provider 类型
+ *
+ * @example
+ * detectProvider("https://api.anthropic.com")              // "claude"（官方）
+ * detectProvider("https://api.ppio.com/anthropic")         // "claude"（代理 anthropic 路径）
+ * detectProvider("https://api.ppio.com/openai", "claude-3-5-sonnet")  // "openai"（OpenAI 兼容代理）
+ * detectProvider("https://api.ppio.com/openai", "deepseek/deepseek-r1") // "openai"
+ */
+function detectProvider(apiBase, _model) {
+  try {
+    const url = new URL(apiBase);
+    const hostname = url.hostname.toLowerCase();
+    const pathname = url.pathname.toLowerCase();
+
+    // 官方域名
+    if (CLAUDE_API_DOMAINS.some((d) => hostname === d || hostname.endsWith(`.${d}`))) {
+      return "claude";
+    }
+
+    // 路径中包含 /anthropic 段（第三方代理的 anthropic 兼容路径）
+    if (/(?:^|\/)anthropic(?:\/|$)/.test(pathname)) {
+      return "claude";
+    }
+  } catch {
+    // URL 解析失败，回退到 openai
+  }
+
+  return "openai";
+}
 
 // ============================================================================
 // API 设置存储
@@ -105,10 +158,13 @@ async function getSettings() {
     visionModel: settings.visionModel || undefined,
   };
 
+  const model = settings.model || DEFAULT_MODEL;
+
   return {
     apiKey: settings.apiKey,
-    model: settings.model || DEFAULT_MODEL,
+    model,
     apiBase,
+    provider: detectProvider(apiBase, model),
     ...visionSettings,
   };
 }
@@ -127,10 +183,13 @@ async function getSettingsForRequest(hasImages) {
 
   if (hasImages && settings.visionModel) {
     // 有图片且配置了视觉模型，使用视觉模型配置
+    const visionApiBase = settings.visionApiBase || settings.apiBase;
+    const visionModel = settings.visionModel;
     return {
       apiKey: settings.visionApiKey || settings.apiKey,
-      apiBase: settings.visionApiBase || settings.apiBase,
-      model: settings.visionModel,
+      apiBase: visionApiBase,
+      model: visionModel,
+      provider: detectProvider(visionApiBase, visionModel),
     };
   }
 
@@ -139,6 +198,7 @@ async function getSettingsForRequest(hasImages) {
     apiKey: settings.apiKey,
     apiBase: settings.apiBase,
     model: settings.model,
+    provider: detectProvider(settings.apiBase, settings.model),
   };
 }
 
@@ -280,8 +340,9 @@ async function ensureApiPermission(apiBase) {
 /**
  * 验证 API 连接有效性
  *
- * 向 apiBase/v1/chat/completions 发送最小测试请求（OpenAI 格式），
- * 验证 API Key 和连接是否正常。
+ * 根据 provider 类型自动选择验证端点和请求格式：
+ * - OpenAI 兼容：POST {apiBase}/v1/chat/completions
+ * - Claude 原生：POST {apiBase}/v1/messages（带 anthropic-version 头）
  *
  * @param {string} apiKey - API Key
  * @param {string} apiBase - API 基础地址
@@ -297,24 +358,42 @@ async function ensureApiPermission(apiBase) {
  * }
  */
 async function validateConnection(apiKey, apiBase, model = DEFAULT_MODEL) {
-  const url = `${apiBase}/v1/chat/completions`;
+  const provider = detectProvider(apiBase, model);
 
   try {
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [{ role: "user", content: "Hi" }],
-        max_tokens: 10,
-        stream: false,
-      }),
-    });
-
-    return { ok: resp.ok, status: resp.status };
+    if (provider === "claude") {
+      const url = `${apiBase}/v1/messages`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: "Hi" }],
+          max_tokens: 10,
+        }),
+      });
+      return { ok: resp.ok, status: resp.status };
+    } else {
+      const url = `${apiBase}/v1/chat/completions`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: "Hi" }],
+          max_tokens: 10,
+          stream: false,
+        }),
+      });
+      return { ok: resp.ok, status: resp.status };
+    }
   } catch (err) {
     return { ok: false, error: err.message };
   }
@@ -357,7 +436,9 @@ export {
   DEFAULT_MODEL,
   DEFAULT_VISION_MODEL,
   SETTINGS_KEY,
+  CLAUDE_API_DOMAINS,
   normalizeApiBase,
+  detectProvider,
   getSettings,
   getSettingsForRequest,
   saveSettings,

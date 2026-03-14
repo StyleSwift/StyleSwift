@@ -6,6 +6,475 @@
 import { BASE_TOOLS, ALL_TOOLS, getSkillManager } from "./tools.js";
 
 // =============================================================================
+// §10.0 跨 Provider 消息序列化 / 反序列化
+// =============================================================================
+
+/**
+ * 内部统一消息格式（Internal Canonical Format，ICF）
+ *
+ * 所有对话历史均以此格式存储在 IndexedDB 和内存中，
+ * 发送给 LLM 时按 provider 进行序列化转换，
+ * 收到响应后反序列化回此格式存入历史。
+ *
+ * ICF 消息结构：
+ *   user 文本消息:    { role: "user", content: string }
+ *   user 工具结果:    { role: "user", content: [{ type: "tool_result", tool_use_id, content }] }
+ *   user 多模态:      { role: "user", content: [{ type: "text"|"image_url", ... }] }
+ *   assistant 消息:   { role: "assistant", content: [{ type: "text", text }|{ type: "tool_use", id, name, input }] }
+ *                     可选 _reasoning 字段保存推理文本（不发给 API）
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § 序列化：ICF → OpenAI 格式
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 将 ICF 消息数组转换为 OpenAI chat/completions messages 格式
+ *
+ * @param {string|null} system - 系统提示词
+ * @param {Array} messages - ICF 消息数组
+ * @returns {Array} OpenAI 格式消息数组
+ */
+function serializeToOpenAI(system, messages) {
+  const result = [];
+
+  if (system) {
+    result.push({ role: "system", content: system });
+  }
+
+  for (const msg of messages) {
+    if (msg.role === "user") {
+      if (typeof msg.content === "string") {
+        result.push({ role: "user", content: msg.content });
+      } else if (Array.isArray(msg.content)) {
+        const hasToolResult = msg.content.some((c) => c.type === "tool_result");
+        if (hasToolResult) {
+          // 工具结果 → OpenAI tool 角色消息
+          for (const item of msg.content) {
+            if (item.type === "tool_result") {
+              let toolContent = item.content;
+              if (typeof toolContent !== "string") {
+                toolContent = JSON.stringify(toolContent);
+              }
+              result.push({
+                role: "tool",
+                tool_call_id: item.tool_use_id,
+                content: toolContent,
+              });
+            }
+          }
+        } else {
+          // 多模态内容（文本 + 图片）
+          const openaiContent = [];
+          for (const item of msg.content) {
+            if (item.type === "text") {
+              openaiContent.push({ type: "text", text: item.text });
+            } else if (item.type === "image_url") {
+              openaiContent.push({ type: "image_url", image_url: item.image_url });
+            }
+          }
+          if (openaiContent.length > 0) {
+            if (openaiContent.length === 1 && openaiContent[0].type === "text") {
+              result.push({ role: "user", content: openaiContent[0].text });
+            } else {
+              result.push({ role: "user", content: openaiContent });
+            }
+          }
+        }
+      }
+    } else if (msg.role === "assistant") {
+      let textContent = msg.content?.find((c) => c.type === "text")?.text || "";
+
+      // 推理文本拼接（仅用于展示，某些兼容层能接受）
+      if (msg._reasoning) {
+        textContent = `<think/>\n${msg._reasoning}\n</think/>\n\n${textContent}`;
+      }
+
+      const toolCalls = msg.content
+        ?.filter((c) => c.type === "tool_use")
+        .map((c) => ({
+          id: c.id,
+          type: "function",
+          function: {
+            name: c.name,
+            arguments: JSON.stringify(c.input),
+          },
+        }));
+
+      if (toolCalls && toolCalls.length > 0) {
+        result.push({
+          role: "assistant",
+          content: textContent || null,
+          tool_calls: toolCalls,
+        });
+      } else {
+        result.push({ role: "assistant", content: textContent || "" });
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * 将 ICF 工具定义转换为 OpenAI function tools 格式
+ *
+ * @param {Array} tools - ICF 工具定义
+ * @returns {Array} OpenAI 格式工具定义
+ */
+function serializeToolsToOpenAI(tools) {
+  return tools?.map((tool) => ({
+    type: "function",
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.input_schema,
+    },
+  }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § 序列化：ICF → Claude 原生格式
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 将 ICF 消息数组转换为 Claude Messages API 格式
+ *
+ * Claude API 要求：
+ * - system 单独作为顶层参数传递（不在 messages 数组中）
+ * - tool_result 内嵌在 user 消息的 content 数组中（与 OpenAI tool 角色不同）
+ * - assistant content 直接使用 tool_use / text block 格式（与 ICF 基本一致）
+ * - 消息必须严格交替（user/assistant），相邻同角色消息需合并
+ *
+ * @param {Array} messages - ICF 消息数组
+ * @returns {Array} Claude 格式消息数组
+ */
+function serializeToClaude(messages) {
+  const result = [];
+
+  for (const msg of messages) {
+    if (msg.role === "user") {
+      let claudeContent;
+
+      if (typeof msg.content === "string") {
+        claudeContent = [{ type: "text", text: msg.content }];
+      } else if (Array.isArray(msg.content)) {
+        claudeContent = msg.content.map((item) => {
+          if (item.type === "tool_result") {
+            // ICF tool_result → Claude tool_result block
+            let content = item.content;
+            if (typeof content !== "string") {
+              content = JSON.stringify(content);
+            }
+            return {
+              type: "tool_result",
+              tool_use_id: item.tool_use_id,
+              content: [{ type: "text", text: content }],
+            };
+          }
+          if (item.type === "image_url") {
+            // image_url → Claude base64 image block
+            const url = item.image_url?.url || "";
+            const match = url.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              return {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: match[1],
+                  data: match[2],
+                },
+              };
+            }
+            // URL 图片（Claude 也支持 url 类型）
+            return {
+              type: "image",
+              source: { type: "url", url },
+            };
+          }
+          // text / 其他类型直接透传
+          return item;
+        });
+      } else {
+        claudeContent = [];
+      }
+
+      // 合并相邻 user 消息（Claude API 不允许连续同角色）
+      const last = result[result.length - 1];
+      if (last && last.role === "user") {
+        last.content = [...last.content, ...claudeContent];
+      } else {
+        result.push({ role: "user", content: claudeContent });
+      }
+    } else if (msg.role === "assistant") {
+      // assistant content 在 ICF 中已经是 Claude 兼容格式（text / tool_use blocks）
+      // 过滤掉非 Claude 支持的 block 类型；_reasoning 拼入 text block 前缀以保留上下文
+      const claudeContent = (msg.content || [])
+        .filter((c) => c.type === "text" || c.type === "tool_use")
+        .map((c) => {
+          if (c.type === "text") {
+            const text = msg._reasoning
+              ? `<think>\n${msg._reasoning}\n</think>\n\n${c.text}`
+              : c.text;
+            return { type: "text", text };
+          }
+          if (c.type === "tool_use") {
+            return {
+              type: "tool_use",
+              id: c.id,
+              name: c.name,
+              input: c.input,
+            };
+          }
+          return c;
+        });
+
+      // 若只有推理文本而无回复文本，补充一个 text block 避免内容丢失
+      if (msg._reasoning && !claudeContent.some((c) => c.type === "text")) {
+        claudeContent.unshift({
+          type: "text",
+          text: `<think>\n${msg._reasoning}\n</think>`,
+        });
+      }
+
+      const last = result[result.length - 1];
+      if (last && last.role === "assistant") {
+        last.content = [...last.content, ...claudeContent];
+      } else {
+        result.push({ role: "assistant", content: claudeContent });
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * 将 ICF 工具定义转换为 Claude tools 格式
+ *
+ * @param {Array} tools - ICF 工具定义
+ * @returns {Array} Claude 格式工具定义
+ */
+function serializeToolsToClaude(tools) {
+  return tools?.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    input_schema: tool.input_schema,
+  }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § 反序列化：OpenAI 流式响应 → ICF assistant 消息
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 从 OpenAI 流式 SSE 行中解析增量并累积到内部状态对象
+ *
+ * @param {string} line - 单行 SSE 数据（"data: {...}"）
+ * @param {object} state - 累积状态对象（由调用方持有）
+ * @param {object} callbacks - { onText, onReasoning, onToolCall }
+ */
+function parseOpenAIStreamLine(line, state, callbacks) {
+  if (!line.startsWith("data: ") || line.trim() === "data: [DONE]") return;
+
+  try {
+    const data = JSON.parse(line.slice(6));
+    const choice = data.choices?.[0];
+    if (!choice) return;
+
+    const delta = choice.delta;
+
+    if (delta.reasoning_content) {
+      state.reasoning += delta.reasoning_content;
+      callbacks.onReasoning?.(delta.reasoning_content);
+    }
+
+    if (delta.content) {
+      state.text += delta.content;
+      callbacks.onText?.(delta.content);
+    }
+
+    if (delta.tool_calls) {
+      for (const toolCall of delta.tool_calls) {
+        const idx = toolCall.index;
+        if (!state.toolCalls[idx]) {
+          state.toolCalls[idx] = {
+            id: toolCall.id || `call_${Date.now()}_${idx}`,
+            type: "tool_use",
+            name: toolCall.function?.name || "",
+            input: "",
+          };
+        }
+        if (toolCall.function?.name) state.toolCalls[idx].name = toolCall.function.name;
+        if (toolCall.function?.arguments) state.toolCalls[idx].input += toolCall.function.arguments;
+      }
+    }
+
+    if (choice.finish_reason) {
+      state.stopReason = choice.finish_reason === "tool_calls" ? "tool_use" : choice.finish_reason;
+    }
+
+    if (data.usage) {
+      state.usage = {
+        input_tokens: data.usage.prompt_tokens,
+        output_tokens: data.usage.completion_tokens,
+      };
+    }
+  } catch (e) {
+    console.warn("[Stream/OpenAI] Failed to parse SSE line:", line, e);
+  }
+}
+
+/**
+ * 将 OpenAI 流式累积状态转换为 ICF assistant 消息
+ *
+ * @param {object} state - 累积状态
+ * @param {object} callbacks - { onToolCall }
+ * @returns {{ content: Array, stop_reason: string|null, usage: object|null, reasoning: string|null }}
+ */
+function finalizeOpenAIStream(state, callbacks) {
+  const content = [];
+
+  if (state.text) {
+    content.push({ type: "text", text: state.text });
+  }
+
+  for (const toolCall of state.toolCalls) {
+    if (toolCall && toolCall.name) {
+      try {
+        toolCall.input = JSON.parse(toolCall.input);
+      } catch {
+        toolCall.input = {};
+      }
+      callbacks.onToolCall?.(toolCall);
+      content.push(toolCall);
+    }
+  }
+
+  return {
+    content,
+    stop_reason: state.stopReason,
+    usage: state.usage,
+    reasoning: state.reasoning || null,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § 反序列化：Claude 流式响应 → ICF assistant 消息
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 从 Claude 流式 SSE 行中解析增量并累积到内部状态对象
+ *
+ * Claude SSE 事件类型：
+ * - content_block_start: 新 block（text 或 tool_use）
+ * - content_block_delta: text_delta 或 input_json_delta
+ * - content_block_stop: block 结束
+ * - message_delta: finish_reason / usage
+ *
+ * @param {string} eventType - SSE event 字段
+ * @param {string} line - SSE data 行
+ * @param {object} state - 累积状态对象
+ * @param {object} callbacks - { onText, onReasoning, onToolCall }
+ */
+function parseClaudeStreamLine(eventType, line, state, callbacks) {
+  if (!line.startsWith("data: ")) return;
+
+  try {
+    const data = JSON.parse(line.slice(6));
+
+    if (eventType === "content_block_start") {
+      const block = data.content_block;
+      const idx = data.index;
+      if (block.type === "text") {
+        state.blocks[idx] = { type: "text", text: "" };
+      } else if (block.type === "tool_use") {
+        state.blocks[idx] = {
+          type: "tool_use",
+          id: block.id,
+          name: block.name,
+          input: "",
+        };
+      }
+    } else if (eventType === "content_block_delta") {
+      const idx = data.index;
+      const delta = data.delta;
+      const block = state.blocks[idx];
+      if (!block) return;
+
+      if (delta.type === "text_delta") {
+        block.text += delta.text;
+        callbacks.onText?.(delta.text);
+      } else if (delta.type === "thinking_delta") {
+        // Claude extended thinking
+        state.reasoning += delta.thinking;
+        callbacks.onReasoning?.(delta.thinking);
+      } else if (delta.type === "input_json_delta") {
+        block.input += delta.partial_json;
+      }
+    } else if (eventType === "content_block_stop") {
+      // block 已完成，不需要额外处理
+    } else if (eventType === "message_delta") {
+      if (data.delta?.stop_reason) {
+        state.stopReason =
+          data.delta.stop_reason === "tool_use" ? "tool_use" : data.delta.stop_reason;
+      }
+      if (data.usage) {
+        state.usage = {
+          input_tokens: state.usage?.input_tokens || 0,
+          output_tokens: data.usage.output_tokens,
+        };
+      }
+    } else if (eventType === "message_start") {
+      if (data.message?.usage) {
+        state.usage = {
+          input_tokens: data.message.usage.input_tokens,
+          output_tokens: data.message.usage.output_tokens || 0,
+        };
+      }
+    }
+  } catch (e) {
+    console.warn("[Stream/Claude] Failed to parse SSE line:", eventType, line, e);
+  }
+}
+
+/**
+ * 将 Claude 流式累积状态转换为 ICF assistant 消息
+ *
+ * @param {object} state - 累积状态
+ * @param {object} callbacks - { onToolCall }
+ * @returns {{ content: Array, stop_reason: string|null, usage: object|null, reasoning: string|null }}
+ */
+function finalizeClaudeStream(state, callbacks) {
+  const content = [];
+
+  for (const block of state.blocks) {
+    if (!block) continue;
+
+    if (block.type === "text" && block.text) {
+      content.push({ type: "text", text: block.text });
+    } else if (block.type === "tool_use" && block.name) {
+      let input = {};
+      try {
+        input = JSON.parse(block.input);
+      } catch {
+        input = {};
+      }
+      const toolBlock = { ...block, input };
+      callbacks.onToolCall?.(toolBlock);
+      content.push(toolBlock);
+    }
+  }
+
+  return {
+    content,
+    stop_reason: state.stopReason,
+    usage: state.usage,
+    reasoning: state.reasoning || null,
+  };
+}
+
+// =============================================================================
 // §10.4 SYSTEM_BASE - 系统提示词常量
 // =============================================================================
 
@@ -318,28 +787,48 @@ async function summarizeOldTurns(oldHistory) {
   if (!condensed.trim()) return "(无历史记录)";
 
   try {
-    const { getSettings } = await import("./api.js");
+    const { getSettings, detectProvider } = await import("./api.js");
     const { apiKey, model, apiBase } = await getSettings();
+    const provider = detectProvider(apiBase, model);
 
-    const resp = await fetch(`${apiBase}/v1/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: "system",
-            content:
-              "用一段简洁的文字总结以下对话历史，重点保留：用户的风格偏好、已应用的样式变更、未完成的请求。不超过 300 字。",
-          },
-          { role: "user", content: condensed },
-        ],
-        max_tokens: 500,
-      }),
-    });
+    let resp;
+    if (provider === "claude") {
+      resp = await fetch(`${apiBase}/v1/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          system:
+            "用一段简洁的文字总结以下对话历史，重点保留：用户的风格偏好、已应用的样式变更、未完成的请求。不超过 300 字。",
+          messages: [{ role: "user", content: [{ type: "text", text: condensed }] }],
+          max_tokens: 500,
+        }),
+      });
+    } else {
+      resp = await fetch(`${apiBase}/v1/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "system",
+              content:
+                "用一段简洁的文字总结以下对话历史，重点保留：用户的风格偏好、已应用的样式变更、未完成的请求。不超过 300 字。",
+            },
+            { role: "user", content: condensed },
+          ],
+          max_tokens: 500,
+        }),
+      });
+    }
 
     if (!resp.ok) {
       console.error("[History Compression] API error:", resp.status);
@@ -347,7 +836,15 @@ async function summarizeOldTurns(oldHistory) {
     }
 
     const data = await resp.json();
-    return data.choices?.[0]?.message?.content || "(历史摘要生成失败)";
+    // OpenAI 格式
+    if (data.choices) {
+      return data.choices?.[0]?.message?.content || "(历史摘要生成失败)";
+    }
+    // Claude 原生格式
+    if (data.content) {
+      return data.content?.find((b) => b.type === "text")?.text || "(历史摘要生成失败)";
+    }
+    return "(历史摘要生成失败)";
   } catch (err) {
     console.error("[History Compression] Failed:", err);
     return "(历史摘要生成失败)";
@@ -465,27 +962,20 @@ function sleep(ms) {
 // =============================================================================
 
 /**
- * 调用 LLM Streaming API（OpenAI 兼容格式）
+ * 调用 LLM Streaming API（自动识别 OpenAI 兼容 / Claude 原生格式）
  *
- * 支持流式输出和工具调用。底层使用 /v1/chat/completions 端点。
+ * 内部使用统一 ICF 格式（类 Claude 格式），发送前按 provider 序列化，
+ * 收到响应后反序列化回 ICF 格式，确保跨 provider 切换时上下文不崩溃。
  *
  * @param {string} system - 系统提示词
- * @param {Array} messages - 消息历史
- * @param {Array} tools - 工具定义数组
+ * @param {Array} messages - ICF 消息历史
+ * @param {Array} tools - 工具定义数组（ICF 格式）
  * @param {Object} callbacks - 回调函数对象
  * @param {Function} [callbacks.onText] - 文本增量回调 (delta: string) => void
+ * @param {Function} [callbacks.onReasoning] - 推理增量回调 (delta: string) => void
  * @param {Function} [callbacks.onToolCall] - 工具调用回调 (block: object) => void
  * @param {AbortSignal} abortSignal - 取消信号
- * @returns {Promise<{content: Array, stop_reason: string|null, usage: object|null}>}
- *
- * @example
- * const result = await callLLMStream(
- *   'You are a helpful assistant',
- *   [{ role: 'user', content: 'Hello' }],
- *   ALL_TOOLS,
- *   { onText: (delta) => console.log(delta) },
- *   abortController.signal
- * );
+ * @returns {Promise<{content: Array, stop_reason: string|null, usage: object|null, reasoning: string|null}>}
  */
 async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
   // 检测消息中是否包含图片
@@ -496,144 +986,195 @@ async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
     return false;
   });
 
-  // 动态导入依赖，根据是否有图片选择不同的设置
   const { getSettingsForRequest } = await import("./api.js");
-
-  const { apiKey, model, apiBase } = await getSettingsForRequest(hasImages);
-
-  // 转换为 OpenAI 格式的消息
-  const openaiMessages = [];
-
-  // 添加系统消息
-  if (system) {
-    openaiMessages.push({ role: "system", content: system });
-  }
-
-  // 转换消息格式
-  for (const msg of messages) {
-    if (msg.role === "user") {
-      // 用户消息
-      if (typeof msg.content === "string") {
-        openaiMessages.push({ role: "user", content: msg.content });
-      } else if (Array.isArray(msg.content)) {
-        // 检查是否是工具结果
-        const hasToolResult = msg.content.some((c) => c.type === "tool_result");
-        if (hasToolResult) {
-          // 工具结果消息 - 转换为 OpenAI 格式
-          for (const item of msg.content) {
-            if (item.type === "tool_result") {
-              // 确保 content 是字符串（OpenAI API 要求）
-              let toolContent = item.content;
-              if (typeof toolContent !== "string") {
-                toolContent = JSON.stringify(toolContent);
-              }
-              openaiMessages.push({
-                role: "tool",
-                tool_call_id: item.tool_use_id,
-                content: toolContent,
-              });
-            }
-          }
-        } else {
-          // 处理多模态内容（包含文本和图片）
-          const openaiContent = [];
-
-          for (const item of msg.content) {
-            if (item.type === "text") {
-              openaiContent.push({ type: "text", text: item.text });
-            } else if (item.type === "image_url") {
-              // 直接传递 image_url 内容
-              openaiContent.push({
-                type: "image_url",
-                image_url: item.image_url,
-              });
-            }
-          }
-
-          if (openaiContent.length > 0) {
-            // 如果只有一个文本项，简化为字符串
-            if (
-              openaiContent.length === 1 &&
-              openaiContent[0].type === "text"
-            ) {
-              openaiMessages.push({
-                role: "user",
-                content: openaiContent[0].text,
-              });
-            } else {
-              openaiMessages.push({ role: "user", content: openaiContent });
-            }
-          }
-        }
-      }
-    } else if (msg.role === "assistant") {
-      // 助手消息
-      let textContent = msg.content?.find((c) => c.type === "text")?.text || "";
-
-      // 将推理文本拼接到文本内容前
-      if (msg._reasoning) {
-        textContent = `<think/>\n${msg._reasoning}\n</think/>\n\n${textContent}`;
-      }
-
-      const toolCalls = msg.content
-        ?.filter((c) => c.type === "tool_use")
-        .map((c) => ({
-          id: c.id,
-          type: "function",
-          function: {
-            name: c.name,
-            arguments: JSON.stringify(c.input),
-          },
-        }));
-
-      if (toolCalls && toolCalls.length > 0) {
-        openaiMessages.push({
-          role: "assistant",
-          content: textContent || null,
-          tool_calls: toolCalls,
-        });
-      } else {
-        openaiMessages.push({ role: "assistant", content: textContent || "" });
-      }
-    }
-  }
-
-  // 转换工具格式
-  const openaiTools = tools?.map((tool) => ({
-    type: "function",
-    function: {
-      name: tool.name,
-      description: tool.description,
-      parameters: tool.input_schema,
-    },
-  }));
+  const { apiKey, model, apiBase, provider } = await getSettingsForRequest(hasImages);
 
   try {
-    const url = `${apiBase}/v1/chat/completions`;
-    const requestBody = {
-      model,
-      messages: openaiMessages,
-      max_tokens: 8000,
-      stream: true,
-    };
-
-    if (openaiTools && openaiTools.length > 0) {
-      requestBody.tools = openaiTools;
-      requestBody.tool_choice = "auto";
+    if (provider === "claude") {
+      return await _callClaudeStream(
+        { apiKey, model, apiBase },
+        system,
+        messages,
+        tools,
+        callbacks,
+        abortSignal,
+      );
+    } else {
+      return await _callOpenAIStream(
+        { apiKey, model, apiBase },
+        system,
+        messages,
+        tools,
+        callbacks,
+        abortSignal,
+      );
     }
+  } catch (error) {
+    if (error.name === "AbortError" || abortSignal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
+    }
+    if (error instanceof AgentError) throw error;
+    if (error instanceof TypeError) {
+      throw new AgentError("NETWORK_ERROR", "网络连接失败，请检查网络");
+    }
+    throw new AgentError("API_ERROR", `API 调用失败: ${error.message || error}`);
+  }
+}
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(requestBody),
-      signal: abortSignal,
-    });
+/**
+ * OpenAI 兼容路径的流式调用实现
+ * @private
+ */
+async function _callOpenAIStream(
+  { apiKey, model, apiBase },
+  system,
+  messages,
+  tools,
+  callbacks,
+  abortSignal,
+) {
+  const openaiMessages = serializeToOpenAI(system, messages);
+  const openaiTools = serializeToolsToOpenAI(tools);
 
-    if (!response.ok) {
-      const errorText = await response.text();
+  const url = `${apiBase}/v1/chat/completions`;
+  const requestBody = {
+    model,
+    messages: openaiMessages,
+    max_tokens: 8000,
+    stream: true,
+  };
+
+  if (openaiTools && openaiTools.length > 0) {
+    requestBody.tools = openaiTools;
+    requestBody.tool_choice = "auto";
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(requestBody),
+    signal: abortSignal,
+  });
+
+  await _checkHttpError(response);
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  const state = {
+    text: "",
+    reasoning: "",
+    toolCalls: [],
+    stopReason: null,
+    usage: null,
+  };
+
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      parseOpenAIStreamLine(line, state, callbacks);
+    }
+  }
+
+  return finalizeOpenAIStream(state, callbacks);
+}
+
+/**
+ * Claude 原生路径的流式调用实现
+ * @private
+ */
+async function _callClaudeStream(
+  { apiKey, model, apiBase },
+  system,
+  messages,
+  tools,
+  callbacks,
+  abortSignal,
+) {
+  const claudeMessages = serializeToClaude(messages);
+  const claudeTools = serializeToolsToClaude(tools);
+
+  const url = `${apiBase}/v1/messages`;
+  const requestBody = {
+    model,
+    messages: claudeMessages,
+    max_tokens: 8000,
+    stream: true,
+  };
+
+  if (system) {
+    requestBody.system = system;
+  }
+
+  if (claudeTools && claudeTools.length > 0) {
+    requestBody.tools = claudeTools;
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify(requestBody),
+    signal: abortSignal,
+  });
+
+  await _checkHttpError(response);
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  const state = {
+    blocks: [],
+    reasoning: "",
+    stopReason: null,
+    usage: null,
+  };
+
+  let buffer = "";
+  let currentEventType = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      if (line.startsWith("event: ")) {
+        currentEventType = line.slice(7).trim();
+      } else if (line.startsWith("data: ")) {
+        parseClaudeStreamLine(currentEventType, line, state, callbacks);
+      }
+    }
+  }
+
+  return finalizeClaudeStream(state, callbacks);
+}
+
+/**
+ * 检查 HTTP 响应状态并抛出分类错误
+ * @private
+ */
+function _checkHttpError(response) {
+  if (!response.ok) {
+    return response.text().then((errorText) => {
       if (response.status === 401) {
         throw new AgentError("API_KEY_INVALID", "请检查 API Key 是否正确");
       }
@@ -641,144 +1182,12 @@ async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
         throw new AgentError("RATE_LIMITED", `API 限流: ${errorText}`);
       }
       if (response.status >= 500) {
-        throw new AgentError(
-          "API_ERROR",
-          `API 服务异常 (${response.status}): ${errorText}`,
-        );
+        throw new AgentError("API_ERROR", `API 服务异常 (${response.status}): ${errorText}`);
       }
-      throw new AgentError(
-        "API_ERROR",
-        `API 错误 (${response.status}): ${errorText}`,
-      );
-    }
-
-    // 处理流式响应
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    const result = {
-      content: [],
-      stop_reason: null,
-      usage: null,
-      reasoning: null,
-    };
-    let currentText = "";
-    let currentReasoning = "";
-    let currentToolCalls = [];
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        if (!line.trim() || line.trim() === "data: [DONE]") continue;
-        if (!line.startsWith("data: ")) continue;
-
-        try {
-          const data = JSON.parse(line.slice(6));
-          const choice = data.choices?.[0];
-          if (!choice) continue;
-
-          const delta = choice.delta;
-
-          // 处理推理内容（DeepSeek-R1 等推理模型的 reasoning_content 字段）
-          if (delta.reasoning_content) {
-            currentReasoning += delta.reasoning_content;
-            callbacks.onReasoning?.(delta.reasoning_content);
-          }
-
-          // 处理文本内容
-          if (delta.content) {
-            currentText += delta.content;
-            callbacks.onText?.(delta.content);
-          }
-
-          // 处理工具调用
-          if (delta.tool_calls) {
-            for (const toolCall of delta.tool_calls) {
-              const index = toolCall.index;
-              if (!currentToolCalls[index]) {
-                currentToolCalls[index] = {
-                  id: toolCall.id || `call_${Date.now()}_${index}`,
-                  type: "tool_use",
-                  name: toolCall.function?.name || "",
-                  input: "",
-                };
-              }
-
-              if (toolCall.function?.name) {
-                currentToolCalls[index].name = toolCall.function.name;
-              }
-
-              if (toolCall.function?.arguments) {
-                currentToolCalls[index].input += toolCall.function.arguments;
-              }
-            }
-          }
-
-          // 处理结束原因
-          if (choice.finish_reason) {
-            result.stop_reason =
-              choice.finish_reason === "tool_calls"
-                ? "tool_use"
-                : choice.finish_reason;
-          }
-
-          // 处理使用统计
-          if (data.usage) {
-            result.usage = {
-              input_tokens: data.usage.prompt_tokens,
-              output_tokens: data.usage.completion_tokens,
-            };
-          }
-        } catch (e) {
-          console.warn("[Stream] Failed to parse SSE line:", line, e);
-        }
-      }
-    }
-
-    // 构建最终内容
-    if (currentText) {
-      result.content.push({ type: "text", text: currentText });
-    }
-    if (currentReasoning) {
-      result.reasoning = currentReasoning;
-    }
-
-    for (const toolCall of currentToolCalls) {
-      if (toolCall && toolCall.name) {
-        try {
-          toolCall.input = JSON.parse(toolCall.input);
-        } catch (e) {
-          console.warn("[Stream] Failed to parse tool input:", e);
-          toolCall.input = {};
-        }
-        callbacks.onToolCall?.(toolCall);
-        result.content.push(toolCall);
-      }
-    }
-
-    return result;
-  } catch (error) {
-    if (error.name === "AbortError" || abortSignal?.aborted) {
-      throw new DOMException("Aborted", "AbortError");
-    }
-    if (error instanceof AgentError) {
-      throw error;
-    }
-    if (error instanceof TypeError) {
-      throw new AgentError("NETWORK_ERROR", "网络连接失败，请检查网络");
-    }
-    throw new AgentError(
-      "API_ERROR",
-      `API 调用失败: ${error.message || error}`,
-    );
+      throw new AgentError("API_ERROR", `API 错误 (${response.status}): ${errorText}`);
+    });
   }
+  return Promise.resolve();
 }
 
 /**
@@ -1179,6 +1588,9 @@ async function agentLoop(prompt, uiCallbacks) {
   } = await import("./session.js");
   const { getProfileOneLiner } = await import("./profile.js");
 
+  // 用于在 catch 块中访问的状态，确保错误时也能保存用户消息
+  let _saveState = null;
+
   try {
     // 0. 锁定当前 Tab 并预检测页面可访问性
     const tabId = await getTargetTabId();
@@ -1200,6 +1612,9 @@ async function agentLoop(prompt, uiCallbacks) {
     const historyData = await loadAndPrepareHistory(domain, sessionId);
     const fullHistory = historyData.messages;
     const snapshots = historyData.snapshots;
+
+    // 记录保存状态，供 catch 块使用
+    _saveState = { domain, sessionId, fullHistory, snapshots, saveHistory };
 
     // 2. 构建 system prompt = L0 + L1 + 技能描述
     const sessionMeta = await loadSessionMeta(domain, sessionId);
@@ -1284,13 +1699,13 @@ async function agentLoop(prompt, uiCallbacks) {
       // 更新 token 统计
       lastInputTokens = response.usage?.input_tokens || 0;
 
-      // 追加助手消息：LLM 视图不含推理文本（避免发送给 API），完整历史包含推理文本
+      // 追加助手消息到完整历史（含推理文本）和 LLM 视图（含推理文本，序列化时会拼入上下文）
       const assistantMsg = { role: "assistant", content: response.content };
       const fullMsg = response.reasoning
         ? { ...assistantMsg, _reasoning: response.reasoning }
         : assistantMsg;
       fullHistory.push(fullMsg);
-      llmHistory.push(assistantMsg);
+      llmHistory.push(fullMsg);
 
       // 如果不是工具调用，跳出循环
       if (response.stop_reason !== "tool_use") {
@@ -1358,9 +1773,9 @@ async function agentLoop(prompt, uiCallbacks) {
     snapshots[turnNumber] = snapshotResult[session.stylesKey] || "";
     await saveHistory(domain, sessionId, { messages: fullHistory, snapshots });
 
-    // 5. 首轮自动标题
+    // 5. 首轮自动标题（使用纯文本内容，避免 prompt 为数组时错误）
     if (!sessionMeta.title) {
-      sessionMeta.title = prompt.slice(0, 20);
+      sessionMeta.title = textOnlyContent.slice(0, 20);
       await saveSessionMeta(domain, sessionId, sessionMeta);
     }
 
@@ -1383,6 +1798,16 @@ async function agentLoop(prompt, uiCallbacks) {
         MAX_RETRIES: "\n⚠️ API 多次重试失败，请稍后重试。",
       };
       uiCallbacks.appendText?.(userMessages[err.code] || `\n⚠️ ${err.message}`);
+
+      // 即使 API 出错，也保存用户消息到历史，避免对话"消失"
+      if (_saveState) {
+        try {
+          const { domain, sessionId, fullHistory, snapshots } = _saveState;
+          await saveHistory(domain, sessionId, { messages: fullHistory, snapshots });
+        } catch {
+          // 保存失败不影响错误展示
+        }
+      }
       return;
     }
 
@@ -1462,6 +1887,15 @@ export {
   MAX_ITERATIONS,
   SUB_MAX_ITERATIONS,
   AgentError,
+  // 序列化 / 反序列化工具函数
+  serializeToOpenAI,
+  serializeToolsToOpenAI,
+  serializeToClaude,
+  serializeToolsToClaude,
+  parseOpenAIStreamLine,
+  finalizeOpenAIStream,
+  parseClaudeStreamLine,
+  finalizeClaudeStream,
   callLLMStream,
   callLLMStreamSafe,
   agentLoop,
