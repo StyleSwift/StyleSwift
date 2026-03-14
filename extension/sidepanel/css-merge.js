@@ -16,6 +16,87 @@
  */
 
 // ============================================================================
+// CSS 花括号平衡校验
+// ============================================================================
+
+/**
+ * 检查 CSS 文本的花括号是否平衡（正确跳过注释、字符串、url()）
+ *
+ * @param {string} css - CSS 文本
+ * @returns {{ balanced: boolean, depth: number }} balanced=true 表示平衡，depth 为剩余深度
+ */
+function checkBraceBalance(css) {
+  if (!css || typeof css !== 'string') return { balanced: true, depth: 0 };
+
+  let depth = 0;
+  let i = 0;
+  while (i < css.length) {
+    const ch = css[i];
+
+    if (ch === '/' && css[i + 1] === '*') {
+      const end = css.indexOf('*/', i + 2);
+      i = end === -1 ? css.length : end + 2;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      const q = ch;
+      i++;
+      while (i < css.length) {
+        if (css[i] === '\\') { i += 2; continue; }
+        if (css[i] === q) { i++; break; }
+        i++;
+      }
+      continue;
+    }
+    if ((ch === 'u' || ch === 'U') && css.slice(i, i + 4).toLowerCase() === 'url(') {
+      i += 4;
+      let pd = 1;
+      while (i < css.length && pd > 0) {
+        if (css[i] === '\\') { i += 2; continue; }
+        if (css[i] === '(') pd++;
+        else if (css[i] === ')') pd--;
+        if (pd > 0) i++;
+      }
+      if (i < css.length) i++;
+      continue;
+    }
+
+    if (ch === '{') depth++;
+    else if (ch === '}') depth--;
+    i++;
+  }
+
+  return { balanced: depth === 0, depth };
+}
+
+/**
+ * 尝试修复花括号不平衡的 CSS：
+ * - depth > 0（缺少 }）：在末尾补全
+ * - depth < 0（多余 }）：从末尾移除多余的 }
+ *
+ * @param {string} css - 待修复的 CSS
+ * @returns {string} 修复后的 CSS
+ */
+function repairBraces(css) {
+  const { balanced, depth } = checkBraceBalance(css);
+  if (balanced) return css;
+
+  if (depth > 0) {
+    return css + '\n' + '}'.repeat(depth);
+  }
+  // depth < 0: 从末尾移除多余的 }
+  let result = css;
+  let toRemove = -depth;
+  while (toRemove > 0 && result.length > 0) {
+    const lastBrace = result.lastIndexOf('}');
+    if (lastBrace === -1) break;
+    result = result.slice(0, lastBrace) + result.slice(lastBrace + 1);
+    toRemove--;
+  }
+  return result;
+}
+
+// ============================================================================
 // 顶层块分割
 // ============================================================================
 
@@ -179,6 +260,7 @@ function splitDeclarations(body) {
   const decls = [];
   let current = '';
   let i = 0;
+  let braceDepth = 0;
 
   while (i < body.length) {
     const ch = body[i];
@@ -227,8 +309,12 @@ function splitDeclarations(body) {
       continue;
     }
 
-    // 顶层分号 → 切割声明
-    if (ch === ';') {
+    // 追踪花括号深度：嵌套 { } 内的分号不是声明分隔符
+    if (ch === '{') { braceDepth++; current += ch; i++; continue; }
+    if (ch === '}') { braceDepth--; current += ch; i++; continue; }
+
+    // 仅在花括号深度为 0 时，分号才作为声明分隔符
+    if (ch === ';' && braceDepth <= 0) {
       decls.push(current);
       current = '';
       i++;
@@ -285,8 +371,10 @@ function parseRules(css) {
 
     for (const block of blocks) {
       try {
-        if (block.startsWith('@')) {
-          // at-rule（@media, @keyframes 等）：整体作为一个单元，按 header 去重
+        // 剥离前导注释后判断是否为 at-rule，
+        // 防止 /* 注释 */ @media ... 被误判为普通规则导致解析腐化
+        const stripped = block.replace(/^(?:\/\*[\s\S]*?\*\/\s*)+/, '');
+        if (stripped.startsWith('@')) {
           const headerEnd = block.indexOf('{');
           if (headerEnd === -1) {
             console.warn('[StyleSwift] CSS 解析警告：at-rule 缺少左花括号，跳过该块');
@@ -434,19 +522,14 @@ function mergeCSS(existingCSS, newCSS) {
 
     for (const [selector, props] of newRules) {
       if (props.has('__raw__')) {
-        // at-rule 整体覆盖（@media, @keyframes 等）
         existingRules.set(selector, props);
       } else if (!existingRules.has(selector)) {
-        // 新选择器：直接添加
         existingRules.set(selector, props);
       } else {
-        // 已存在选择器：合并属性
         const existing = existingRules.get(selector);
         if (existing.has('__raw__')) {
-          // 如果现有的是 at-rule，整体替换为普通规则
           existingRules.set(selector, props);
         } else {
-          // 属性级合并：新值覆盖旧值
           for (const [prop, val] of props) {
             existing.set(prop, val);
           }
@@ -454,11 +537,18 @@ function mergeCSS(existingCSS, newCSS) {
       }
     }
 
-    return serializeRules(existingRules);
+    let result = serializeRules(existingRules);
+
+    // 输出安全网：确保写入 storage 的 CSS 花括号平衡，防止腐化数据持久化
+    const { balanced } = checkBraceBalance(result);
+    if (!balanced) {
+      console.warn('[StyleSwift] mergeCSS 输出花括号不平衡，自动修复');
+      result = repairBraces(result);
+    }
+
+    return result;
   } catch (error) {
-    // 合并失败，降级处理：返回已有的 CSS
     console.warn('[StyleSwift] mergeCSS 合并失败，返回已有 CSS：', error.message);
-    // 如果已有 CSS 也是无效的，返回空字符串
     return existingCSS || '';
   }
 }
@@ -467,4 +557,4 @@ function mergeCSS(existingCSS, newCSS) {
 // 导出
 // ============================================================================
 
-export { splitTopLevelBlocks, parseRules, serializeRules, mergeCSS };
+export { splitTopLevelBlocks, parseRules, serializeRules, mergeCSS, checkBraceBalance, repairBraces };

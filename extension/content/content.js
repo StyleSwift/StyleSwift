@@ -69,6 +69,8 @@ const LANDMARKS = new Set([
   "footer",
   "article",
   "section",
+  "ytd-app",
+  "center",
 ]);
 
 /**
@@ -624,11 +626,7 @@ function elementSignature(el) {
  * @returns {string} 格式化的元信息字符串
  */
 function extractMeta() {
-  return [
-    `URL: ${location.href}`,
-    `Title: ${document.title}`,
-    `Viewport: ${window.innerWidth} × ${window.innerHeight}`,
-  ].join("\n");
+  return `Title: ${document.title}`;
 }
 
 /**

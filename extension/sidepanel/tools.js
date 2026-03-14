@@ -5,7 +5,7 @@
 
 // 导入依赖模块
 import { currentSession, updateStylesSummary } from "./session.js";
-import { mergeCSS } from "./css-merge.js";
+import { mergeCSS, checkBraceBalance, repairBraces } from "./css-merge.js";
 import { StyleSkillStore } from "./style-skill.js";
 import { createSkillManager } from "./skill-loader.js";
 
@@ -581,6 +581,13 @@ async function runApplyStyles(css, mode) {
     if (mode === "save") {
       if (!css || !css.trim()) {
         throw new Error("[runApplyStyles] save 模式需要提供 CSS 代码");
+      }
+
+      // 0. 源头校验：检测 AI 提交的 CSS 花括号是否平衡
+      const { balanced, depth } = checkBraceBalance(css);
+      if (!balanced) {
+        console.warn('[StyleSwift] AI 提交的 CSS 花括号不平衡，depth:', depth, '| 自动修复后继续');
+        css = repairBraces(css);
       }
 
       // 1. 注入 CSS 到页面（带 CSP 降级）
