@@ -371,6 +371,15 @@ class SessionContext {
   }
 
   /**
+   * 获取会话样式历史的 chrome.storage.local key
+   * 用于 rollback_last 功能，存储每次 save 后的完整 CSS 栈
+   * @returns {string} 格式: 'sessions:{domain}:{sessionId}:styles_history'
+   */
+  get stylesHistoryKey() {
+    return `sessions:${this.domain}:${this.sessionId}:styles_history`;
+  }
+
+  /**
    * 获取会话元数据的 chrome.storage.local key
    * @returns {string} 格式: 'sessions:{domain}:{sessionId}:meta'
    */
@@ -678,11 +687,12 @@ async function deleteSession(domain, sessionId) {
       `[Session] Removed session ${sessionId} from index for domain: ${domain}`,
     );
 
-    // 2. 删除会话数据（meta 和 styles）
+    // 2. 删除会话数据（meta、styles 和 history）
     const metaKey = `sessions:${domain}:${sessionId}:meta`;
     const stylesKey = `sessions:${domain}:${sessionId}:styles`;
-    await chrome.storage.local.remove([metaKey, stylesKey]);
-    console.log(`[Session] Removed storage keys: ${metaKey}, ${stylesKey}`);
+    const stylesHistoryKey = `sessions:${domain}:${sessionId}:styles_history`;
+    await chrome.storage.local.remove([metaKey, stylesKey, stylesHistoryKey]);
+    console.log(`[Session] Removed storage keys: ${metaKey}, ${stylesKey}, ${stylesHistoryKey}`);
 
     // 3. 如果删除的是当前活跃会话，清除活跃记录
     const activeId = await getActiveSession(domain);

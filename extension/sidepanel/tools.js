@@ -69,6 +69,7 @@ const APPLY_STYLES_TOOL = {
 
 mode 说明：
 - save: 注入CSS到页面并保存到当前会话（添加全新规则时使用）
+- rollback_last: 回滚到上一次样式（撤销最近一次修改）
 - rollback_all: 回滚所有已应用的样式
 
 修改已有样式请用 edit_css 工具（更精准、省token）。`,
@@ -81,8 +82,8 @@ mode 说明：
       },
       mode: {
         type: "string",
-        enum: ["save", "rollback_all"],
-        description: "save=应用并保存, rollback_all=全部回滚",
+        enum: ["save", "rollback_last", "rollback_all"],
+        description: "save=应用并保存, rollback_last=撤销最近一次修改, rollback_all=全部回滚",
       },
     },
     required: ["mode"],
@@ -480,15 +481,16 @@ async function getTargetDomain() {
 
 /**
  * 发送消息到 Content Script
- * 始终发送给锁定的 Tab
+ * 优先使用显式传入的 tabId，否则 fallback 到锁定的 Tab
  * @param {object} message - 要发送的消息对象
+ * @param {number} [tabId] - 目标 Tab ID（可选，优先于全局锁定）
  * @returns {Promise<any>} Content Script 的响应
  * @throws {Error} Content Script 不可用时抛出错误
  */
-async function sendToContentScript(message) {
-  const tabId = await getTargetTabId();
+async function sendToContentScript(message, tabId) {
+  const targetTabId = tabId ?? (await getTargetTabId());
   return new Promise((resolve, reject) => {
-    chrome.tabs.sendMessage(tabId, message, (response) => {
+    chrome.tabs.sendMessage(targetTabId, message, (response) => {
       if (chrome.runtime.lastError) {
         reject(
           new Error(
@@ -524,11 +526,13 @@ function normalizeToolResult(value) {
  * 使用 chrome.scripting.insertCSS 注入样式（CSP 方案 3）
  * 当 Content Script 无法通过 <style> 或 adoptedStyleSheets 注入时，
  * 通过浏览器级别 API 绕过 CSP 限制。
+ * @param {string} css - 要注入的 CSS 代码
+ * @param {number} [tabId] - 目标 Tab ID（可选，优先于全局锁定）
  */
-async function injectCSSViaScriptingAPI(css) {
-  const tabId = await getTargetTabId();
+async function injectCSSViaScriptingAPI(css, tabId) {
+  const targetTabId = tabId ?? (await getTargetTabId());
   await chrome.scripting.insertCSS({
-    target: { tabId },
+    target: { tabId: targetTabId },
     css,
   });
 }
@@ -557,21 +561,71 @@ async function syncActiveStyles() {
  *
  * @param {string} css - CSS 代码（save 模式必填，rollback 模式不需要）
  * @param {string} mode - 模式：'save' | 'rollback_all'
+ * @param {number} [tabId] - 目标 Tab ID（可选，优先于全局锁定）
  * @returns {Promise<string>} 操作结果消息
  */
-async function runApplyStyles(css, mode) {
+async function runApplyStyles(css, mode, tabId) {
   if (!currentSession) {
     throw new Error("[runApplyStyles] 没有活动的会话");
   }
 
   try {
+    const sKey = currentSession.stylesKey;
+    const hKey = currentSession.stylesHistoryKey;
+    const MAX_HISTORY = 20; // 最多保留 20 层历史
+
+    // === rollback_last 模式 ===
+    if (mode === "rollback_last") {
+      // 1. 获取历史栈
+      const { [hKey]: history = [] } = await chrome.storage.local.get(hKey);
+      
+      if (history.length <= 1) {  // 只有空字符串或一个元素时不能回滚
+        return "没有可回滚的历史。当前无已应用样式或已是最初状态。";
+      }
+
+      // 2. 从历史栈 pop（移除最后一次保存的状态）
+      history.pop();
+      
+      // 3. 获取回滚后的 CSS（栈顶或空）
+      const newCSS = history.length > 0 ? history[history.length - 1] : "";
+
+      // 4. 更新 storage
+      if (newCSS.trim()) {
+        await chrome.storage.local.set({ 
+          [sKey]: newCSS,
+          [hKey]: history 
+        });
+        // 同步到 Content Script
+        await sendToContentScript({ 
+          tool: "replace_css", 
+          args: { css: newCSS } 
+        }, tabId);
+      } else {
+        await chrome.storage.local.remove([sKey, hKey]);
+        // 同步到 Content Script（清空）
+        await sendToContentScript({ 
+          tool: "rollback_css", 
+          args: { scope: "all" } 
+        }, tabId);
+      }
+
+      // 5. 同步到 active_styles
+      await syncActiveStyles();
+      // 6. 更新样式摘要
+      await updateStylesSummary();
+
+      return newCSS.trim()
+        ? `已回滚到上一次样式（历史栈: ${history.length} 层）。当前完整样式：\n${newCSS}`
+        : "已回滚所有样式。当前无已应用样式。";
+    }
+
     // === rollback_all 模式 ===
     if (mode === "rollback_all") {
       await sendToContentScript({
         tool: "rollback_css",
         args: { scope: "all" },
-      });
-      await chrome.storage.local.remove(currentSession.stylesKey);
+      }, tabId);
+      await chrome.storage.local.remove([sKey, hKey]);
       await syncActiveStyles();
       await updateStylesSummary();
       return "已回滚所有样式。当前无已应用样式。";
@@ -594,24 +648,32 @@ async function runApplyStyles(css, mode) {
       const injectResp = await sendToContentScript({
         tool: "inject_css",
         args: { css },
-      });
+      }, tabId);
       if (injectResp && injectResp.fallback === "scripting-api") {
-        await injectCSSViaScriptingAPI(injectResp.css);
+        await injectCSSViaScriptingAPI(injectResp.css, tabId);
       }
 
       // 2. 合并并写入会话样式
-      const sKey = currentSession.stylesKey;
       const { [sKey]: existing = "" } = await chrome.storage.local.get(sKey);
       const merged = mergeCSS(existing, css);
       await chrome.storage.local.set({ [sKey]: merged });
 
-      // 3. 同步到 active_styles（供页面刷新时使用）
+      // 3. push 到历史栈（保存当前完整状态，限制最大长度）
+      const { [hKey]: history = [] } = await chrome.storage.local.get(hKey);
+      history.push(merged);
+      // 限制历史长度，超出时移除最早的条目（保留 index 0 的空字符串）
+      if (history.length > MAX_HISTORY) {
+        history.shift(); // 移除最早的（除了空字符串基准）
+      }
+      await chrome.storage.local.set({ [hKey]: history });
+
+      // 4. 同步到 active_styles（供页面刷新时使用）
       await syncActiveStyles();
 
-      // 4. 更新样式摘要
+      // 5. 更新样式摘要
       await updateStylesSummary();
 
-      return `样式已应用。当前完整样式：\n${merged}`;
+      return `样式已应用（历史栈: ${history.length} 层）。当前完整样式：\n${merged}`;
     }
 
     throw new Error(`[runApplyStyles] 未知模式: ${mode}`);
@@ -632,9 +694,10 @@ async function runApplyStyles(css, mode) {
  *
  * @param {string} oldCSS - 要替换的 CSS 片段（必须精确匹配）
  * @param {string} newCSS - 替换后的内容（空字符串表示删除）
+ * @param {number} [tabId] - 目标 Tab ID（可选，优先于全局锁定）
  * @returns {Promise<string>} 操作结果 + 更新后的完整 CSS
  */
-async function runEditCSS(oldCSS, newCSS) {
+async function runEditCSS(oldCSS, newCSS, tabId) {
   if (!currentSession) {
     throw new Error("[runEditCSS] 没有活动的会话");
   }
@@ -655,7 +718,7 @@ async function runEditCSS(oldCSS, newCSS) {
     await chrome.storage.local.remove(sKey);
   }
 
-  await sendToContentScript({ tool: "replace_css", args: { css: trimmed } });
+  await sendToContentScript({ tool: "replace_css", args: { css: trimmed } }, tabId);
   await syncActiveStyles();
   await updateStylesSummary();
 
@@ -834,17 +897,18 @@ async function runDeleteStyleSkill(skillId) {
 /**
  * 工具处理器注册表（dispatch map）
  *
- * 每个 handler 接收 args 对象，返回 Promise<string>。
+ * 每个 handler 接收 args 对象和 context，返回 Promise<string>。
+ * context.tabId 指定目标 Tab，确保工具始终操作 Agent 启动时绑定的页面。
  * 添加新工具只需在此 map 中新增一行。
  */
 const TOOL_HANDLERS = {
   // —— Content Script 工具（DOM 操作）——
-  get_page_structure: async () =>
+  get_page_structure: async (_args, context) =>
     normalizeToolResult(
-      await sendToContentScript({ tool: "get_page_structure" }),
+      await sendToContentScript({ tool: "get_page_structure" }, context?.tabId),
     ),
 
-  grep: async (args) =>
+  grep: async (args, context) =>
     normalizeToolResult(
       await sendToContentScript({
         tool: "grep",
@@ -853,10 +917,11 @@ const TOOL_HANDLERS = {
           scope: args.scope || "children",
           maxResults: args.max_results || 5,
         },
-      }),
+      }, context?.tabId),
     ),
 
-  apply_styles: async (args) => await runApplyStyles(args.css || "", args.mode),
+  apply_styles: async (args, context) =>
+    await runApplyStyles(args.css || "", args.mode, context?.tabId),
 
   get_current_styles: async () => {
     if (!currentSession) return "(无活动会话)";
@@ -865,7 +930,8 @@ const TOOL_HANDLERS = {
     return css.trim() || "(当前无已应用样式)";
   },
 
-  edit_css: async (args) => await runEditCSS(args.old_css, args.new_css),
+  edit_css: async (args, context) =>
+    await runEditCSS(args.old_css, args.new_css, context?.tabId),
 
   // —— Side Panel 本地工具 ——
   get_user_profile: async () => {

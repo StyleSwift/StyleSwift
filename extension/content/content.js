@@ -1507,11 +1507,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         break;
       }
 
-      case "rollback_css":
+      case "rollback_css": {
         // 回滚 CSS
         rollbackCSS(args.scope);
-        sendResponse({ success: true });
+        // 返回回滚后的 CSS，供 Side Panel 更新存储
+        const rolledBackCSS = getActiveCSS();
+        sendResponse({ success: true, css: rolledBackCSS });
         break;
+      }
 
       case "replace_css":
         cssStack.length = 0;
