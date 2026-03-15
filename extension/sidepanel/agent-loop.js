@@ -749,38 +749,79 @@ async function getDisabledUserSkills() {
 const TOKEN_BUDGET = 50000;
 
 /**
- * 找到第一轮对话的结束位置
+ * 估算单条消息的字符数
+ * @param {object} msg - ICF 消息
+ * @returns {number}
+ */
+function _msgCharCount(msg) {
+  if (typeof msg.content === "string") return msg.content.length;
+  if (Array.isArray(msg.content)) {
+    let n = 0;
+    for (const block of msg.content) {
+      if (block.type === "text" && block.text) n += block.text.length;
+      if (block.type === "tool_result") {
+        if (typeof block.content === "string") n += block.content.length;
+        else if (Array.isArray(block.content)) {
+          for (const c of block.content) {
+            if (c.type === "text" && c.text) n += c.text.length;
+          }
+        }
+      }
+    }
+    return n;
+  }
+  return 0;
+}
+
+/**
+ * 动态计算保留边界（从末尾往前累计 token 到预算 60% 处）
  *
- * 第一轮 = 第一条用户文本消息 + 后续所有工具交换 + 助手回复，
- * 直到遇到第二条用户文本消息为止。
+ * 切分点约束：必须落在 user 消息上（避免切断 assistant-tool_result 配对）。
+ * 如果计算出的切点不是 user 消息，向前移动到最近的 user 消息。
  *
  * @param {Array} history - 对话历史数组
- * @returns {number} 第一轮对话结束的索引（即第二条用户文本消息的索引）
+ * @param {number} tokenBudget - TOKEN_BUDGET
+ * @returns {number} 保留区域的起始索引（此索引及之后的消息保留）
  */
-function findFirstTurnEnd(history) {
-  let foundFirst = false;
-  for (let i = 0; i < history.length; i++) {
-    if (history[i].role === "user" && typeof history[i].content === "string") {
-      if (!foundFirst) {
-        foundFirst = true;
-        continue;
-      }
-      return i;
+function findKeepBoundary(history, tokenBudget) {
+  const keepLimit = Math.floor(tokenBudget * 0.6);
+  let accChars = 0;
+  let cutIndex = 0;
+
+  for (let i = history.length - 1; i >= 0; i--) {
+    accChars += _msgCharCount(history[i]);
+    const accTokens = Math.ceil(accChars / 1.5);
+    if (accTokens >= keepLimit) {
+      cutIndex = i + 1;
+      break;
     }
   }
-  return history.length;
+
+  if (cutIndex <= 0) return 0;
+  if (cutIndex >= history.length) return history.length;
+
+  // 向前移动到最近的 user 消息，避免切在 assistant / tool_result 中间
+  while (cutIndex > 0 && history[cutIndex].role !== "user") {
+    cutIndex--;
+  }
+
+  // 至少保留最后 1 条消息
+  if (cutIndex >= history.length) cutIndex = history.length - 1;
+
+  return cutIndex;
 }
 
 /**
  * 估算消息历史的 token 数量
  *
- * 简单估算：约 1 token = 4 字符。对于中文和代码，比例可能更低。
- * 此估算用于在 API 调用前快速判断是否需要压缩历史。
+ * 保守估算：约 1.5 字符 = 1 token（兼顾中文 ~1-2 字符/token 和英文 ~4 字符/token）。
+ * systemOverhead 覆盖系统提示词 + 工具定义的固定开销。
  *
- * @param {Array} messages - Claude 格式消息数组
+ * @param {Array} messages - ICF 或 Claude 格式消息数组
+ * @param {number} [systemOverhead=4000] - 系统提示词+工具定义的固定 token 开销
  * @returns {number} 估算的 token 数量
  */
-function estimateTokenCount(messages) {
+function estimateTokenCount(messages, systemOverhead = 4000) {
   let totalChars = 0;
   for (const msg of messages) {
     if (typeof msg.content === "string") {
@@ -790,91 +831,79 @@ function estimateTokenCount(messages) {
         if (block.type === "text" && block.text) {
           totalChars += block.text.length;
         }
-        // 忽略 image block，base64 图片不参与估算
       }
     }
   }
-  // 估算：每 4 个字符 = 1 token，再加 10% 的 overhead
-  return Math.ceil(totalChars / 4 * 1.1);
+  return Math.ceil(totalChars / 1.5) + systemOverhead;
 }
 
 /**
  * 压缩对话历史（仅用于 LLM 视图，不影响持久化）
  *
- * 基于 API 返回的 lastInputTokens 判断是否需要压缩。
-  * 压缩策略：保留第一轮完整对话 + 最近 1 轮对话，中间部分生成 LLM 摘要。
- * 完整对话历史和 CSS 快照始终完整保存在 IndexedDB 中。
+ * 压缩策略：全量摘要旧消息 + 动态保留最近上下文。
+ * 通过 findKeepBoundary 动态计算保留边界，将所有旧消息统一摘要。
+ * 二次压缩时将旧摘要文本传入 summarizeOldTurns 做整合而非递归摘要。
+ * 压缩后验证 token 数，仍超预算则对大型工具结果做截断兜底。
  *
  * @param {Array} history - 对话历史数组
- * @param {number} lastInputTokens - 上次 API 调用的 input_tokens（或估算值）
+ * @param {number} estimatedTokens - 当前估算的 token 数量
  * @returns {Promise<Array>} 压缩后的消息数组（可能不变）
  */
-async function checkAndCompressHistory(history, lastInputTokens) {
-  if (lastInputTokens <= TOKEN_BUDGET) {
+async function checkAndCompressHistory(history, estimatedTokens) {
+  if (estimatedTokens <= TOKEN_BUDGET) {
     return history;
   }
 
-  const firstTurnEnd = findFirstTurnEnd(history);
-  const recentStart = findTurnBoundary(history, 1);
+  const keepFrom = findKeepBoundary(history, TOKEN_BUDGET);
 
-  if (recentStart <= firstTurnEnd) {
-    return history;
+  if (keepFrom <= 0) {
+    return truncateLargeToolResults(history);
   }
 
-  const firstTurn = history.slice(0, firstTurnEnd);
-  const middlePart = history.slice(firstTurnEnd, recentStart);
-  const recentPart = history.slice(recentStart);
+  const oldPart = history.slice(0, keepFrom);
+  const recentPart = history.slice(keepFrom);
 
-  if (middlePart.length === 0) {
-    return history;
+  if (oldPart.length === 0) {
+    return truncateLargeToolResults(history);
   }
 
-  const summary = await summarizeOldTurns(middlePart);
+  // 提取旧摘要文本（如果存在），用于整合而非递归摘要
+  let existingSummary = null;
+  const nonSummaryOld = [];
+  for (const msg of oldPart) {
+    if (msg._isSummary) {
+      existingSummary = typeof msg.content === "string" ? msg.content : null;
+    } else {
+      nonSummaryOld.push(msg);
+    }
+  }
 
-  return [
-    ...firstTurn,
-    { role: "user", content: `[中间对话摘要]\n${summary}` },
+  // 过滤掉旧的 assistant 确认消息（紧跟在摘要后的"好的"确认）
+  const oldForSummary = nonSummaryOld.filter(
+    (msg) => !(msg.role === "assistant"
+      && Array.isArray(msg.content)
+      && msg.content.length === 1
+      && msg.content[0]?.text === "好的，我已了解之前的对话内容。"),
+  );
+
+  const summary = await summarizeOldTurns(oldForSummary, existingSummary);
+
+  let compressed = [
+    { role: "user", content: `[对话历史摘要]\n${summary}`, _isSummary: true },
     {
       role: "assistant",
       content: [{ type: "text", text: "好的，我已了解之前的对话内容。" }],
     },
     ...recentPart,
   ];
-}
 
-/**
- * 找到最近 N 轮对话的起始边界
- *
- * 从后往前遍历历史，找到第 N 个用户消息的索引。
- * "一轮对话"定义为：用户消息 + 可能的工具调用 + 助手回复
- *
- * @param {Array} history - 对话历史数组
- * @param {number} keepRecentTurns - 保留的最近轮数
- * @returns {number} 最近 N 轮对话的起始索引（history 中的位置）
- *
- * @example
- * // 历史有 15 轮对话，保留最近 10 轮
- * const index = findTurnBoundary(history, 10);
- * // history.slice(index) 是最近 10 轮
- * // history.slice(0, index) 是要压缩的旧对话
- */
-function findTurnBoundary(history, keepRecentTurns) {
-  let turnCount = 0;
-
-  // 从后往前遍历，统计用户消息数量
-  for (let i = history.length - 1; i >= 0; i--) {
-    // 一轮对话的开始标志：用户发送的文本消息
-    if (history[i].role === "user" && typeof history[i].content === "string") {
-      turnCount++;
-      // 找到第 N 个用户消息时，返回其索引
-      if (turnCount >= keepRecentTurns) {
-        return i;
-      }
-    }
+  // 压缩后验证：仍超预算则截断大型工具结果
+  const postEstimate = estimateTokenCount(compressed);
+  if (postEstimate > TOKEN_BUDGET) {
+    compressed = truncateLargeToolResults(compressed);
   }
 
-  // 如果轮数不足 N，返回 0（保留全部）
-  return 0;
+  return compressed;
 }
 
 /**
@@ -882,24 +911,41 @@ function findTurnBoundary(history, keepRecentTurns) {
  *
  * 将旧对话历史压缩成一段简洁的摘要文本。
  * 摘要重点保留：用户的风格偏好、已应用的样式变更、未完成的请求。
+ * 当 existingSummary 不为空时，基于旧摘要做整合而非递归摘要。
  *
  * @param {Array} oldHistory - 要压缩的旧对话历史
+ * @param {string|null} [existingSummary=null] - 已有的旧摘要文本，用于整合
  * @returns {Promise<string>} 压缩后的摘要文本
  */
-async function summarizeOldTurns(oldHistory) {
+async function summarizeOldTurns(oldHistory, existingSummary = null) {
   const condensed = oldHistory
     .map((msg) => {
       if (msg.role === "user") {
         if (typeof msg.content === "string") return `用户: ${msg.content}`;
-        return "用户: [工具调用结果]";
+        if (Array.isArray(msg.content)) {
+          const parts = msg.content.map((c) => {
+            if (c.type === "tool_result") {
+              const toolContent = typeof c.content === "string"
+                ? c.content
+                : Array.isArray(c.content)
+                  ? c.content.filter((x) => x.type === "text").map((x) => x.text).join(" ")
+                  : JSON.stringify(c.content);
+              return `[工具结果: ${toolContent.slice(0, 800)}${toolContent.length > 800 ? "..." : ""}]`;
+            }
+            if (c.type === "text") return c.text;
+            return "";
+          });
+          return `用户: ${parts.filter(Boolean).join(" ")}`;
+        }
+        return "";
       }
       if (msg.role === "assistant") {
         const texts = (msg.content || [])
           .filter((b) => b.type === "text")
-          .map((b) => b.text.slice(0, 200));
+          .map((b) => b.text.slice(0, 500));
         const tools = (msg.content || [])
           .filter((b) => b.type === "tool_use")
-          .map((b) => b.name);
+          .map((b) => `${b.name}(${JSON.stringify(b.input).slice(0, 100)})`);
         let s = "";
         if (texts.length) s += `助手: ${texts.join(" ")}`;
         if (tools.length) s += ` [调用了: ${tools.join(", ")}]`;
@@ -910,7 +956,20 @@ async function summarizeOldTurns(oldHistory) {
     .filter(Boolean)
     .join("\n");
 
-  if (!condensed.trim()) return "(无历史记录)";
+  if (!condensed.trim() && !existingSummary) return "(无历史记录)";
+
+  let userContent;
+  let systemPrompt;
+
+  if (existingSummary) {
+    systemPrompt =
+      "你是对话历史压缩助手。请基于已有的对话概述和新增的对话内容，整合生成一份完整的摘要。重点保留：用户的风格偏好、已应用的样式变更（含关键选择器和属性）、未完成的请求。不超过 500 字。";
+    userContent = `[已有对话概述]\n${existingSummary}\n\n[新增对话内容]\n${condensed || "(无新增)"}`;
+  } else {
+    systemPrompt =
+      "你是对话历史压缩助手。用一段简洁的文字总结以下对话历史，重点保留：用户的风格偏好、已应用的样式变更（含关键选择器和属性）、未完成的请求。不超过 500 字。";
+    userContent = condensed;
+  }
 
   try {
     const { getSettings, detectProvider } = await import("./api.js");
@@ -928,10 +987,9 @@ async function summarizeOldTurns(oldHistory) {
         },
         body: JSON.stringify({
           model,
-          system:
-            "用一段简洁的文字总结以下对话历史，重点保留：用户的风格偏好、已应用的样式变更、未完成的请求。不超过 300 字。",
-          messages: [{ role: "user", content: [{ type: "text", text: condensed }] }],
-          max_tokens: 500,
+          system: systemPrompt,
+          messages: [{ role: "user", content: [{ type: "text", text: userContent }] }],
+          max_tokens: 800,
         }),
       });
     } else {
@@ -944,37 +1002,81 @@ async function summarizeOldTurns(oldHistory) {
         body: JSON.stringify({
           model,
           messages: [
-            {
-              role: "system",
-              content:
-                "用一段简洁的文字总结以下对话历史，重点保留：用户的风格偏好、已应用的样式变更、未完成的请求。不超过 300 字。",
-            },
-            { role: "user", content: condensed },
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userContent },
           ],
-          max_tokens: 500,
+          max_tokens: 800,
         }),
       });
     }
 
     if (!resp.ok) {
       console.error("[History Compression] API error:", resp.status);
-      return "(历史摘要生成失败)";
+      return existingSummary || "(历史摘要生成失败)";
     }
 
     const data = await resp.json();
-    // OpenAI 格式
     if (data.choices) {
-      return data.choices?.[0]?.message?.content || "(历史摘要生成失败)";
+      return data.choices?.[0]?.message?.content || existingSummary || "(历史摘要生成失败)";
     }
-    // Claude 原生格式
     if (data.content) {
-      return data.content?.find((b) => b.type === "text")?.text || "(历史摘要生成失败)";
+      return data.content?.find((b) => b.type === "text")?.text || existingSummary || "(历史摘要生成失败)";
     }
-    return "(历史摘要生成失败)";
+    return existingSummary || "(历史摘要生成失败)";
   } catch (err) {
     console.error("[History Compression] Failed:", err);
-    return "(历史摘要生成失败)";
+    return existingSummary || "(历史摘要生成失败)";
   }
+}
+
+/**
+ * 截断消息数组中超大的工具结果（兜底策略）
+ *
+ * 当压缩后仍超预算时，对 tool_result 中超过 3000 字符的文本做截断，
+ * 保留前 1000 字符 + 截断标记。不修改原数组，返回新数组。
+ *
+ * @param {Array} messages - ICF 消息数组
+ * @returns {Array} 截断后的消息数组
+ */
+function truncateLargeToolResults(messages) {
+  const TRUNCATE_THRESHOLD = 3000;
+  const KEEP_CHARS = 1000;
+
+  return messages.map((msg) => {
+    if (msg.role !== "user" || !Array.isArray(msg.content)) return msg;
+
+    let changed = false;
+    const newContent = msg.content.map((block) => {
+      if (block.type !== "tool_result") return block;
+
+      if (typeof block.content === "string" && block.content.length > TRUNCATE_THRESHOLD) {
+        changed = true;
+        return {
+          ...block,
+          content: block.content.slice(0, KEEP_CHARS) + "\n...(内容已截断以节省上下文空间)",
+        };
+      }
+
+      if (Array.isArray(block.content)) {
+        let innerChanged = false;
+        const newInner = block.content.map((c) => {
+          if (c.type === "text" && c.text && c.text.length > TRUNCATE_THRESHOLD) {
+            innerChanged = true;
+            return { ...c, text: c.text.slice(0, KEEP_CHARS) + "\n...(内容已截断以节省上下文空间)" };
+          }
+          return c;
+        });
+        if (innerChanged) {
+          changed = true;
+          return { ...block, content: newInner };
+        }
+      }
+
+      return block;
+    });
+
+    return changed ? { ...msg, content: newContent } : msg;
+  });
 }
 
 // =============================================================================
@@ -1898,12 +2000,6 @@ async function agentLoop(prompt, uiCallbacks) {
     fullHistory.push(userMsg);
     let llmHistory = [...fullHistory];
 
-    // 循环前预检查：估算 token 数量，超预算时提前压缩
-    const estimatedTokens = estimateTokenCount(serializeToClaude(llmHistory));
-    if (estimatedTokens > TOKEN_BUDGET) {
-      llmHistory = await checkAndCompressHistory(llmHistory, estimatedTokens);
-    }
-
     let lastInputTokens = 0;
     let response;
     let iterations = 0;
@@ -1924,6 +2020,12 @@ async function agentLoop(prompt, uiCallbacks) {
       // 第二轮及以后：通知 UI 创建新的消息气泡
       if (iterations > 1) {
         uiCallbacks.onNewIteration?.();
+      }
+
+      // ── 每次 LLM 调用前检查上下文是否超限，超限则压缩 ──
+      const preEstimate = estimateTokenCount(llmHistory);
+      if (preEstimate > TOKEN_BUDGET) {
+        llmHistory = await checkAndCompressHistory(llmHistory, preEstimate);
       }
 
       // 构建当前轮次的 LLM 历史
@@ -2035,11 +2137,6 @@ async function agentLoop(prompt, uiCallbacks) {
       const toolResultMsg = { role: "user", content: results };
       fullHistory.push(toolResultMsg);
       llmHistory.push(toolResultMsg);
-
-      // 循环内安全检查：使用 API 返回的实际 token 数量，超预算时压缩
-      if (lastInputTokens > TOKEN_BUDGET) {
-        llmHistory = await checkAndCompressHistory(llmHistory, lastInputTokens);
-      }
     }
 
     // 达到最大迭代次数时提示
@@ -2157,11 +2254,11 @@ export {
   buildSessionContext,
   buildSkillDescriptions,
   TOKEN_BUDGET,
-  findFirstTurnEnd,
+  findKeepBoundary,
   checkAndCompressHistory,
-  findTurnBoundary,
   summarizeOldTurns,
   estimateTokenCount,
+  truncateLargeToolResults,
   RESTRICTED_PATTERNS,
   isRestrictedPage,
   checkPageAccess,

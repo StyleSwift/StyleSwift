@@ -4,7 +4,7 @@
  * 测试 SYSTEM_BASE 常量定义
  * 测试 buildSessionContext 函数
  * 测试 checkAndCompressHistory 函数
- * 测试 findTurnBoundary 函数
+ * 测试 findKeepBoundary 函数
  * 测试 summarizeOldTurns 函数（需要 mock API）
  *
  * 测试标准：
@@ -12,7 +12,7 @@
  * - buildSessionContext 输出包含域名和会话标题，有画像时包含偏好提示
  * - TOKEN_BUDGET 为 50000
  * - 未超预算不压缩
- * - 超预算后保留首轮 + 最近 5 轮 + 中间摘要
+ * - 超预算后全量摘要旧消息 + 动态保留最近上下文
  */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
@@ -22,10 +22,11 @@ import {
   SYSTEM_BASE,
   buildSessionContext,
   TOKEN_BUDGET,
-  findFirstTurnEnd,
+  findKeepBoundary,
   checkAndCompressHistory,
-  findTurnBoundary,
   summarizeOldTurns,
+  estimateTokenCount,
+  truncateLargeToolResults,
   cancelAgentLoop,
   getIsAgentRunning,
   getCurrentAbortController,
@@ -50,8 +51,8 @@ describe("SYSTEM_BASE 常量", () => {
   });
 
   test("包含工作方式指引", () => {
-    expect(SYSTEM_BASE).toContain("优先行动");
-    expect(SYSTEM_BASE).toContain("完成后简要总结");
+    expect(SYSTEM_BASE).toContain("意图澄清");
+    expect(SYSTEM_BASE).toContain("任务规划");
   });
 
   test("包含 CSS 生成规则", () => {
@@ -67,7 +68,6 @@ describe("SYSTEM_BASE 常量", () => {
 
   test("包含风格技能指引", () => {
     expect(SYSTEM_BASE).toContain("风格技能");
-    expect(SYSTEM_BASE).toContain("save_style_skill");
   });
 });
 
@@ -160,58 +160,75 @@ describe("TOKEN_BUDGET 常量", () => {
   });
 });
 
-describe("findTurnBoundary 函数", () => {
-  test("找到最近 1 轮对话的边界", () => {
-    const history = [
-      { role: "user", content: "消息1" },
-      { role: "assistant", content: [{ type: "text", text: "回复1" }] },
-      { role: "user", content: "消息2" },
-      { role: "assistant", content: [{ type: "text", text: "回复2" }] },
-    ];
-
-    // 最近 1 轮应该从索引 2 开始（'消息2'）
-    expect(findTurnBoundary(history, 1)).toBe(2);
-  });
-
-  test("找到最近 3 轮对话的边界", () => {
-    const history = [
-      { role: "user", content: "消息1" },
-      { role: "assistant", content: [{ type: "text", text: "回复1" }] },
-      { role: "user", content: "消息2" },
-      { role: "assistant", content: [{ type: "text", text: "回复2" }] },
-      { role: "user", content: "消息3" },
-      { role: "assistant", content: [{ type: "text", text: "回复3" }] },
-    ];
-
-    // 最近 3 轮应该从索引 0 开始（'消息1'）
-    expect(findTurnBoundary(history, 3)).toBe(0);
-  });
-
-  test("历史轮数不足时返回 0", () => {
+describe("findKeepBoundary 函数", () => {
+  test("短历史全部保留，返回 0", () => {
     const history = [
       { role: "user", content: "消息1" },
       { role: "assistant", content: [{ type: "text", text: "回复1" }] },
     ];
-
-    // 只有 1 轮，要求保留 10 轮，应该返回 0
-    expect(findTurnBoundary(history, 10)).toBe(0);
-  });
-
-  test("忽略 tool_result 消息（非字符串内容）", () => {
-    const history = [
-      { role: "user", content: "消息1" },
-      { role: "assistant", content: [{ type: "tool_use", name: "grep" }] },
-      { role: "user", content: [{ type: "tool_result", content: "结果" }] }, // 不计入轮数
-      { role: "assistant", content: [{ type: "text", text: "回复" }] },
-      { role: "user", content: "消息2" },
-    ];
-
-    // 最近 1 轮应该从索引 4 开始（'消息2'）
-    expect(findTurnBoundary(history, 1)).toBe(4);
+    expect(findKeepBoundary(history, TOKEN_BUDGET)).toBe(0);
   });
 
   test("空历史返回 0", () => {
-    expect(findTurnBoundary([], 10)).toBe(0);
+    expect(findKeepBoundary([], TOKEN_BUDGET)).toBe(0);
+  });
+
+  test("切分点落在 user 消息上", () => {
+    // 构建一个包含大量内容的历史
+    const history = [];
+    for (let i = 0; i < 20; i++) {
+      history.push({ role: "user", content: "x".repeat(3000) });
+      history.push({ role: "assistant", content: [{ type: "text", text: "y".repeat(3000) }] });
+    }
+    const boundary = findKeepBoundary(history, TOKEN_BUDGET);
+    if (boundary > 0 && boundary < history.length) {
+      expect(history[boundary].role).toBe("user");
+    }
+  });
+});
+
+describe("estimateTokenCount 函数", () => {
+  test("空消息返回系统开销", () => {
+    expect(estimateTokenCount([])).toBe(4000);
+  });
+
+  test("计算字符串内容的 token", () => {
+    const messages = [{ role: "user", content: "abc" }];
+    // 3 chars / 1.5 = 2, ceil(2) + 4000 = 4002
+    expect(estimateTokenCount(messages)).toBe(4002);
+  });
+
+  test("自定义 systemOverhead", () => {
+    const messages = [{ role: "user", content: "abc" }];
+    expect(estimateTokenCount(messages, 0)).toBe(2);
+  });
+});
+
+describe("truncateLargeToolResults 函数", () => {
+  test("不截断小型工具结果", () => {
+    const messages = [
+      { role: "user", content: [{ type: "tool_result", tool_use_id: "1", content: "短结果" }] },
+    ];
+    const result = truncateLargeToolResults(messages);
+    expect(result[0].content[0].content).toBe("短结果");
+  });
+
+  test("截断超大工具结果", () => {
+    const bigContent = "x".repeat(5000);
+    const messages = [
+      { role: "user", content: [{ type: "tool_result", tool_use_id: "1", content: bigContent }] },
+    ];
+    const result = truncateLargeToolResults(messages);
+    expect(result[0].content[0].content.length).toBeLessThan(bigContent.length);
+    expect(result[0].content[0].content).toContain("已截断");
+  });
+
+  test("不修改非 user 消息", () => {
+    const messages = [
+      { role: "assistant", content: [{ type: "text", text: "x".repeat(5000) }] },
+    ];
+    const result = truncateLargeToolResults(messages);
+    expect(result[0]).toBe(messages[0]);
   });
 });
 
@@ -223,7 +240,6 @@ describe("checkAndCompressHistory 函数", () => {
     ];
 
     const result = await checkAndCompressHistory(history, 30000);
-
     expect(result).toBe(history);
   });
 
@@ -234,24 +250,10 @@ describe("checkAndCompressHistory 函数", () => {
     ];
 
     const result = await checkAndCompressHistory(history, 50000);
-
     expect(result).toBe(history);
   });
 
-  test("超预算但轮数不足不压缩（最近5轮起点 <= 首轮结束）", async () => {
-    const history = [
-      { role: "user", content: "消息1" },
-      { role: "assistant", content: [{ type: "text", text: "回复1" }] },
-      { role: "user", content: "消息2" },
-      { role: "assistant", content: [{ type: "text", text: "回复2" }] },
-    ];
-
-    const result = await checkAndCompressHistory(history, 60000);
-
-    expect(result).toBe(history);
-  });
-
-  test("超预算后保留首轮 + 摘要 + 最近 5 轮", async () => {
+  test("超预算后生成摘要 + 保留最近上下文", async () => {
     global.chrome = {
       storage: {
         local: {
@@ -274,37 +276,79 @@ describe("checkAndCompressHistory 函数", () => {
       }),
     });
 
-    // 创建 15 轮对话历史
+    // 构建一个超大历史（每条消息足够大以触发压缩）
     const history = [];
-    for (let i = 1; i <= 15; i++) {
-      history.push({ role: "user", content: `消息${i}` });
+    for (let i = 1; i <= 30; i++) {
+      history.push({ role: "user", content: `消息${i} ${"填充".repeat(500)}` });
       history.push({
         role: "assistant",
-        content: [{ type: "text", text: `回复${i}` }],
+        content: [{ type: "text", text: `回复${i} ${"填充".repeat(500)}` }],
       });
     }
 
-    const result = await checkAndCompressHistory(history, 60000);
+    const result = await checkAndCompressHistory(history, 200000);
 
     expect(result).not.toBe(history);
 
-    // 首轮（2条） + 摘要（2条） + 最近5轮（10条） = 14条
-    expect(result.length).toBe(14);
-
-    // 第一条是首轮用户消息
+    // 第一条应该是摘要消息（带 _isSummary 标记）
     expect(result[0].role).toBe("user");
-    expect(result[0].content).toBe("消息1");
+    expect(result[0].content).toContain("[对话历史摘要]");
+    expect(result[0].content).toContain(mockSummary);
+    expect(result[0]._isSummary).toBe(true);
 
-    // 第三条是摘要
-    expect(result[2].role).toBe("user");
-    expect(result[2].content).toContain("[中间对话摘要]");
-    expect(result[2].content).toContain(mockSummary);
+    // 第二条应该是 assistant 确认
+    expect(result[1].role).toBe("assistant");
 
-    // 最后一条是第15轮助手回复
-    expect(result[result.length - 1].content[0].text).toBe("回复15");
+    // 最后一条应该是最后一轮的助手回复
+    expect(result[result.length - 1].role).toBe("assistant");
 
-    // 最近5轮的起始应该是第11轮
-    expect(result[4].content).toBe("消息11");
+    // 压缩后长度应该比原来短
+    expect(result.length).toBeLessThan(history.length);
+
+    vi.clearAllMocks();
+  });
+
+  test("二次压缩时整合旧摘要", async () => {
+    global.chrome = {
+      storage: {
+        local: {
+          get: vi.fn().mockResolvedValue({
+            settings: {
+              apiKey: "test-api-key",
+              model: "claude-sonnet-4-20250514",
+              apiBase: "https://api.anthropic.com",
+            },
+          }),
+        },
+      },
+    };
+
+    const mockSummary = "整合后的完整摘要";
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: mockSummary } }],
+      }),
+    });
+
+    // 模拟已经压缩过一次的历史，每条消息足够大以确保 findKeepBoundary 能切分
+    const history = [
+      { role: "user", content: "[对话历史摘要]\n旧摘要内容", _isSummary: true },
+      { role: "assistant", content: [{ type: "text", text: "好的，我已了解之前的对话内容。" }] },
+    ];
+    // 添加足够多的大消息以超出保留预算
+    for (let i = 0; i < 20; i++) {
+      history.push({ role: "user", content: `消息${i} ${"填充".repeat(2000)}` });
+      history.push({ role: "assistant", content: [{ type: "text", text: `回复${i} ${"填充".repeat(2000)}` }] });
+    }
+    history.push({ role: "user", content: "最新消息" });
+
+    const result = await checkAndCompressHistory(history, 200000);
+
+    // 应该包含新摘要
+    const summaryMsg = result.find((m) => m._isSummary);
+    expect(summaryMsg).toBeDefined();
+    expect(summaryMsg.content).toContain(mockSummary);
 
     vi.clearAllMocks();
   });
