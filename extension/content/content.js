@@ -1,18 +1,13 @@
 /**
  * StyleSwift Content Script
  * DOM 操作层：页面结构获取、搜索、CSS 注入/回滚、消息监听
- *
- * 设计方案参考：§3.1.2 常量定义
  */
 
 "use strict";
 
 // === 常量定义 ===
 
-/**
- * DOM 元素标签白名单
- * 仅处理这些标签的元素，过滤掉 script、style、meta 等非视觉元素
- */
+// DOM 元素标签白名单
 const TAG_WHITELIST = new Set([
   "body",
   "div",
@@ -56,10 +51,7 @@ const TAG_WHITELIST = new Set([
   "dialog",
 ]);
 
-/**
- * 语义化地标标签
- * 这些标签代表页面的主要结构区域，需要更深层次的遍历
- */
+// 语义化地标标签
 const LANDMARKS = new Set([
   "body",
   "header",
@@ -73,10 +65,7 @@ const LANDMARKS = new Set([
   "center",
 ]);
 
-/**
- * CSS 样式属性白名单
- * 仅提取这些计算样式，避免冗余信息
- */
+// CSS 样式属性白名单
 const STYLE_WHITELIST = [
   "display",
   "position",
@@ -111,10 +100,7 @@ const STYLE_WHITELIST = [
   "overflow",
 ];
 
-/**
- * 跳过的 CSS 属性值
- * 这些值为默认值或无意义值，不需要包含在输出中
- */
+// 跳过的 CSS 属性值
 const SKIP_VALUES = new Set([
   "none",
   "normal",
@@ -124,16 +110,10 @@ const SKIP_VALUES = new Set([
   "visible",
 ]);
 
-/**
- * 相似元素折叠阈值
- * 连续相同签名的元素超过此数量时折叠显示
- */
+// 相似元素折叠阈值
 const COLLAPSE_THRESHOLD = 3;
 
-/**
- * 文本内容标签
- * 这些标签主要包含文本内容，优先显示文本相关样式
- */
+// 文本内容标签
 const TEXT_TAGS = new Set([
   "h1",
   "h2",
@@ -148,10 +128,7 @@ const TEXT_TAGS = new Set([
   "label",
 ]);
 
-/**
- * 视觉属性集合
- * 非文本/地标元素只显示这些视觉相关属性
- */
+// 视觉属性集合
 const VISUAL_PROPS = new Set([
   "background-color",
   "color",
@@ -164,11 +141,7 @@ const VISUAL_PROPS = new Set([
   "height",
 ]);
 
-/**
- * 深层关键样式属性
- * 深层元素（depth >= STYLE_DEPTH_CUTOFF）在紧凑模式下仍然展示这些属性，
- * 避免模型生成的 CSS 与元素现有的颜色、字体等产生冲突导致风格不统一
- */
+// 深层关键样式属性
 const ESSENTIAL_STYLE_PROPS = new Set([
   "background-color",
   "color",
@@ -176,27 +149,15 @@ const ESSENTIAL_STYLE_PROPS = new Set([
   "font-weight",
 ]);
 
-/**
- * CSS 选择器特征模式
- * 用于检测查询字符串是否为 CSS 选择器（而非普通关键词）
- * 匹配：.class、#id、[attr]、>、+、~、:pseudo 或 tag tag 空格组合
- */
+// CSS 选择器特征模式
 const SELECTOR_PATTERN = /[.#\[\]>+~:=]|^\w+\s+\w+/;
 
 // === 辅助函数 ===
 
-/**
- * 生成元素的最短选择器（不保证唯一性）
- * 优先级：[data-testid] > tag#id > tag.className > tag
- * 用于签名比较、分组折叠等不需要唯一性的场景
- *
- * @param {Element} el - DOM 元素
- * @returns {string} 最短选择器字符串
- */
+// 生成元素的最短选择器（不保证唯一性）
 function shortSelector(el) {
   const tag = el.tagName.toLowerCase();
 
-  // 优先使用测试属性（简洁且具有语义）
   const testAttr =
     el.getAttribute("data-testid") ||
     el.getAttribute("data-cy") ||
@@ -205,59 +166,36 @@ function shortSelector(el) {
     return `[data-testid="${testAttr}"]`;
   }
 
-  // 其次使用 ID（页面唯一）
   if (el.id) {
     return `${tag}#${el.id}`;
   }
 
-  // 再次使用第一个 class 名
   if (el.className && typeof el.className === "string") {
-    // split 可能产生空字符串（如多余空格），需要过滤
     const classes = el.className.split(/\s+/).filter(Boolean);
     if (classes.length > 0) {
       return `${tag}.${classes[0]}`;
     }
   }
 
-  // 降级为纯标签名
   return tag;
 }
 
-/**
- * 生成元素在兄弟中唯一的选择器段
- * 当同级存在多个会被 CSS 选择器匹配的兄弟元素时，
- * 追加 :nth-of-type(n) 确保选择器精准且唯一。
- *
- * 唯一性判断基于 CSS 实际匹配规则：
- * - tag#id → 全局唯一
- * - tag.class → 匹配所有含该 class 的同标签兄弟
- * - tag → 匹配所有同标签兄弟（不管有无 class）
- *
- * :nth-of-type(n) 计数基于同标签兄弟的位置（CSS 规范行为）
- *
- * @param {Element} el - DOM 元素
- * @param {boolean} [validate=false] - 是否验证选择器在文档中的唯一性
- * @returns {string} 唯一的选择器字符串
- */
+// 生成元素在兄弟中唯一的选择器段
 function uniqueSelector(el, validate = false) {
   const tag = el.tagName.toLowerCase();
 
-  // 优先使用测试属性（data-testid、data-cy、data-test）
   const testAttr =
     el.getAttribute("data-testid") ||
     el.getAttribute("data-cy") ||
     el.getAttribute("data-test");
   if (testAttr) {
     const selector = `[data-testid="${testAttr}"]`;
-    // 如果 testid 全局唯一，直接返回；否则降级继续
     if (!validate || document.querySelectorAll(selector).length === 1) {
       return selector;
     }
   }
 
-  // 其次使用 id
   if (el.id) {
-    // id 可能有特殊字符，需要转义
     const escapedId = CSS.escape(el.id);
     const selector = `#${escapedId}`;
     if (!validate || document.querySelectorAll(selector).length === 1) {
@@ -277,7 +215,6 @@ function uniqueSelector(el, validate = false) {
   if (el.className && typeof el.className === "string") {
     const classes = el.className.split(/\s+/).filter(Boolean);
     if (classes.length > 0) {
-      // 选择最具区分度的 class（匹配数最少的）
       let bestClass = classes[0];
       let bestMatchCount = Infinity;
 
@@ -299,7 +236,6 @@ function uniqueSelector(el, validate = false) {
 
       if (bestMatchCount <= 1) {
         if (validate && document.querySelectorAll(base).length > 1) {
-          // 选择器在全局不唯一，需要完整路径
           return buildFullPathSelector(el);
         }
         return base;
@@ -314,13 +250,7 @@ function uniqueSelector(el, validate = false) {
   return `${tag}:nth-of-type(${index})`;
 }
 
-/**
- * 获取元素的直接文本内容（不含子元素文本）
- * 仅提取元素自身的文本节点内容
- *
- * @param {Element} el - DOM 元素
- * @returns {string} 直接文本内容
- */
+// 获取元素的直接文本内容
 function getDirectText(el) {
   return Array.from(el.childNodes)
     .filter((n) => n.nodeType === Node.TEXT_NODE)
@@ -329,28 +259,14 @@ function getDirectText(el) {
     .join(" ");
 }
 
-/**
- * 判断两个元素是否具有相同签名
- * 使用 shortSelector 比较（tagName + 第一个 class 或 id），
- * 忽略修饰类差异（如 BEM 的 --active、--clone）
- *
- * @param {Element} a - 第一个元素
- * @param {Element} b - 第二个元素
- * @returns {boolean} 签名是否相同
- */
+// 判断两个元素是否具有相同签名
 function sameSignature(a, b) {
   return shortSelector(a) === shortSelector(b);
 }
 
 // === 分组折叠 ===
 
-/**
- * 将连续相同签名的子元素分组
- * 用于简化树形结构输出，避免重复显示相同元素
- *
- * @param {Element[]} children - 子元素数组
- * @returns {Element[][]} 分组后的二维数组，每组包含相同签名的连续元素
- */
+// 将连续相同签名的子元素分组
 function groupSimilar(children) {
   if (children.length === 0) return [];
 
@@ -359,11 +275,9 @@ function groupSimilar(children) {
   for (let i = 1; i < children.length; i++) {
     const lastGroup = groups[groups.length - 1];
 
-    // 如果当前元素与上一组的第一个元素签名相同，加入该组
     if (sameSignature(children[i], lastGroup[0])) {
       lastGroup.push(children[i]);
     } else {
-      // 否则创建新组
       groups.push([children[i]]);
     }
   }
@@ -371,25 +285,17 @@ function groupSimilar(children) {
   return groups;
 }
 
-/**
- * 生成子元素摘要统计
- * 统计子元素的类型和数量，生成 'tag×count' 格式摘要
- *
- * @param {Element[]} childEls - 子元素数组
- * @returns {string|null} 摘要字符串，如 "div×3, span×2" 或 null（无子元素时）
- */
+// 生成子元素摘要统计
 function summarizeChildren(childEls) {
   if (childEls.length === 0) return null;
 
   const counts = {};
 
-  // 统计每种选择器的出现次数
   for (const c of childEls) {
     const key = shortSelector(c);
     counts[key] = (counts[key] || 0) + 1;
   }
 
-  // 生成摘要字符串：count > 1 时显示 "tag×count"，否则只显示 "tag"
   return Object.entries(counts)
     .map(([k, v]) => (v > 1 ? `${k}×${v}` : k))
     .join(", ");
@@ -397,49 +303,28 @@ function summarizeChildren(childEls) {
 
 // === 计算样式提取 ===
 
-/**
- * 获取元素的计算样式
- * 从 STYLE_WHITELIST 中读取计算样式，过滤 SKIP_VALUES 中的默认值
- *
- * @param {Element} element - DOM 元素
- * @param {string} tag - 元素标签名（小写）
- * @returns {Array<[string, string]>} 样式属性-值对数组
- */
+// 获取元素的计算样式
 function getComputedStyles(element, tag) {
   const cs = window.getComputedStyle(element);
   const pairs = [];
 
-  // 遍历样式白名单，提取有意义的样式值
   for (const prop of STYLE_WHITELIST) {
     const val = cs.getPropertyValue(prop);
 
-    // 过滤空值和跳过值（默认值/无意义值）
     if (val && !SKIP_VALUES.has(val)) {
       pairs.push([prop, val]);
     }
   }
 
-  // 根据元素类型筛选要显示的样式
   return pickStylesForDisplay(tag, pairs);
 }
 
-/**
- * 根据元素类型筛选要显示的样式
- * - LANDMARKS（地标元素）：返回全量样式
- * - TEXT_TAGS（文本元素）：只返回文本相关属性
- * - 其他元素：只返回视觉属性
- *
- * @param {string} tag - 元素标签名（小写）
- * @param {Array<[string, string]>} pairs - 样式属性-值对数组
- * @returns {Array<[string, string]>} 筛选后的样式属性-值对数组
- */
+// 根据元素类型筛选要显示的样式
 function pickStylesForDisplay(tag, pairs) {
-  // 地标元素（header, nav, main, aside, footer, article, section）：返回全量样式
   if (LANDMARKS.has(tag)) {
     return pairs;
   }
 
-  // 文本元素（h1-h6, p, span, a, li, label）：只返回文本相关属性
   if (TEXT_TAGS.has(tag)) {
     const textProps = new Set([
       "color",
@@ -453,19 +338,12 @@ function pickStylesForDisplay(tag, pairs) {
     return pairs.filter(([prop]) => textProps.has(prop));
   }
 
-  // 其他元素：只返回视觉属性
   return pairs.filter(([prop]) => VISUAL_PROPS.has(prop));
 }
 
 // === Token 估算 ===
 
-/**
- * 估算文本的 token 数量
- * 区分 CJK 字符（~1.5 token/字）和非 CJK 字符（~0.25 token/字符）
- *
- * @param {string} text - 要估算的文本
- * @returns {number} 估算的 token 数量
- */
+// 估算文本的 token 数量
 function estimateTokens(text) {
   const cjk = (text.match(/[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]/g) || [])
     .length;
@@ -475,13 +353,7 @@ function estimateTokens(text) {
 
 // === 格式化输出 ===
 
-/**
- * 格式化树节点装饰信息
- *
- * @param {Object} node - 节点对象
- * @param {boolean} [compact=false] - 是否紧凑模式（隐藏样式）
- * @returns {string} 装饰字符串
- */
+// 格式化树节点装饰信息
 function formatNodeDecoration(node, compact = false) {
   let deco = "";
 
@@ -498,17 +370,14 @@ function formatNodeDecoration(node, compact = false) {
     }
   }
 
-  // 折叠计数
   if (node.count) {
     deco += ` × ${node.count}`;
   }
 
-  // 文本内容
   if (node.text) {
     deco += ` "${node.text}"`;
   }
 
-  // 子元素摘要
   if (node.summary) {
     deco += ` — ${node.summary}`;
   }
@@ -516,24 +385,10 @@ function formatNodeDecoration(node, compact = false) {
   return deco;
 }
 
-/**
- * 渐进式紧凑的样式深度阈值
- * 浅层（< 阈值）显示完整样式，深层只显示结构标签
- * 详细样式可通过 grep 按需获取
- */
+// 渐进式紧凑的样式深度阈值
 const STYLE_DEPTH_CUTOFF = 7;
 
-/**
- * 格式化树节点（子节点）
- *
- * @param {Object} node - 节点对象
- * @param {string} indent - 当前缩进
- * @param {boolean} isLast - 是否为同级最后一个节点
- * @param {number} maxDepth - 剩余可渲染深度
- * @param {boolean} [compact=false] - 是否强制紧凑模式
- * @param {number} [currentDepth=0] - 当前绝对深度（用于渐进式紧凑）
- * @returns {string} 格式化后的字符串
- */
+// 格式化树节点（子节点）
 function formatTreeNode(
   node,
   indent,
@@ -569,16 +424,7 @@ function formatTreeNode(
   return result;
 }
 
-/**
- * 格式化树结构（根节点）
- *
- * @param {Object} node - 根节点对象
- * @param {string} indent - 缩进
- * @param {boolean} isLast - 是否为最后一个节点
- * @param {number} maxDepth - 最大深度
- * @param {boolean} [compact=false] - 是否强制紧凑模式
- * @returns {string} 格式化后的字符串
- */
+// 格式化树结构（根节点）
 function formatTree(node, indent, isLast, maxDepth, compact = false) {
   if (!node) return "";
 
@@ -604,13 +450,7 @@ function formatTree(node, indent, isLast, maxDepth, compact = false) {
 
 // === 元素签名 ===
 
-/**
- * 生成元素的签名（用于相似元素判断）
- * 签名包含：tagName.className + 子元素签名
- *
- * @param {Element} el - DOM 元素
- * @returns {string} 元素签名
- */
+// 生成元素的签名
 function elementSignature(el) {
   const childSig = Array.from(el.children)
     .map((c) => `${c.tagName.toLowerCase()}.${c.className || ""}`)
@@ -620,39 +460,21 @@ function elementSignature(el) {
 
 // === 页面结构获取 ===
 
-/**
- * 提取页面元信息
- *
- * @returns {string} 格式化的元信息字符串
- */
+// 提取页面元信息
 function extractMeta() {
   return `Title: ${document.title}`;
 }
 
-/**
- * 链式折叠的最大长度
- * 防止极端嵌套产生过长的选择器路径
- */
+// 链式折叠的最大长度
 const MAX_CHAIN_LENGTH = 5;
 
-/**
- * 构建 DOM 树结构
- *
- * 包含链式折叠优化：当非地标元素只有一个非地标子元素且自身无文本时，
- * 将它们折叠为链式选择器（如 "div.a > div.b > div.c"），
- * 不消耗深度层级，大幅提升有效深度。
- *
- * @param {Element} element - 当前元素
- * @param {number} depth - 当前深度
- * @param {number} maxDepth - 最大深度
- * @returns {Object|null} 节点对象或 null
- */
+// 构建 DOM 树结构
 function buildTree(element, depth, maxDepth) {
   let tag = element.tagName?.toLowerCase();
   if (!tag || !TAG_WHITELIST.has(tag)) return null;
   if (element.shadowRoot) return null;
 
-  // === 链式折叠：合并单子元素的 wrapper div 链 ===
+  // 链式折叠：合并单子元素的 wrapper div 链
   let current = element;
   const chainParts = [uniqueSelector(element)];
 
@@ -708,13 +530,6 @@ function buildTree(element, depth, maxDepth) {
   return { selector, text, styles, children };
 }
 
-/**
- * 格式化页面结构输出
- *
- * @param {string} meta - 页面元信息
- * @param {Object} tree - DOM 树
- * @returns {string} 格式化的输出字符串
- */
 const TOKEN_LIMIT = 8000;
 const FORMAT_DEPTHS = [4, 8, 12, 16, 24, 32];
 
@@ -747,11 +562,7 @@ let _structureCache = null;
 let _structureCacheTime = 0;
 const STRUCTURE_CACHE_TTL = 3000;
 
-/**
- * 获取页面结构（主函数）
- * 3 秒内的重复调用返回缓存结果
- * @returns {string} 页面结构的文本表示
- */
+// 获取页面结构（主函数）
 function getPageStructure() {
   const now = Date.now();
   if (_structureCache && now - _structureCacheTime < STRUCTURE_CACHE_TTL) {
@@ -766,24 +577,12 @@ function getPageStructure() {
 
 // === 元素搜索 (grep) ===
 
-/**
- * 判断查询是否为 CSS 选择器
- *
- * @param {string} query - 查询字符串
- * @returns {boolean} 是否为 CSS 选择器
- */
+// 判断查询是否为 CSS 选择器
 function isCssSelector(query) {
   return SELECTOR_PATTERN.test(query);
 }
 
-/**
- * 使用 CSS 选择器搜索元素
- * 选择器无效时返回空数组，降级逻辑由 runGrep 统一控制
- *
- * @param {string} selector - CSS 选择器
- * @param {number} limit - 最大结果数
- * @returns {Element[]} 匹配的元素数组
- */
+// 使用 CSS 选择器搜索元素
 function selectorSearch(selector, limit) {
   try {
     const all = document.querySelectorAll(selector);
@@ -793,17 +592,10 @@ function selectorSearch(selector, limit) {
   }
 }
 
-/**
- * 使用关键词搜索元素
- *
- * @param {string} keyword - 关键词
- * @param {number} limit - 最大结果数
- * @returns {Element[]} 匹配的元素数组
- */
+// 使用关键词搜索元素
 function keywordSearch(keyword, limit) {
   const kw = keyword.toLowerCase();
   const results = [];
-  // 仅在关键词看起来像颜色值时才匹配 computedStyle
   const looksLikeColor =
     /^(#|rgb|hsl|red|blue|green|black|white|gray|grey|transparent)/i.test(
       keyword,
@@ -842,7 +634,6 @@ function keywordSearch(keyword, limit) {
       continue;
     }
 
-    // 仅在关键词疑似颜色值时才执行 getComputedStyle（避免大量 reflow）
     if (looksLikeColor) {
       const cs = window.getComputedStyle(el);
       if (cs.backgroundColor.includes(kw) || cs.color.includes(kw)) {
@@ -855,12 +646,7 @@ function keywordSearch(keyword, limit) {
   return results;
 }
 
-/**
- * 将相似元素分组（用于 grep 输出折叠）
- *
- * @param {Element[]} elements - 元素数组
- * @returns {Array<{el: Element, count: number, texts: string[]}>} 分组结果
- */
+// 将相似元素分组（用于 grep 输出折叠）
 function groupSimilarElements(elements) {
   const groups = [];
   const used = new Set();
@@ -888,12 +674,7 @@ function groupSimilarElements(elements) {
   return groups;
 }
 
-/**
- * 获取元素的所有计算样式（字符串格式）
- *
- * @param {Element} el - DOM 元素
- * @returns {string} 样式字符串
- */
+// 获取元素的所有计算样式
 function getAllComputedStyles(el) {
   const cs = window.getComputedStyle(el);
   const pairs = [];
@@ -906,24 +687,16 @@ function getAllComputedStyles(el) {
   return pairs.join("; ") || "";
 }
 
-/**
- * 构建从 body 到当前元素的完整路径选择器
- * 使用 uniqueSelector 确保路径中每一段都能唯一定位元素
- *
- * @param {Element} el - DOM 元素
- * @param {boolean} [validate=false] - 是否验证最终选择器的唯一性
- * @returns {string} 完整路径选择器
- */
+// 构建从 body 到当前元素的完整路径选择器
 function buildFullPathSelector(el, validate = false) {
   const parts = [];
   let curr = el;
   while (curr && curr !== document.body.parentElement) {
-    parts.unshift(uniqueSelector(curr, false)); // 路径中每段不需要单独验证
+    parts.unshift(uniqueSelector(curr, false));
     curr = curr.parentElement;
   }
   const selector = parts.join(" > ");
 
-  // 可选：验证完整路径的唯一性
   if (validate && document.querySelectorAll(selector).length > 1) {
     console.warn("[StyleSwift] buildFullPathSelector: 选择器不唯一", selector);
   }
@@ -931,12 +704,7 @@ function buildFullPathSelector(el, validate = false) {
   return selector;
 }
 
-/**
- * 提取有用的 HTML 属性
- *
- * @param {Element} el - DOM 元素
- * @returns {string} 格式化的属性字符串
- */
+// 提取有用的 HTML 属性
 function formatUsefulAttrs(el) {
   const useful = ["href", "src", "type", "placeholder", "role", "aria-label"];
   return useful
@@ -945,13 +713,7 @@ function formatUsefulAttrs(el) {
     .join(", ");
 }
 
-/**
- * 格式化子元素列表
- *
- * @param {Element} el - DOM 元素
- * @param {string} scope - 范围：'children' 仅直接子元素，'subtree' 递归展示子树
- * @returns {string[]} 子元素描述行数组
- */
+// 格式化子元素列表
 function formatChildren(el, scope) {
   const maxDepth = scope === "subtree" ? 3 : 1;
 
@@ -975,14 +737,7 @@ function formatChildren(el, scope) {
   return walk(el, 1, "      ");
 }
 
-/**
- * 格式化 grep 输出
- *
- * @param {Array<{el: Element, count: number, texts: string[]}>} groups - 分组结果
- * @param {string} scope - 范围
- * @param {number} maxResults - 最大结果数
- * @returns {string} 格式化的输出字符串
- */
+// 格式化 grep 输出
 function formatGrepOutput(groups, scope, maxResults) {
   const lines = [];
   let shown = 0;
@@ -999,7 +754,6 @@ function formatGrepOutput(groups, scope, maxResults) {
 
     lines.push(`    Path: ${buildFullPathSelector(el)}`);
 
-    // 完整计算样式
     const allStyles = getAllComputedStyles(el);
     if (allStyles) lines.push(`    Styles: ${allStyles}`);
 
@@ -1036,29 +790,12 @@ function formatGrepOutput(groups, scope, maxResults) {
   return result;
 }
 
-/**
- * 执行元素搜索（主函数）
- *
- * 搜索策略（方法优先）：
- * 1. 总是先用 CSS 选择器搜索（querySelectorAll），覆盖标签名、#id、.class、复合选择器
- * 2. CSS 选择器无结果且查询不像 CSS 选择器时，降级为关键词搜索
- *
- * 这确保 get_page_structure 返回的 shortSelector（如 nav、div.container）
- * 都能被可靠地 grep 到，不依赖启发式检测。
- *
- * @param {string} query - 查询字符串（CSS 选择器或关键词）
- * @param {string} scope - 范围：'self'、'children' 或 'subtree'
- * @param {number} maxResults - 最大结果数
- * @returns {string} 搜索结果字符串
- */
+// 执行元素搜索（主函数）
 function runGrep(query, scope = "children", maxResults = 5) {
   maxResults = Math.max(1, Math.min(maxResults, 20));
 
-  // 第一步：尝试 CSS 选择器搜索（querySelectorAll 对标签名也有效）
   let elements = selectorSearch(query, maxResults);
 
-  // 第二步：选择器无结果时，降级为关键词搜索
-  // 仅当查询不含明确的 CSS 选择器语法时才降级，避免对合法但无匹配的选择器误降级
   if (elements.length === 0 && !isCssSelector(query)) {
     elements = keywordSearch(query, maxResults);
   }
@@ -1071,39 +808,16 @@ function runGrep(query, scope = "children", maxResults = 5) {
 
 // === CSS 注入/回滚功能 ===
 
-/**
- * 当前活动的样式元素（方案 1：<style> 标签注入）
- * @type {HTMLStyleElement|null}
- */
 let activeStyleEl = null;
-
-/**
- * Constructable Stylesheet 实例（方案 2：adoptedStyleSheets）
- * @type {CSSStyleSheet|null}
- */
 let adoptedSheet = null;
-
-/**
- * CSS 注入方式缓存
- * @type {'style-element'|'adopted-stylesheets'|'scripting-api'|null}
- */
 let cssInjectionMethod = null;
-
-/**
- * CSS 变更栈（内存中的会话状态）
- * @type {string[]}
- */
 const cssStack = [];
 
-/**
- * 检测可用的 CSS 注入方式
- * 按优先级尝试：<style> 标签 → adoptedStyleSheets → scripting-api
- * 结果缓存，只检测一次
- */
+// 检测可用的 CSS 注入方式
 function detectCSSInjectionMethod() {
   if (cssInjectionMethod) return cssInjectionMethod;
 
-  // 方案 1：<style> 标签注入（默认，兼容性最广）
+  // 方案 1：<style> 标签注入
   try {
     const testStyle = document.createElement("style");
     testStyle.textContent = "#styleswift-csp-test { display: none }";
@@ -1118,7 +832,7 @@ function detectCSSInjectionMethod() {
     /* CSP 阻止 */
   }
 
-  // 方案 2：Constructable Stylesheets（Chrome 73+，绕过部分 CSP）
+  // 方案 2：Constructable Stylesheets
   try {
     const sheet = new CSSStyleSheet();
     sheet.replaceSync("#styleswift-csp-test { display: none }");
@@ -1133,9 +847,7 @@ function detectCSSInjectionMethod() {
   return cssInjectionMethod;
 }
 
-/**
- * 使用 <style> 标签注入 CSS（方案 1）
- */
+// 使用 <style> 标签注入 CSS
 function injectCSSStyleElement(fullCSS) {
   if (!activeStyleEl) {
     activeStyleEl = document.createElement("style");
@@ -1145,9 +857,7 @@ function injectCSSStyleElement(fullCSS) {
   activeStyleEl.textContent = fullCSS;
 }
 
-/**
- * 使用 adoptedStyleSheets 注入 CSS（方案 2）
- */
+// 使用 adoptedStyleSheets 注入 CSS
 function injectCSSAdopted(fullCSS) {
   if (!adoptedSheet) {
     adoptedSheet = new CSSStyleSheet();
@@ -1159,9 +869,7 @@ function injectCSSAdopted(fullCSS) {
   adoptedSheet.replaceSync(fullCSS);
 }
 
-/**
- * 根据检测结果更新当前 CSS 显示
- */
+// 根据检测结果更新当前 CSS 显示
 function applyCurrentCSS() {
   const fullCSS = cssStack.join("\n");
   const method = detectCSSInjectionMethod();
@@ -1174,18 +882,11 @@ function applyCurrentCSS() {
       injectCSSAdopted(fullCSS);
       break;
     case "scripting-api":
-      // scripting-api 由 Side Panel 处理，此处不操作 DOM
       break;
   }
 }
 
-/**
- * 注入 CSS 到页面
- * 自动选择最佳注入方式（带 CSP 降级）
- *
- * @param {string} css - CSS 代码
- * @returns {void|{fallback: string, css: string}} scripting-api 降级时返回对象
- */
+// 注入 CSS 到页面
 function injectCSS(css) {
   cssStack.push(css);
 
@@ -1197,12 +898,7 @@ function injectCSS(css) {
   applyCurrentCSS();
 }
 
-/**
- * 回滚 CSS
- *
- * @param {string} [scope='last'] - 'last' 或 'all'
- * @returns {void}
- */
+// 回滚 CSS
 function rollbackCSS(scope = "last") {
   if (scope === "all") {
     cssStack.length = 0;
@@ -1212,28 +908,12 @@ function rollbackCSS(scope = "last") {
   applyCurrentCSS();
 }
 
-/**
- * 获取当前活动的 CSS
- *
- * 返回 cssStack 中所有 CSS 的合并结果。
- * 用于 Side Panel 在 rollback_last 后同步存储。
- *
- * @returns {string} 合并后的 CSS 代码，如果栈为空则返回空字符串
- */
+// 获取当前活动的 CSS
 function getActiveCSS() {
   return cssStack.join("\n");
 }
 
-/**
- * 卸载当前会话样式
- *
- * 用于会话切换时卸载当前会话的样式：
- * 1. 移除 activeStyleEl 元素（如果存在）
- * 2. 清空 cssStack
- * 3. 重置 activeStyleEl 为 null
- *
- * @returns {boolean} 是否成功卸载（有样式则返回 true，无样式返回 false）
- */
+// 卸载当前会话样式
 function removeEarlyInjectStyle() {
   const el = document.getElementById("styleswift-active-persistent");
   if (el && el.parentNode) {
@@ -1268,19 +948,7 @@ function unloadSessionCSS() {
   return hadStyles;
 }
 
-/**
- * 加载会话样式
- *
- * 用于会话切换时加载目标会话的样式：
- * 1. 清空当前 cssStack
- * 2. 如果提供了 CSS，将其推入栈中
- * 3. 创建或更新 activeStyleEl 元素
- *
- * 同时移除 early-inject.js 注入的样式元素（content.js 接管后不再需要）。
- *
- * @param {string} css - 要加载的 CSS 代码（可以为空字符串）
- * @returns {boolean} 是否成功加载（有 CSS 内容则返回 true，否则返回 false）
- */
+// 加载会话样式
 function loadSessionCSS(css) {
   cssStack.length = 0;
   removeEarlyInjectStyle();
@@ -1293,7 +961,6 @@ function loadSessionCSS(css) {
   if (hasStyles) {
     applyCurrentCSS();
   } else {
-    // 清除所有注入方式
     if (activeStyleEl && activeStyleEl.parentNode) {
       activeStyleEl.parentNode.removeChild(activeStyleEl);
       activeStyleEl = null;
@@ -1317,9 +984,7 @@ let _pickerOverlay = null;
 let _pickerHighlight = null;
 let _hoveredElement = null;
 
-/**
- * 创建选择器覆盖层和高亮元素
- */
+// 创建选择器覆盖层和高亮元素
 function createPickerOverlay() {
   if (_pickerOverlay) return;
 
@@ -1426,9 +1091,7 @@ function stopPicker() {
   removePickerOverlay();
 }
 
-/**
- * 提取选中元素及其子元素的结构和样式信息
- */
+// 提取选中元素及其子元素的结构和样式信息
 function extractElementInfo(el) {
   const tag = el.tagName.toLowerCase();
   const selector = uniqueSelector(el);
@@ -1469,24 +1132,13 @@ function extractElementInfo(el) {
 
 // === 消息监听器 ===
 
-/**
- * 监听来自 Side Panel 的消息
- *
- * 支持的工具：
- * - get_domain: 返回当前页面的域名
- * - inject_css: 注入 CSS（args: { css }）
- * - rollback_css: 回滚 CSS（args: { scope }）
- * - get_active_css: 获取当前活动的 CSS
- * - start_picker: 启动元素选择器
- * - stop_picker: 停止元素选择器
- */
+// 监听来自 Side Panel 的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const { tool, args = {} } = message;
 
   try {
     switch (tool) {
       case "get_domain":
-        // 返回当前页面的域名
         sendResponse(location.hostname || "unknown");
         break;
 
@@ -1505,9 +1157,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       case "rollback_css": {
-        // 回滚 CSS
         rollbackCSS(args.scope);
-        // 返回回滚后的 CSS，供 Side Panel 更新存储
         const rolledBackCSS = getActiveCSS();
         sendResponse({ success: true, css: rolledBackCSS });
         break;
@@ -1523,31 +1173,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         break;
 
       case "get_active_css":
-        // 获取当前活动的 CSS
         const css = getActiveCSS();
         sendResponse(css || null);
         break;
 
       case "unload_session_css":
-        // 卸载当前会话样式（会话切换时使用）
         const unloaded = unloadSessionCSS();
         sendResponse({ success: true, hadStyles: unloaded });
         break;
 
       case "load_session_css":
-        // 加载会话样式（会话切换时使用）
         const loaded = loadSessionCSS(args.css || "");
         sendResponse({ success: true, hasStyles: loaded });
         break;
 
       case "get_page_structure":
-        // 获取页面结构
         const structure = getPageStructure();
         sendResponse(structure);
         break;
 
       case "grep":
-        // 搜索元素
         const grepResult = runGrep(
           args.query,
           args.scope || "children",
@@ -1567,7 +1212,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         break;
 
       default:
-        // 未知工具
         console.warn(`[StyleSwift] Unknown tool: ${tool}`);
         sendResponse({ error: `Unknown tool: ${tool}` });
     }
@@ -1576,7 +1220,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ error: error.message });
   }
 
-  // 返回 true 表示异步响应（虽然这里都是同步的，但保持一致性）
   return true;
 });
 

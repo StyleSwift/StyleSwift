@@ -335,10 +335,11 @@ const TODO_WRITE_TOOL = {
 - 需要追踪任务完成进度
 
 工作模式：
-1. 规划模式（首次调用）：传入完整任务数组，设置所有任务状态为 pending
+1. 规划模式（首次调用）：传入完整任务数组，设置所有任务状态为 pending。
+   计划会展示给用户确认，用户可以编辑、增删步骤。确认后才开始执行。
    例：todos: [{content: "获取页面结构", status: "pending"}, {content: "修改导航样式", status: "pending"}]
 
-2. 更新模式（后续调用）：传入任务 id 和新状态，更新单个任务进度
+2. 更新模式（后续调用）：传入任务 id 和新状态，更新单个任务进度（无需确认）
    例：todos: [{id: "todo_1", status: "in_progress"}] 或 [{id: "todo_1", status: "completed"}]
 
 状态流转：pending → in_progress → completed
@@ -646,7 +647,7 @@ async function runApplyStyles(css, mode, tabId) {
       await updateStylesSummary();
 
       return newCSS.trim()
-        ? `已回滚到上一次样式（历史栈: ${history.length} 层）。当前完整样式：\n${newCSS}`
+        ? `已回滚到上一次样式（历史栈: ${history.length} 层）。`
         : "已回滚所有样式。当前无已应用样式。";
     }
 
@@ -704,7 +705,7 @@ async function runApplyStyles(css, mode, tabId) {
       // 5. 更新样式摘要
       await updateStylesSummary();
 
-      return `样式已应用（历史栈: ${history.length} 层）。当前完整样式：\n${merged}`;
+      return `样式已应用（历史栈: ${history.length} 层）。`;
     }
 
     throw new Error(`[runApplyStyles] 未知模式: ${mode}`);
@@ -726,7 +727,7 @@ async function runApplyStyles(css, mode, tabId) {
  * @param {string} oldCSS - 要替换的 CSS 片段（必须精确匹配）
  * @param {string} newCSS - 替换后的内容（空字符串表示删除）
  * @param {number} [tabId] - 目标 Tab ID（可选，优先于全局锁定）
- * @returns {Promise<string>} 操作结果 + 更新后的完整 CSS
+ * @returns {Promise<string>} 操作结果
  */
 async function runEditCSS(oldCSS, newCSS, tabId) {
   if (!currentSession) {
@@ -737,7 +738,7 @@ async function runEditCSS(oldCSS, newCSS, tabId) {
   const { [sKey]: stored = "" } = await chrome.storage.local.get(sKey);
 
   if (!stored || !stored.includes(oldCSS)) {
-    return `编辑失败：未找到匹配的 CSS 片段。请确保 old_css 与 [当前已应用样式] 中的内容完全一致。\n\n当前完整样式：\n${stored || "(无)"}`;
+    return `编辑失败：未找到匹配的 CSS 片段。请确保 old_css 与 [当前已应用样式] 中的内容完全一致。`;
   }
 
   const updated = stored.replace(oldCSS, newCSS);
@@ -754,7 +755,7 @@ async function runEditCSS(oldCSS, newCSS, tabId) {
   await updateStylesSummary();
 
   if (trimmed) {
-    return `样式已更新。当前完整样式：\n${trimmed}`;
+    return `样式已更新。`;
   }
   return "样式已全部删除。当前无已应用样式。";
 }
@@ -1005,6 +1006,7 @@ const TOOL_HANDLERS = {
         args.agent_type,
         context?.abortSignal,
         context?.tabId,
+        context?.uiCallbacks,
       );
     }
     return "(子智能体功能尚未实现)";

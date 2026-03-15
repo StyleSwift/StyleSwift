@@ -1870,6 +1870,108 @@ pre code {
   flex-shrink: 0;
 }
 
+/* ============================================================
+   子智能体活动面板
+   ============================================================ */
+
+.subagent-panel {
+  margin: var(--spacing-xs) var(--spacing-sm) var(--spacing-xs) var(--spacing-md);
+  border: 1px solid color-mix(in srgb, var(--color-accent, #4f8ef7) 35%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-accent, #4f8ef7) 4%, var(--color-bg-primary));
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.subagent-panel.done {
+  border-color: color-mix(in srgb, var(--color-accent, #4f8ef7) 20%, transparent);
+  background: color-mix(in srgb, var(--color-accent, #4f8ef7) 2%, var(--color-bg-primary));
+}
+
+.subagent-panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+  background: color-mix(in srgb, var(--color-accent, #4f8ef7) 8%, var(--color-bg-secondary));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-accent, #4f8ef7) 20%, transparent);
+  user-select: none;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.subagent-panel.done .subagent-panel-header {
+  border-bottom-color: transparent;
+}
+
+.subagent-panel.collapsed .subagent-panel-header {
+  border-bottom-color: transparent;
+}
+
+.subagent-panel-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.subagent-panel-label {
+  color: var(--color-accent, #4f8ef7);
+  font-weight: var(--font-weight-semibold);
+  flex-shrink: 0;
+}
+
+.subagent-panel-desc {
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.subagent-panel-toggle {
+  color: var(--color-text-secondary);
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 10px;
+  transition: transform 0.15s;
+}
+
+.subagent-panel-body {
+  padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  transition: max-height 0.25s ease, opacity 0.2s;
+}
+
+.subagent-panel.collapsed .subagent-panel-body {
+  display: none;
+}
+
+/* 子智能体文本气泡 */
+.subagent-text-bubble {
+  display: none;
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+  color: var(--color-text-primary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.subagent-text-bubble.has-content {
+  display: block;
+}
+
+/* 子智能体面板中的工具卡片组不需要额外外边距 */
+.subagent-panel-body .tool-card-group {
+  margin: 0;
+}
+
 /* 通过/失败 + 评分行 */
 .task-result-row {
   display: flex;
@@ -2125,6 +2227,165 @@ pre code {
 
 .todo-item-completed .todo-content {
   text-decoration: line-through;
+}
+
+/* ── 任务确认模式 ── */
+
+.todo-floating-container.todo-confirmation-mode {
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  margin: 0 var(--spacing-sm) var(--spacing-xs);
+  background: var(--color-bg-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.todo-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--spacing-sm);
+  padding: 0 var(--spacing-xs);
+}
+
+.todo-step-count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.todo-list-editable {
+  gap: var(--spacing-xs);
+}
+
+.todo-item-editable {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+  transition: background-color var(--duration-fast) var(--easing-default);
+}
+
+.todo-item-editable:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.todo-drag-handle {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--color-text-quaternary);
+  cursor: grab;
+  user-select: none;
+  letter-spacing: -1px;
+}
+
+.todo-edit-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: background-color var(--duration-fast) var(--easing-default);
+}
+
+.todo-edit-input:focus {
+  background: var(--color-bg-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.todo-edit-input::placeholder {
+  color: var(--color-text-quaternary);
+}
+
+.todo-delete-btn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-quaternary);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--duration-fast), background-color var(--duration-fast), color var(--duration-fast);
+}
+
+.todo-item-editable:hover .todo-delete-btn {
+  opacity: 1;
+}
+
+.todo-delete-btn:hover {
+  background: var(--color-danger-bg, rgba(220, 38, 38, 0.1));
+  color: var(--color-danger, #dc2626);
+}
+
+.todo-add-btn {
+  width: 100%;
+  border: 1px dashed var(--color-border);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  padding: var(--spacing-xs) 0;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  margin-top: var(--spacing-xs);
+  transition: border-color var(--duration-fast), color var(--duration-fast), background-color var(--duration-fast);
+}
+
+.todo-add-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.todo-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.todo-cancel-btn,
+.todo-confirm-btn {
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background-color var(--duration-fast), color var(--duration-fast), border-color var(--duration-fast);
+}
+
+.todo-cancel-btn {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.todo-cancel-btn:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-text-tertiary);
+}
+
+.todo-confirm-btn {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.todo-confirm-btn:hover {
+  filter: brightness(1.1);
 }
 
 /* 会话卡片 */

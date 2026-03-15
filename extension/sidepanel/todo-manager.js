@@ -36,6 +36,14 @@ let todoIdCounter = 0;
  */
 let onTodoUpdate = null;
 
+/**
+ * 计划确认状态
+ * 新计划创建后进入等待确认状态，用户确认/取消后解除
+ */
+let _awaitingConfirmation = false;
+let _confirmResolve = null;
+let _confirmPromise = null;
+
 // =============================================================================
 // 核心函数
 // =============================================================================
@@ -55,6 +63,12 @@ function generateTodoId() {
 function resetTodos() {
   currentTodos = [];
   todoIdCounter = 0;
+  _awaitingConfirmation = false;
+  if (_confirmResolve) {
+    _confirmResolve({ confirmed: false });
+  }
+  _confirmResolve = null;
+  _confirmPromise = null;
 }
 
 /**
@@ -67,10 +81,11 @@ function setTodoUpdateCallback(callback) {
 
 /**
  * 触发 UI 更新
+ * 传递确认状态，让 UI 决定渲染普通模式还是确认模式
  */
 function notifyUpdate() {
   if (onTodoUpdate) {
-    onTodoUpdate([...currentTodos]);
+    onTodoUpdate([...currentTodos], { awaitingConfirmation: _awaitingConfirmation });
   }
 }
 
@@ -99,7 +114,7 @@ function updateTodos(todos) {
   const isIncremental = todos[0].id !== undefined;
 
   if (isIncremental) {
-    // 增量更新模式
+    // 增量更新模式（不需要确认）
     for (const update of todos) {
       if (!update.id) continue;
 
@@ -113,20 +128,19 @@ function updateTodos(todos) {
         }
       }
     }
+    notifyUpdate();
+    return formatTodoList();
   } else {
-    // 完全替换模式
+    // 完全替换模式 → 进入等待用户确认状态
     currentTodos = todos.map(t => ({
       id: generateTodoId(),
       content: t.content || '(未命名任务)',
       status: t.status || TodoStatus.PENDING
     }));
+    _awaitingConfirmation = true;
+    notifyUpdate();
+    return `📋 任务计划已创建，等待用户确认后执行：\n${formatTodoList()}`;
   }
-
-  // 触发 UI 更新
-  notifyUpdate();
-
-  // 返回格式化的任务列表
-  return formatTodoList();
 }
 
 /**
@@ -189,6 +203,68 @@ function formatTodoList() {
 }
 
 // =============================================================================
+// 计划确认机制
+// =============================================================================
+
+/**
+ * 是否正在等待用户确认计划
+ * @returns {boolean}
+ */
+function isAwaitingConfirmation() {
+  return _awaitingConfirmation;
+}
+
+/**
+ * 请求用户确认计划
+ * 返回一个 Promise，在用户确认或取消时 resolve
+ * @returns {Promise<{confirmed: boolean, todos?: Array}>}
+ */
+function requestConfirmation() {
+  if (_confirmPromise) return _confirmPromise;
+  _confirmPromise = new Promise(resolve => {
+    _confirmResolve = resolve;
+  });
+  return _confirmPromise;
+}
+
+/**
+ * 用户确认计划（由 UI 调用）
+ * @param {Array<{content: string}>} editedTodos - 用户编辑后的任务列表
+ */
+function confirmPlan(editedTodos) {
+  if (editedTodos && editedTodos.length > 0) {
+    todoIdCounter = 0;
+    currentTodos = editedTodos.map(t => ({
+      id: generateTodoId(),
+      content: t.content,
+      status: TodoStatus.PENDING
+    }));
+  }
+  _awaitingConfirmation = false;
+  const result = { confirmed: true, todos: [...currentTodos] };
+  notifyUpdate();
+  if (_confirmResolve) {
+    _confirmResolve(result);
+    _confirmResolve = null;
+    _confirmPromise = null;
+  }
+}
+
+/**
+ * 用户取消计划（由 UI 调用）
+ */
+function rejectPlan() {
+  _awaitingConfirmation = false;
+  currentTodos = [];
+  notifyUpdate();
+  if (_confirmResolve) {
+    _confirmResolve({ confirmed: false });
+    _confirmResolve = null;
+    _confirmPromise = null;
+  }
+}
+
+// =============================================================================
 // 导出
 // =============================================================================
 
@@ -200,5 +276,9 @@ export {
   getTodos,
   startTodo,
   completeTodo,
-  formatTodoList
+  formatTodoList,
+  isAwaitingConfirmation,
+  requestConfirmation,
+  confirmPlan,
+  rejectPlan
 };

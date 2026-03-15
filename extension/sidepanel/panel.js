@@ -1511,6 +1511,9 @@ async function handleSendClick() {
   // 工具输入暂存 Map（toolId -> input），在 showToolResult 时使用
   const toolInputMap = new Map();
 
+  // SubAgent 活动面板 Map（taskToolId -> { panel, toolCardMgr, streamingRenderer, toolInputMap }）
+  const subAgentPanelMap = new Map();
+
   // 样式应用计数器（用于确认浮层）
   let applyStylesCount = 0;
 
@@ -1601,6 +1604,18 @@ async function handleSendClick() {
       },
 
       /**
+       * 子智能体开始执行时创建内嵌活动面板，返回子 uiCallbacks
+       * @param {string} taskId - Task 工具调用 ID
+       * @param {Object} input - Task 工具输入（含 agent_type、description）
+       * @returns {Object} 子 uiCallbacks
+       */
+      onTaskStart: (taskId, input) => {
+        const panel = createSubAgentPanel(taskId, input);
+        subAgentPanelMap.set(taskId, panel);
+        return panel.uiCallbacks;
+      },
+
+      /**
        * 显示工具执行中状态
        * @param {string} toolName - 工具名称
        */
@@ -1614,6 +1629,12 @@ async function handleSendClick() {
        * @param {string} output - 工具输出
        */
       showToolResult: (toolId, output) => {
+        // 如果有对应的子智能体面板，先完成它
+        const subPanel = subAgentPanelMap.get(toolId);
+        if (subPanel) {
+          subPanel.uiCallbacks.finalize();
+          subAgentPanelMap.delete(toolId);
+        }
         const card = toolCardManager.cardMap.get(toolId);
         const toolName = card?.dataset.toolName || null;
         const toolInput = toolInputMap.get(toolId) ?? null;
@@ -1623,9 +1644,11 @@ async function handleSendClick() {
       /**
        * 更新任务列表显示
        * @param {Array<{id: string, content: string, status: string}>} todos - 任务列表
+       * @param {Object} [meta] - 元信息
+       * @param {boolean} [meta.awaitingConfirmation] - 是否等待用户确认
        */
-      onTodoUpdate: (todos) => {
-        todoCardManager.updateTodos(todos);
+      onTodoUpdate: (todos, meta) => {
+        todoCardManager.updateTodos(todos, meta?.awaitingConfirmation);
       },
     };
 
@@ -5166,6 +5189,9 @@ const TODO_STATUS_ICONS = {
 /**
  * 任务卡片管理器
  * 用于管理悬浮在输入框上方的任务列表显示
+ * 支持两种模式：
+ * - 确认模式：用户可编辑、增删步骤后确认执行
+ * - 进度模式：只读显示任务执行进度
  */
 class TodoCardManager {
   constructor() {
@@ -5210,29 +5236,178 @@ class TodoCardManager {
   /**
    * 更新任务列表显示
    * @param {Array<{id: string, content: string, status: string}>} todos - 任务列表
+   * @param {boolean} [awaitingConfirmation=false] - 是否处于等待确认状态
    */
-  updateTodos(todos) {
+  updateTodos(todos, awaitingConfirmation = false) {
     if (!todos || todos.length === 0) {
-      // 没有任务时移除容器
       this.hide();
       return;
     }
 
-    // 检查是否所有任务都已完成
-    const allCompleted = todos.every((t) => t.status === "completed");
-
-    // 确保有容器
     if (!this.todoContainer) {
       this.createTodoContainer();
     }
 
-    // 计算进度
+    if (awaitingConfirmation) {
+      this._renderConfirmationMode(todos);
+    } else {
+      this._renderProgressMode(todos);
+    }
+  }
+
+  /**
+   * 渲染确认模式：可编辑的任务计划
+   * @param {Array} todos
+   * @private
+   */
+  _renderConfirmationMode(todos) {
+    const todosHtml = todos
+      .map(
+        (todo, index) => `
+      <div class="todo-item todo-item-editable" data-index="${index}">
+        <span class="todo-drag-handle">⠿</span>
+        <input type="text" class="todo-edit-input" value="${this._escapeAttr(todo.content)}" />
+        <button class="todo-delete-btn" data-index="${index}" title="删除此步骤">×</button>
+      </div>
+    `,
+      )
+      .join("");
+
+    this.todoContainer.innerHTML = `
+      <div class="todo-card-header">
+        <span class="todo-card-title">📋 请确认任务计划</span>
+        <span class="todo-step-count">${todos.length} 个步骤</span>
+      </div>
+      <div class="todo-hint">可编辑、增删步骤后确认执行</div>
+      <div class="todo-list todo-list-editable">
+        ${todosHtml}
+      </div>
+      <button class="todo-add-btn">+ 添加步骤</button>
+      <div class="todo-confirm-actions">
+        <button class="todo-cancel-btn">取消</button>
+        <button class="todo-confirm-btn">确认执行</button>
+      </div>
+    `;
+
+    this.todoContainer.classList.add("todo-confirmation-mode");
+    this._wireConfirmationEvents();
+  }
+
+  /**
+   * 绑定确认模式的交互事件
+   * @private
+   */
+  _wireConfirmationEvents() {
+    const container = this.todoContainer;
+    if (!container) return;
+
+    // 删除按钮
+    container.querySelectorAll(".todo-delete-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const item = e.target.closest(".todo-item");
+        if (item) {
+          item.remove();
+          this._updateStepCount();
+        }
+      });
+    });
+
+    // 添加步骤按钮
+    const addBtn = container.querySelector(".todo-add-btn");
+    if (addBtn) {
+      addBtn.addEventListener("click", () => {
+        const list = container.querySelector(".todo-list");
+        if (!list) return;
+        const newItem = document.createElement("div");
+        newItem.className = "todo-item todo-item-editable";
+        newItem.innerHTML = `
+          <span class="todo-drag-handle">⠿</span>
+          <input type="text" class="todo-edit-input" value="" placeholder="输入步骤描述..." />
+          <button class="todo-delete-btn" title="删除此步骤">×</button>
+        `;
+        newItem.querySelector(".todo-delete-btn").addEventListener("click", () => {
+          newItem.remove();
+          this._updateStepCount();
+        });
+        list.appendChild(newItem);
+        newItem.querySelector(".todo-edit-input").focus();
+        this._updateStepCount();
+      });
+    }
+
+    // 确认按钮
+    const confirmBtn = container.querySelector(".todo-confirm-btn");
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", async () => {
+        const inputs = container.querySelectorAll(".todo-edit-input");
+        const editedTodos = [];
+        inputs.forEach((input) => {
+          const content = input.value.trim();
+          if (content) {
+            editedTodos.push({ content, status: "pending" });
+          }
+        });
+
+        if (editedTodos.length === 0) {
+          const { rejectPlan } = await import("./todo-manager.js");
+          rejectPlan();
+          return;
+        }
+
+        const { confirmPlan } = await import("./todo-manager.js");
+        confirmPlan(editedTodos);
+      });
+    }
+
+    // 取消按钮
+    const cancelBtn = container.querySelector(".todo-cancel-btn");
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", async () => {
+        const { rejectPlan } = await import("./todo-manager.js");
+        rejectPlan();
+      });
+    }
+
+    // Enter 键在输入框中按下时移动到下一个
+    container.querySelectorAll(".todo-edit-input").forEach((input) => {
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const nextItem = input.closest(".todo-item")?.nextElementSibling;
+          if (nextItem) {
+            nextItem.querySelector(".todo-edit-input")?.focus();
+          } else {
+            container.querySelector(".todo-add-btn")?.click();
+          }
+        }
+      });
+    });
+  }
+
+  /**
+   * 更新步骤计数显示
+   * @private
+   */
+  _updateStepCount() {
+    const countEl = this.todoContainer?.querySelector(".todo-step-count");
+    const itemCount = this.todoContainer?.querySelectorAll(".todo-item").length || 0;
+    if (countEl) {
+      countEl.textContent = `${itemCount} 个步骤`;
+    }
+  }
+
+  /**
+   * 渲染进度模式：只读显示执行进度
+   * @param {Array} todos
+   * @private
+   */
+  _renderProgressMode(todos) {
+    const allCompleted = todos.every((t) => t.status === "completed");
     const completed = todos.filter((t) => t.status === "completed").length;
     const total = todos.length;
     const progressPercent =
       total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    // 生成任务列表 HTML
     const todosHtml = todos
       .map((todo) => {
         const icon = TODO_STATUS_ICONS[todo.status] || "⏳";
@@ -5259,7 +5434,8 @@ class TodoCardManager {
       </div>
     `;
 
-    // 如果所有任务完成，延迟隐藏
+    this.todoContainer.classList.remove("todo-confirmation-mode");
+
     if (allCompleted) {
       this.todoContainer.classList.add("all-completed");
       setTimeout(() => {
@@ -5294,6 +5470,20 @@ class TodoCardManager {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  /**
+   * 转义 HTML 属性值
+   * @param {string} text
+   * @returns {string}
+   * @private
+   */
+  _escapeAttr(text) {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
   }
 }
 
@@ -5349,6 +5539,103 @@ function finalizeToolCardGroup() {
  */
 function createToolCardGroup() {
   return toolCardManager.createCardGroup();
+}
+
+/**
+ * 在消息容器中创建子智能体活动面板，并返回对应的子 uiCallbacks
+ * @param {string} taskId - Task 工具调用 ID
+ * @param {Object} input - Task 工具输入（agent_type、description 等）
+ * @returns {{ uiCallbacks: Object }}
+ */
+function createSubAgentPanel(taskId, input) {
+  const agentType = input?.agent_type || "SubAgent";
+  const description = input?.description || "";
+
+  // 外层面板容器
+  const panel = document.createElement("div");
+  panel.className = "subagent-panel";
+  panel.dataset.taskId = taskId;
+
+  // 面板头部（标签 + 折叠按钮）
+  const header = document.createElement("div");
+  header.className = "subagent-panel-header";
+  header.innerHTML = `
+    <span class="subagent-panel-icon">🤖</span>
+    <span class="subagent-panel-label">${escapeHtml(agentType)}</span>
+    ${description ? `<span class="subagent-panel-desc">${escapeHtml(description)}</span>` : ""}
+    <span class="subagent-panel-toggle">▾</span>
+  `;
+  panel.appendChild(header);
+
+  // 面板主体（内嵌输出区域）
+  const body = document.createElement("div");
+  body.className = "subagent-panel-body";
+  panel.appendChild(body);
+
+  // 折叠/展开交互
+  header.addEventListener("click", () => {
+    const collapsed = panel.classList.toggle("collapsed");
+    header.querySelector(".subagent-panel-toggle").textContent = collapsed ? "▸" : "▾";
+  });
+
+  addMessageToContainer(panel);
+
+  // 子智能体独立的文本气泡
+  const textBubble = document.createElement("div");
+  textBubble.className = "subagent-text-bubble";
+  body.appendChild(textBubble);
+
+  let subStreamingRenderer = createStreamingRenderer(textBubble);
+  let hasText = false;
+
+  // 子智能体独立的工具卡片管理器
+  const subCardManager = new ToolCardManager();
+
+  const subToolInputMap = new Map();
+
+  const uiCallbacks = {
+    appendText: (delta) => {
+      if (!delta) return;
+      if (!hasText) {
+        hasText = true;
+        textBubble.classList.add("has-content");
+      }
+      subStreamingRenderer.appendText(delta);
+    },
+
+    appendReasoning: (_delta) => {
+      // SubAgent 推理内容暂不展示，避免界面过于拥挤
+    },
+
+    showToolCall: (block) => {
+      if (block.type !== "tool_use") return;
+      subToolInputMap.set(block.id, block.input);
+      if (!subCardManager.hasActiveCardGroup()) {
+        const group = subCardManager.createCardGroup();
+        body.appendChild(group);
+        scrollToBottom();
+      }
+      subCardManager.addToolCard(block.id, block.name);
+      scrollToBottom();
+    },
+
+    showToolExecuting: (_toolName) => {},
+
+    showToolResult: (toolId, output) => {
+      const card = subCardManager.cardMap.get(toolId);
+      const toolName = card?.dataset.toolName || null;
+      const toolInput = subToolInputMap.get(toolId) ?? null;
+      subCardManager.completeToolCard(toolId, toolName, toolInput, output);
+    },
+
+    finalize: () => {
+      subStreamingRenderer.finish();
+      subCardManager.finalizeCardGroup();
+      panel.classList.add("done");
+    },
+  };
+
+  return { panel, body, uiCallbacks };
 }
 
 // ============================================================================
