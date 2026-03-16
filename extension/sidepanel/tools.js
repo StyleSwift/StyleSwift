@@ -8,6 +8,7 @@ import { currentSession, updateStylesSummary } from "./session.js";
 import { mergeCSS, checkBraceBalance, repairBraces } from "./css-merge.js";
 import { StyleSkillStore } from "./style-skill.js";
 import { createSkillManager } from "./skill-loader.js";
+import { validateToolArgs } from "./schema-validator.js";
 
 // =============================================================================
 // §3.1 get_page_structure - 获取页面结构
@@ -431,6 +432,14 @@ const BASE_TOOLS = [
 const SUBAGENT_TOOLS = [...BASE_TOOLS, CAPTURE_SCREENSHOT_TOOL];
 
 const ALL_TOOLS = [...BASE_TOOLS, TASK_TOOL, CAPTURE_SCREENSHOT_TOOL];
+
+/**
+ * 工具名 → input_schema 查找表，供运行时 schema 校验使用。
+ * 由 ALL_TOOLS 自动构建，无需手动维护。
+ *
+ * @type {Map<string, object>}
+ */
+const TOOL_SCHEMA_MAP = new Map(ALL_TOOLS.map((t) => [t.name, t.input_schema]));
 
 // =============================================================================
 // Skill Manager - 统一管理静态技能和用户技能
@@ -1017,7 +1026,8 @@ const TOOL_HANDLERS = {
  * 工具执行器统一分派器
  *
  * 通过 TOOL_HANDLERS dispatch map 路由到对应的实现函数。
- * 保证返回值为字符串。
+ * 在执行前会根据 input_schema 校验参数，若校验失败则直接返回结构化错误
+ * 供模型读取并自行修正参数后重新调用。
  *
  * @param {string} name - 工具名称
  * @param {object} args - 工具参数
@@ -1029,6 +1039,21 @@ async function executeTool(name, args, context) {
   if (!handler) {
     return `未知工具: ${name}`;
   }
+
+  // ── Schema 校验 ────────────────────────────────────────────────────────────
+  const schema = TOOL_SCHEMA_MAP.get(name);
+  if (schema) {
+    const { valid, errors } = validateToolArgs(schema, args);
+    if (!valid) {
+      const errorList = errors.map((e) => `  • ${e}`).join("\n");
+      console.warn(`[Schema] 工具 "${name}" 参数校验失败：\n${errorList}`);
+      return (
+        `[参数校验失败] 工具 "${name}" 的调用参数不合法：\n${errorList}\n\n` +
+        `请根据以上错误修正参数，然后重新调用该工具。`
+      );
+    }
+  }
+
   return await handler(args, context);
 }
 
