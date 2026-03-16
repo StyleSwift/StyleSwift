@@ -2613,10 +2613,9 @@ async function renderSkillChips() {
     console.warn("[Panel] Failed to load user skills:", err);
   }
 
-  // If no skills at all, show empty action
+  // If no skills at all, hide the skill area
   if (allSkillData.length === 0) {
-    const emptyChip = createEmptyActionChip();
-    DOM.skillChips.appendChild(emptyChip);
+    setSkillAreaVisible(false);
     return;
   }
 
@@ -2735,78 +2734,6 @@ function createUserSkillChip(skill, isRecent = false) {
   });
 
   return chip;
-}
-
-/**
- * Create empty state action chip (dashed style)
- * @returns {HTMLElement}
- */
-function createEmptyActionChip() {
-  const chip = document.createElement("div");
-  chip.className = "skill-chip empty-action";
-  chip.dataset.skillType = "empty-action";
-
-  chip.innerHTML = `
-    <span class="skill-icon">+</span>
-    <span class="skill-name">Create from current style</span>
-  `;
-
-  chip.addEventListener("click", handleEmptyActionClick);
-
-  return chip;
-}
-
-/**
- * Handle skill chip click
- * Fills the input with skill prompt and auto-sends the message
- * Design ref: §16.3 ② 点击行为 - 点击 chip → 自动填入"应用 [技能名] 风格" → 自动发送
- * @param {Object} skill - Skill object
- */
-async function handleSkillChipClick(skill) {
-  if (!DOM.messageInput) return;
-
-  // Don't allow interaction when agent is running
-  if (AppState.agentStatus === "running") {
-    return;
-  }
-
-  // Record usage for recently used skills
-  try {
-    const skillType = skill.type || 'built-in';
-    await StyleSkillStore.recordUsage(skill.id, skillType);
-  } catch (err) {
-    console.warn("[Panel] Failed to record skill usage:", err);
-  }
-
-  // Fill input with skill prompt
-  DOM.messageInput.value = skill.prompt;
-
-  console.log("[Panel] Skill chip clicked:", skill.name);
-
-  // Auto-send the message
-  // Use setTimeout to ensure the input is filled before sending
-  setTimeout(() => {
-    handleSendClick();
-  }, 0);
-}
-
-/**
- * Handle empty action chip click
- * Prompts user to save current style
- */
-function handleEmptyActionClick() {
-  if (!DOM.messageInput) return;
-
-  // Don't allow interaction when agent is running
-  if (AppState.agentStatus === "running") {
-    return;
-  }
-
-  // Fill input with save style prompt
-  DOM.messageInput.value = "Save current style as a reusable skill";
-  DOM.messageInput.focus();
-
-  console.log("[Panel] Empty action chip clicked");
 }
 
 // ============================================================================
@@ -4172,7 +4099,7 @@ async function handleSaveUserProfile() {
 
   if (!DOM.saveProfileBtn) return;
   DOM.saveProfileBtn.disabled = true;
-  showProfileStatus("正在保存...", "info");
+  showProfileStatus("正在保存...", "loading");
 
   try {
     await runUpdateUserProfile(content);
@@ -4188,18 +4115,25 @@ async function handleSaveUserProfile() {
 /**
  * 显示用户画像状态消息
  * @param {string} message - 状态消息
- * @param {string} type - 消息类型: 'success' | 'error' | 'info'
+ * @param {string} type - 消息类型: 'success' | 'error' | 'loading'
  */
 function showProfileStatus(message, type) {
   if (!DOM.profileStatus) return;
+  
   DOM.profileStatus.textContent = message;
-  DOM.profileStatus.className = `status-message ${type}`;
-  DOM.profileStatus.classList.remove("hidden");
+  // 移除所有状态类
+  DOM.profileStatus.classList.remove("hidden", "success", "error", "loading");
+  // 添加当前状态类
+  DOM.profileStatus.classList.add(type, "status-message");
 
-  // 成功消息 2 秒后自动隐藏
+  // 成功消息 2 秒后自动淡出
   if (type === "success") {
     setTimeout(() => {
-      DOM.profileStatus.classList.add("hidden");
+      DOM.profileStatus.classList.add("fade-out");
+      setTimeout(() => {
+        DOM.profileStatus.classList.add("hidden");
+        DOM.profileStatus.classList.remove("fade-out", "success");
+      }, 300);
     }, 2000);
   }
 }
@@ -4218,13 +4152,14 @@ async function handleVerifyConnection() {
   }
 
   DOM.verifyConnectionBtn.disabled = true;
-  showConnectionStatus("正在验证...", "info");
+  DOM.verifyConnectionBtn.classList.add("loading");
+  showConnectionStatus("正在验证连接...", "loading");
 
   try {
     const result = await validateConnection(apiKey, apiBase, model);
 
     if (result.ok) {
-      showConnectionStatus("✓ 连接成功，已保存", "success");
+      showConnectionStatus("✓ 连接成功，设置已保存", "success");
       // 保存所有设置
       await saveSettings({ apiKey, apiBase, model });
       AppState.apiKeyStatus = "valid";
@@ -4241,42 +4176,47 @@ async function handleVerifyConnection() {
       AppState.apiKeyStatus = "invalid";
     }
   } catch (err) {
-    showConnectionStatus(`✗ ${err.message}`, "error");
+    showConnectionStatus(`✗ 连接错误: ${err.message}`, "error");
   } finally {
     DOM.verifyConnectionBtn.disabled = false;
+    DOM.verifyConnectionBtn.classList.remove("loading");
   }
 }
 
 /**
  * 显示连接状态
  * @param {string} message - 状态消息
- * @param {'success' | 'error' | 'info'} type - 状态类型
+ * @param {'success' | 'error' | 'loading'} type - 状态类型
  */
 function showConnectionStatus(message, type) {
   if (!DOM.connectionStatus) return;
 
   DOM.connectionStatus.textContent = message;
+  // 移除所有状态类
   DOM.connectionStatus.classList.remove(
     "hidden",
-    "status-success",
-    "status-error",
-    "status-info",
+    "success",
+    "error",
+    "loading",
   );
-  DOM.connectionStatus.classList.add(`status-${type}`);
+  // 添加当前状态类
+  DOM.connectionStatus.classList.add(type, "status-message");
 
-  // 设置颜色（保留内联样式作为回退）
-  DOM.connectionStatus.style.color =
-    type === "success"
-      ? "var(--color-success)"
-      : type === "error"
-        ? "var(--color-error)"
-        : "var(--color-text-secondary)";
-  DOM.connectionStatus.style.backgroundColor =
-    type === "success"
-      ? "var(--color-success-bg)"
-      : type === "error"
-        ? "var(--color-error-bg)"
-        : "var(--color-info-bg)";
+  // 移除内联样式 - CSS 已处理样式
+  DOM.connectionStatus.style.color = "";
+  DOM.connectionStatus.style.backgroundColor = "";
+
+  // 成功消息 2 秒后自动淡出
+  if (type === "success") {
+    DOM.connectionStatus.classList.add("success");
+    setTimeout(() => {
+      DOM.connectionStatus.classList.add("fade-out");
+      setTimeout(() => {
+        DOM.connectionStatus.classList.add("hidden");
+        DOM.connectionStatus.classList.remove("fade-out", "success");
+      }, 300);
+    }, 2000);
+  }
 }
 
 /**
