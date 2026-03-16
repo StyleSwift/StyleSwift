@@ -581,23 +581,45 @@ pre code {
   color: var(--color-text-inverse);
 }
 
-/* 技能快捷区 — 金属底条 */
+/* 技能快捷区 — 紧凑无缝设计 */
 .skill-area {
   flex-shrink: 0;
-  min-height: var(--skill-area-height);
+  min-height: 0;
+  max-height: 60px;
   padding: var(--spacing-sm) var(--spacing-md);
-  background: linear-gradient(180deg, var(--color-bg-secondary) 0%, var(--color-bg-tertiary) 100%);
-  border-bottom: 1px solid var(--color-border);
-  box-shadow: inset 0 1px 0 var(--color-metal-highlight);
+  background: transparent;
+  border-bottom: none;
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;
-  transition: all var(--duration-normal) var(--easing-default);
+  transition: all var(--duration-normal) var(--easing-out-expo);
+  /* 默认显示，通过JS控制隐藏 */
 }
 
+/* 隐藏状态：当Agent处理后隐藏整个技能区 */
+.skill-area.hidden {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.skill-area::-webkit-scrollbar {
+  height: 4px;
+}
+
+/* 技能区头部 — 隐藏（无缝设计不需要标题） */
+.skill-area-header {
+  display: none;
+}
+
+/* 保留折叠功能但不再显示标题 */
 .skill-area.collapsed {
-  min-height: 32px;
-  padding: var(--spacing-xs) var(--spacing-md);
+  min-height: 0;
+  padding: 0 var(--spacing-md);
 }
 
 .skill-area.collapsed .skill-chips {
@@ -606,53 +628,7 @@ pre code {
   pointer-events: none;
 }
 
-.skill-area::-webkit-scrollbar {
-  height: 4px;
-}
-
-/* 技能区头部 */
-.skill-area-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-xs);
-}
-
-.skill-area.collapsed .skill-area-header {
-  margin-bottom: 0;
-}
-
-.skill-area-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  transition: color var(--duration-fast) var(--easing-default);
-}
-
-.skill-area-toggle:hover {
-  color: var(--color-text-primary);
-}
-
-.skill-area-toggle .skill-area-icon {
-  flex-shrink: 0;
-  opacity: 0.75;
-}
-
-.skill-area-toggle .arrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform var(--duration-normal) var(--easing-out-expo);
-}
-
-.skill-area.collapsed .skill-area-toggle .arrow {
-  transform: rotate(-90deg);
-}
-
-/* 技能 chip 列表：用 grid-template-rows 实现无 display:none 的折叠动画 */
+/* 技能 chip 列表：紧凑无缝设计 */
 .skill-chips {
   display: grid;
   grid-template-rows: 1fr;
@@ -665,7 +641,7 @@ pre code {
 
 .skill-chips-inner {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-xs);
   align-items: center;
   min-height: 0;
   overflow: visible;
@@ -673,6 +649,7 @@ pre code {
 
 /* 技能 chip 特殊样式 */
 .skill-chip {
+  position: relative;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
@@ -721,37 +698,63 @@ pre code {
   letter-spacing: 0.01em;
 }
 
-/* 用户技能 chip — 品牌色左侧指示条 */
+/* 用户技能 chip — 与内置技能一致的紧凑胶囊样式 */
 .skill-chip.user-skill {
-  background: var(--color-primary-light);
-  color: var(--color-primary-active);
-  border: 1px solid color-mix(in oklch, var(--color-primary) 20%, transparent);
-  border-left: 2.5px solid var(--color-primary);
-  border-radius: 0 var(--radius-full) var(--radius-full) 0;
-  padding: 4px 10px 4px 8px;
-  min-width: 60px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  flex-direction: row;
+  gap: var(--spacing-xs);
+  border: 1px solid var(--color-border);
+  padding: 4px 10px;
   transition: all var(--duration-fast) var(--easing-out-quart);
 }
 
 .skill-chip.user-skill:hover {
-  background: color-mix(in oklch, var(--color-primary-light) 80%, var(--color-bg-hover));
-  border-left-color: var(--color-primary-hover);
-  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border-color: color-mix(in oklch, var(--color-primary) 25%, transparent);
+  color: var(--color-primary-active);
 }
 
 .skill-chip.user-skill .skill-name {
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  margin-bottom: 2px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.01em;
 }
 
-.skill-chip.user-skill .skill-source {
-  font-size: var(--font-size-xs);
-  color: color-mix(in oklch, var(--color-primary) 60%, var(--color-text-tertiary));
-  max-width: 80px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* skill-source 已移除，不再显示 */
+
+/* 最近使用标识 */
+.skill-recent-badge {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  font-size: 9px;
+  font-weight: var(--font-weight-semibold);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
   white-space: nowrap;
+  letter-spacing: 0.02em;
+  box-shadow: 0 1px 3px color-mix(in oklch, var(--color-primary) 50%, transparent);
+  pointer-events: none;
+}
+
+/* 最近使用的 chip 样式增强 */
+.skill-chip.recent {
+  position: relative;
+  box-shadow: 0 1px 4px color-mix(in oklch, var(--color-primary) 25%, transparent);
+  border-color: color-mix(in oklch, var(--color-primary) 35%, transparent);
+}
+
+.skill-chip.recent:hover {
+  box-shadow: 0 2px 8px color-mix(in oklch, var(--color-primary) 35%, transparent);
+}
+
+.skill-chip.built-in.recent {
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-bg-secondary) 100%);
+  border-color: color-mix(in oklch, var(--color-primary) 30%, transparent);
 }
 
 /* 空状态 chip - 虚线 */

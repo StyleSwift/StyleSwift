@@ -41,6 +41,18 @@ class StyleSkillStore {
   static INDEX_KEY = 'skills:user:index';
 
   /**
+   * 最近使用技能的 storage key
+   * @type {string}
+   */
+  static RECENT_KEY = 'skills:recent';
+
+  /**
+   * 最近使用技能的最大数量
+   * @type {number}
+   */
+  static MAX_RECENT = 5;
+
+  /**
    * 生成技能内容的 storage key
    * 
    * @param {string} id - 技能 ID
@@ -184,6 +196,83 @@ class StyleSkillStore {
     
     // 4. 删除技能内容
     await chrome.storage.local.remove(this.skillKey(id));
+    
+    // 5. 从最近使用列表中移除
+    await this.removeFromRecent(id);
+  }
+
+  // ============================================================================
+  // 最近使用技能管理
+  // ============================================================================
+
+  /**
+   * 获取最近使用的技能 ID 列表
+   * 
+   * @returns {Promise<Array<{id: string, type: 'built-in' | 'user', timestamp: number}>>}
+   * 
+   * @example
+   * const recent = await StyleSkillStore.getRecent();
+   * // [{ id: 'dark-mode-template', type: 'built-in', timestamp: 1709510400000 }, ...]
+   */
+  static async getRecent() {
+    const { [this.RECENT_KEY]: recent = [] } = await chrome.storage.local.get(this.RECENT_KEY);
+    return recent;
+  }
+
+  /**
+   * 记录技能使用
+   * 
+   * 将技能添加到最近使用列表，并移除超出限制的旧记录。
+   * 
+   * @param {string} id - 技能 ID
+   * @param {'built-in' | 'user'} type - 技能类型
+   * @returns {Promise<void>}
+   * 
+   * @example
+   * await StyleSkillStore.recordUsage('dark-mode-template', 'built-in');
+   */
+  static async recordUsage(id, type) {
+    // 获取当前最近使用列表
+    let recent = await this.getRecent();
+    
+    // 移除已存在的同 ID 记录
+    recent = recent.filter(r => r.id !== id);
+    
+    // 添加到列表开头
+    recent.unshift({
+      id,
+      type,
+      timestamp: Date.now(),
+    });
+    
+    // 保持最大数量限制
+    if (recent.length > this.MAX_RECENT) {
+      recent = recent.slice(0, this.MAX_RECENT);
+    }
+    
+    // 保存
+    await chrome.storage.local.set({ [this.RECENT_KEY]: recent });
+  }
+
+  /**
+   * 从最近使用列表中移除技能
+   * 
+   * @param {string} id - 技能 ID
+   * @returns {Promise<void>}
+   */
+  static async removeFromRecent(id) {
+    let recent = await this.getRecent();
+    recent = recent.filter(r => r.id !== id);
+    await chrome.storage.local.set({ [this.RECENT_KEY]: recent });
+  }
+
+  /**
+   * 清空最近使用列表
+   * 
+   * @returns {Promise<void>}
+   */
+  static async clearRecent() {
+    await chrome.storage.local.remove(this.RECENT_KEY);
   }
 }
 

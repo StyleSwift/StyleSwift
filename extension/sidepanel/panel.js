@@ -197,6 +197,9 @@ class GlobalStateManager {
 
       /** 当前错误类型: null | 'API_KEY_INVALID' | 'NETWORK_ERROR' | 'API_ERROR' */
       currentError: null,
+
+      /** 会话是否已开始对话（用于控制技能区显示） */
+      hasConversationStarted: false,
     };
 
     /** @type {Map<string, Set<Function>>} 状态变化监听器 */
@@ -795,6 +798,15 @@ function applyInputAreaState(config) {
  */
 function applySkillAreaState(config) {
   if (!DOM.skillArea) return;
+
+  // 检查会话是否已开始对话
+  // 如果已开始对话，技能区应始终隐藏（仅新会话显示）
+  const hasConversationStarted = stateManager.get("hasConversationStarted");
+  if (hasConversationStarted) {
+    DOM.skillArea.classList.add("hidden");
+    DOM.skillArea.classList.remove("disabled");
+    return;
+  }
 
   // 移除所有状态类
   DOM.skillArea.classList.remove("disabled", "hidden");
@@ -1476,6 +1488,12 @@ async function handleSendClick() {
   if (emptyState) {
     emptyState.remove();
   }
+
+  // 标记会话已开始对话（技能区将永久隐藏）
+  stateManager.set("hasConversationStarted", true);
+
+  // 隐藏技能快捷区（用户开始对话后隐藏）
+  setSkillAreaVisible(false);
 
   // 渲染用户消息气泡（附带元素定位标记和图片指示）
   let displayMessage = pickedInfo
@@ -2270,6 +2288,22 @@ function toggleSkillArea() {
 }
 
 /**
+ * Set skill area visibility
+ * Design: Skills area is shown only for new/empty sessions, hidden when agent starts processing
+ * @param {boolean} visible - Whether to show the skill area
+ */
+function setSkillAreaVisible(visible) {
+  if (!DOM.skillArea) return;
+
+  if (visible) {
+    DOM.skillArea.classList.remove("hidden");
+  } else {
+    DOM.skillArea.classList.add("hidden");
+  }
+  console.log(`[Panel] Skill area ${visible ? 'shown' : 'hidden'}`);
+}
+
+/**
  * Storage key for disabled static skills
  */
 const DISABLED_SKILLS_KEY = "settings:disabledSkills";
@@ -2342,6 +2376,7 @@ async function setUserSkillEnabled(skillId, enabled) {
 /**
  * Render skill chips (built-in + user skills)
  * Respects disabled skills setting
+ * Recently used skills are shown first
  */
 async function renderSkillChips() {
   if (!DOM.skillChips) return;
@@ -2353,54 +2388,91 @@ async function renderSkillChips() {
   const disabledSkills = await getDisabledSkills();
   const disabledUserSkills = await getDisabledUserSkills();
 
-  // 1. Render built-in skills (filled chips) - filter out disabled
-  // BUILT_IN_SKILLS 是快捷风格按钮，如果对应的技能被禁用则隐藏
+  // Get recently used skills
+  const recentSkills = await StyleSkillStore.getRecent();
+  const recentIds = new Set(recentSkills.map(r => r.id));
+
+  // Collect all skills with their recency info
+  const allSkillData = [];
+
+  // 1. Collect built-in skills (filter out disabled)
   for (const skill of BUILT_IN_SKILLS) {
-    // 检查对应的静态技能是否被禁用
     if (disabledSkills.includes(skill.id)) continue;
-    const chip = createBuiltInChip(skill);
-    DOM.skillChips.appendChild(chip);
+    const recentInfo = recentSkills.find(r => r.id === skill.id && r.type === 'built-in');
+    allSkillData.push({
+      skill,
+      type: 'built-in',
+      isRecent: recentIds.has(skill.id),
+      timestamp: recentInfo?.timestamp || 0,
+    });
   }
 
-  // 2. Load and render user skills (outlined chips) - filter out disabled
+  // 2. Collect user skills (filter out disabled)
   try {
     const userSkills = await StyleSkillStore.list();
 
     for (const skill of userSkills) {
-      // 检查用户技能是否被禁用
       if (disabledUserSkills.includes(skill.id)) continue;
-      const chip = createUserSkillChip(skill);
-      DOM.skillChips.appendChild(chip);
-    }
-
-    // 3. If no chips at all, show "create from current" action
-    const hasAnySkills =
-      DOM.skillChips.children.length > 0 || userSkills.length > 0;
-    if (!hasAnySkills) {
-      const emptyChip = createEmptyActionChip();
-      DOM.skillChips.appendChild(emptyChip);
+      const recentInfo = recentSkills.find(r => r.id === skill.id && r.type === 'user');
+      allSkillData.push({
+        skill,
+        type: 'user',
+        isRecent: recentIds.has(skill.id),
+        timestamp: recentInfo?.timestamp || 0,
+      });
     }
   } catch (err) {
     console.warn("[Panel] Failed to load user skills:", err);
-    // Show empty action on error
+  }
+
+  // If no skills at all, show empty action
+  if (allSkillData.length === 0) {
     const emptyChip = createEmptyActionChip();
     DOM.skillChips.appendChild(emptyChip);
+    return;
+  }
+
+  // 3. Sort: recently used first (by timestamp desc), then others
+  allSkillData.sort((a, b) => {
+    // Recent skills first
+    if (a.isRecent !== b.isRecent) {
+      return a.isRecent ? -1 : 1;
+    }
+    // Among recent, sort by timestamp desc
+    if (a.isRecent && b.isRecent) {
+      return b.timestamp - a.timestamp;
+    }
+    // Non-recent skills: keep original order
+    return 0;
+  });
+
+  // 4. Render sorted skills
+  for (const data of allSkillData) {
+    let chip;
+    if (data.type === 'built-in') {
+      chip = createBuiltInChip(data.skill, data.isRecent);
+    } else {
+      chip = createUserSkillChip(data.skill, data.isRecent);
+    }
+    DOM.skillChips.appendChild(chip);
   }
 }
 
 /**
  * Create a built-in skill chip (filled style)
  * @param {Object} skill - Skill object with id, name, icon, prompt
+ * @param {boolean} isRecent - Whether this skill was recently used
  * @returns {HTMLElement}
  */
-function createBuiltInChip(skill) {
+function createBuiltInChip(skill, isRecent = false) {
   const chip = document.createElement("div");
-  chip.className = "skill-chip built-in";
+  chip.className = "skill-chip built-in" + (isRecent ? " recent" : "");
   chip.dataset.skillId = skill.id;
   chip.dataset.skillType = "built-in";
   chip.dataset.prompt = skill.prompt;
 
   chip.innerHTML = `
+    ${isRecent ? '<span class="skill-recent-badge">最近</span>' : ''}
     <span class="skill-icon">${skill.icon}</span>
     <span class="skill-name">${skill.name}</span>
   `;
@@ -2414,11 +2486,12 @@ function createBuiltInChip(skill) {
  * Create a user skill chip (outlined style with source domain)
  * Design ref: §16.3 ② - 用户技能支持长按弹出菜单：应用 / 查看详情 / 删除
  * @param {Object} skill - Skill object from StyleSkillStore
+ * @param {boolean} isRecent - Whether this skill was recently used
  * @returns {HTMLElement}
  */
-function createUserSkillChip(skill) {
+function createUserSkillChip(skill, isRecent = false) {
   const chip = document.createElement("div");
-  chip.className = "skill-chip user-skill";
+  chip.className = "skill-chip user-skill" + (isRecent ? " recent" : "");
   chip.dataset.skillId = skill.id;
   chip.dataset.skillType = "user";
 
@@ -2426,16 +2499,9 @@ function createUserSkillChip(skill) {
   const prompt = `Apply my "${skill.name}" style`;
   chip.dataset.prompt = prompt;
 
-  // Truncate source domain if too long
-  const sourceDomain = skill.sourceDomain || "unknown";
-  const displayDomain =
-    sourceDomain.length > 15
-      ? sourceDomain.substring(0, 12) + "..."
-      : sourceDomain;
-
   chip.innerHTML = `
+    ${isRecent ? '<span class="skill-recent-badge">最近</span>' : ''}
     <span class="skill-name">${skill.name}</span>
-    <span class="skill-source">${displayDomain}</span>
   `;
 
   // Click handler (short tap)
@@ -2508,12 +2574,20 @@ function createEmptyActionChip() {
  * Design ref: §16.3 ② 点击行为 - 点击 chip → 自动填入"应用 [技能名] 风格" → 自动发送
  * @param {Object} skill - Skill object
  */
-function handleSkillChipClick(skill) {
+async function handleSkillChipClick(skill) {
   if (!DOM.messageInput) return;
 
   // Don't allow interaction when agent is running
   if (AppState.agentStatus === "running") {
     return;
+  }
+
+  // Record usage for recently used skills
+  try {
+    const skillType = skill.type || 'built-in';
+    await StyleSkillStore.recordUsage(skill.id, skillType);
+  } catch (err) {
+    console.warn("[Panel] Failed to record skill usage:", err);
   }
 
   // Fill input with skill prompt
@@ -3069,10 +3143,15 @@ async function handleSessionClick(domain, sessionId) {
     // 渲染历史消息
     if (historyData.messages && historyData.messages.length > 0) {
       renderHistoryMessages(historyData.messages);
+      // 有历史消息时：标记会话已开始，隐藏技能区
+      stateManager.set("hasConversationStarted", true);
+      setSkillAreaVisible(false);
       console.log(
         `[Panel] Loaded ${historyData.messages.length} history messages`,
       );
     } else {
+      // 空会话：重置状态，显示技能区
+      stateManager.set("hasConversationStarted", false);
       showEmptyState();
     }
 
@@ -3140,6 +3219,9 @@ async function handleNewSession() {
       created_at: now,
       message_count: 0,
     });
+
+    // 重置会话对话状态（新会话允许显示技能区）
+    stateManager.set("hasConversationStarted", false);
 
     // 更新顶栏显示
     updateTopBarDisplay(domain, "新会话");
@@ -4543,6 +4625,9 @@ function showEmptyState() {
 
   const existing = DOM.messagesContainer.querySelector(".chat-area-empty");
   if (existing) existing.remove();
+
+  // 显示技能快捷区（新会话/空状态时显示）
+  setSkillAreaVisible(true);
 
   const examples = [
     "把所有标题改成深蓝色，字体调大",
