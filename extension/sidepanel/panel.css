@@ -2890,6 +2890,164 @@ pre code {
   display: none;
 }
 
+/* ---------- Markdown 渲染样式 ---------- */
+
+/* 消息气泡内的段落 */
+.message-bubble p {
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.message-bubble p:last-child {
+  margin-bottom: 0;
+}
+
+/* 标题样式 */
+.message-bubble h1 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  margin: var(--spacing-md) 0 var(--spacing-sm) 0;
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+}
+
+.message-bubble h2 {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  margin: var(--spacing-sm) 0 var(--spacing-xs) 0;
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+}
+
+.message-bubble h3 {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  margin: var(--spacing-sm) 0 var(--spacing-xs) 0;
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+}
+
+.message-bubble h4,
+.message-bubble h5,
+.message-bubble h6 {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  margin: var(--spacing-xs) 0;
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-tight);
+}
+
+/* 无序列表 */
+.message-bubble ul {
+  margin: var(--spacing-xs) 0;
+  padding-left: var(--spacing-lg);
+  list-style-type: disc;
+}
+
+.message-bubble ul li {
+  margin: var(--spacing-xs) 0;
+  line-height: var(--line-height-relaxed);
+}
+
+/* 有序列表 */
+.message-bubble ol {
+  margin: var(--spacing-xs) 0;
+  padding-left: var(--spacing-lg);
+  list-style-type: decimal;
+}
+
+.message-bubble ol li {
+  margin: var(--spacing-xs) 0;
+  line-height: var(--line-height-relaxed);
+}
+
+/* 列表内嵌套列表 */
+.message-bubble ul ul,
+.message-bubble ol ol,
+.message-bubble ul ol,
+.message-bubble ol ul {
+  margin: var(--spacing-xs) 0;
+}
+
+/* 引用块 */
+.message-bubble blockquote {
+  margin: var(--spacing-sm) 0;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-left: 3px solid var(--color-primary);
+  background: var(--color-bg-secondary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.message-bubble blockquote p {
+  margin: 0;
+}
+
+/* 水平线 */
+.message-bubble hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: var(--spacing-md) 0;
+}
+
+/* 代码块 */
+.message-bubble pre {
+  margin: var(--spacing-sm) 0;
+  padding: var(--spacing-md);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+}
+
+.message-bubble pre code {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: none;
+  padding: 0;
+}
+
+/* 行内代码 */
+.message-bubble code {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  background: var(--color-bg-tertiary);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  color: var(--color-primary);
+}
+
+/* 加粗 */
+.message-bubble strong {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+/* 斜体 */
+.message-bubble em {
+  font-style: italic;
+  color: var(--color-text-primary);
+}
+
+/* 删除线 */
+.message-bubble del {
+  text-decoration: line-through;
+  color: var(--color-text-tertiary);
+}
+
+/* 链接 */
+.message-bubble a {
+  color: var(--color-primary);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+  transition: border-color var(--duration-fast) var(--easing-default);
+}
+
+.message-bubble a:hover {
+  border-bottom-color: var(--color-primary);
+}
+
 /* ---------- 徽标 ---------- */
 
 .badge {

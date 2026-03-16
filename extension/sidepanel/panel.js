@@ -4669,12 +4669,49 @@ class StreamingTextRenderer {
   _renderMarkdown(text) {
     if (!text) return "";
 
-    let html = this._escapeHtml(text);
-
-    // 代码块（``` ... ```）
-    html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
+    // 先保护代码块，避免内部内容被其他规则处理
+    const codeBlocks = [];
+    let html = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
       const langAttr = lang ? ` class="language-${lang}"` : "";
-      return `<pre><code${langAttr}>${code.trim()}</code></pre>`;
+      const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
+      codeBlocks.push(`<pre><code${langAttr}>${code.trim()}</code></pre>`);
+      return placeholder;
+    });
+
+    // 转义 HTML（但保留占位符）
+    html = this._escapeHtml(html);
+
+    // 水平线（--- 或 ***）
+    html = html.replace(/^[-]{3,}$/gm, "<hr>");
+    html = html.replace(/^[*]{3,}$/gm, "<hr>");
+
+    // 标题（# ## ### #### ##### ######）
+    html = html.replace(/^#{6}\s+(.+)$/gm, "<h6>$1</h6>");
+    html = html.replace(/^#{5}\s+(.+)$/gm, "<h5>$1</h5>");
+    html = html.replace(/^#{4}\s+(.+)$/gm, "<h4>$1</h4>");
+    html = html.replace(/^#{3}\s+(.+)$/gm, "<h3>$1</h3>");
+    html = html.replace(/^#{2}\s+(.+)$/gm, "<h2>$1</h2>");
+    html = html.replace(/^#{1}\s+(.+)$/gm, "<h1>$1</h1>");
+
+    // 引用块（> quote）
+    html = html.replace(/^(?:&gt;|>)\s+(.+)$/gm, "<blockquote>$1</blockquote>");
+
+    // 处理列表 - 使用占位符来分隔无序和有序列表
+    // 无序列表（- 或 *）
+    html = html.replace(/^[*-]\s+(.+)$/gm, "<li data-type='ul'>$1</li>");
+    // 有序列表（1. 2. 等）
+    html = html.replace(/^\d+\.\s+(.+)$/gm, "<li data-type='ol'>$1</li>");
+
+    // 将连续的同类型列表项合并为列表
+    // 先处理无序列表
+    html = html.replace(/(<li data-type='ul'>[\s\S]*?<\/li>\n?)+/g, (match) => {
+      const items = match.replace(/ data-type='ul'/g, '');
+      return `<ul>${items}</ul>`;
+    });
+    // 再处理有序列表
+    html = html.replace(/(<li data-type='ol'>[\s\S]*?<\/li>\n?)+/g, (match) => {
+      const items = match.replace(/ data-type='ol'/g, '');
+      return `<ol>${items}</ol>`;
     });
 
     // 行内代码（`code`）
@@ -4684,7 +4721,7 @@ class StreamingTextRenderer {
     html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
     html = html.replace(/__([^_]+)__/g, "<strong>$1</strong>");
 
-    // 斜体（*text* 或 _text_）
+    // 斜体（*text* 或 _text_）- 注意放在加粗之后
     html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
     html = html.replace(/_([^_]+)_/g, "<em>$1</em>");
 
@@ -4701,8 +4738,19 @@ class StreamingTextRenderer {
     html = html.replace(/\n\n/g, "</p><p>");
     html = html.replace(/\n/g, "<br>");
 
-    // 包裹段落
-    if (!html.startsWith("<pre>")) {
+    // 恢复代码块
+    codeBlocks.forEach((block, index) => {
+      html = html.replace(`__CODE_BLOCK_${index}__`, block);
+    });
+
+    // 包裹段落（如果不是块级元素开头）
+    const blockStart = html.startsWith("<pre>") || 
+                        html.startsWith("<h") || 
+                        html.startsWith("<ul>") || 
+                        html.startsWith("<ol>") || 
+                        html.startsWith("<blockquote>") || 
+                        html.startsWith("<hr>");
+    if (!blockStart) {
       html = `<p>${html}</p>`;
     }
 
