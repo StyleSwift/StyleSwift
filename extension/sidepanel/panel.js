@@ -1285,10 +1285,22 @@ async function loadSessionForDomain(domain) {
 function resizeMessageInput() {
   const el = DOM.messageInput;
   if (!el) return;
+
+  // 临时设置 overflow-y: hidden 以正确计算 scrollHeight
+  el.style.overflowY = "hidden";
   el.style.height = "auto";
+
   const maxH = 200; // 与 CSS --input-max-height 一致
-  const h = Math.min(Math.max(el.scrollHeight, 44), maxH);
+  const scrollHeight = el.scrollHeight;
+  const h = Math.min(Math.max(scrollHeight, 44), maxH);
   el.style.height = `${h}px`;
+
+  // 当内容超出最大高度时，启用滚动条
+  if (scrollHeight > maxH) {
+    el.style.overflowY = "auto";
+  } else {
+    el.style.overflowY = "hidden";
+  }
 }
 
 /**

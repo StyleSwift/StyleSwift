@@ -1300,7 +1300,6 @@ pre code {
 
 /* 输入框 — 自动增高，默认单行，最大展开 */
 .message-input {
-  flex: 1;
   border: none;
   background: transparent;
   font-family: var(--font-family);
@@ -1310,10 +1309,10 @@ pre code {
   resize: none;
   outline: none;
   width: 100%;
-  min-height: 24px;
+  min-height: 44px;
   max-height: var(--input-max-height);
   padding: 2px 0 var(--spacing-xs);
-  overflow-y: auto;
+  overflow-y: hidden; /* 由 JS 动态控制，内容超出时改为 auto */
   transition: height var(--duration-fast) var(--easing-default);
 }
 
