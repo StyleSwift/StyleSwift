@@ -1,5 +1,5 @@
 ---
-name: 前端设计
+name: frontend-design
 description: Create distinctive, production-grade frontend interfaces with high design quality. Core design principles with DO/DON'T guidelines and AI Slop Test.
 tags: design, typography, color, layout, motion
 ---

@@ -1,5 +1,5 @@
 ---
-name: 规范化
+name: normalize
 description: Normalize design to match your design system and ensure consistency across typography, color, spacing, and components.
 tags: design-system, consistency, tokens
 ---

@@ -1,5 +1,5 @@
 ---
-name: 润色
+name: polish
 description: Final quality pass before shipping. Fixes alignment, spacing, consistency, and detail issues that separate good from great.
 tags: polish, quality, details, refinement
 ---
