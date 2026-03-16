@@ -934,6 +934,8 @@ function applyInputAreaState(config) {
       // 空闲态：输入框可用 + 发送按钮
       DOM.messageInput.disabled = false;
       DOM.messageInput.placeholder = "";
+      // 恢复打字机效果显示（如果输入框为空且未聚焦）
+      typewriterEffect.checkShow();
       break;
 
     case "processing":
@@ -943,6 +945,8 @@ function applyInputAreaState(config) {
       DOM.messageInput.placeholder = "正在处理中...";
       DOM.sendBtn.classList.add("hidden");
       DOM.stopBtn.classList.remove("hidden");
+      // Agent 运行时隐藏打字机效果
+      typewriterEffect.hide();
       break;
 
     case "restricted":
@@ -952,6 +956,8 @@ function applyInputAreaState(config) {
       DOM.messageInput.placeholder = "此页面不支持样式修改";
       DOM.messageInput.value = "";
       DOM.sendBtn.disabled = true;
+      // 受限页面隐藏打字机效果
+      typewriterEffect.hide();
       break;
 
     case "hidden":
