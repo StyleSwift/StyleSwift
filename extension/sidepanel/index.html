@@ -25,7 +25,7 @@
           <div class="form-group">
             <label for="api-key-input">API Key</label>
             <input type="password" id="api-key-input" placeholder="sk-ant-..." autocomplete="off">
-            <p class="hint">输入你的 Anthropic API Key</p>
+            <p class="hint">输入你的API Key</p>
           </div>
           
           <div class="form-group">
@@ -132,10 +132,10 @@
       <footer id="input-area" class="input-area">
         <!-- 选中元素预览条 -->
         <div id="picked-element-bar" class="picked-element-bar hidden">
-          <span class="icon icon-mouse picked-element-icon" style="width:13px;height:13px" aria-hidden="true"></span>
+          <span class="icon icon-mouse picked-element-icon" style="width:12px;height:12px" aria-hidden="true"></span>
           <span id="picked-element-label" class="picked-element-label"></span>
           <button id="picked-element-clear" class="picked-element-clear" title="移除选中元素" aria-label="移除选中元素">
-            <span class="icon icon-x" style="width:11px;height:11px" aria-hidden="true"></span>
+            <span class="icon icon-x" style="width:10px;height:10px" aria-hidden="true"></span>
           </button>
         </div>
         <!-- 图片预览条 -->
@@ -144,32 +144,38 @@
             <!-- 动态生成图片预览 -->
           </div>
           <button id="attached-images-clear" class="attached-images-clear" title="移除所有图片" aria-label="移除所有图片">
-            <span class="icon icon-x" style="width:11px;height:11px" aria-hidden="true"></span>
+            <span class="icon icon-x" style="width:10px;height:10px" aria-hidden="true"></span>
           </button>
         </div>
+        <!-- 输入主体：textarea + 底部工具栏 -->
         <div id="input-wrapper" class="input-wrapper">
-          <button id="picker-btn" class="picker-btn" title="选取页面元素" aria-label="选取页面元素">
-            <span class="icon icon-mouse" style="width:15px;height:15px" aria-hidden="true"></span>
-          </button>
-          <button id="image-upload-btn" class="image-upload-btn" title="上传参考图片" aria-label="上传参考图片">
-            <span class="icon icon-image" style="width:15px;height:15px" aria-hidden="true"></span>
-          </button>
-          <input type="file" id="image-upload-input" accept="image/*" multiple hidden>
           <textarea
             id="message-input"
             class="message-input"
-            placeholder="描述你想要的风格，例如：标题改成蓝色、整体暗色、字体调大..."
-            rows="2"
+            placeholder="描述你想要的风格..."
+            rows="1"
             aria-label="输入风格描述"
           ></textarea>
-          <button id="send-btn" class="send-btn" title="发送 (Enter)" aria-label="发送">
-            <span class="icon icon-send" style="width:14px;height:14px" aria-hidden="true"></span>
-          </button>
-          <button id="stop-btn" class="stop-btn hidden" title="停止" aria-label="停止">
-            <span class="icon icon-stop" style="width:11px;height:11px" aria-hidden="true"></span>
-          </button>
+          <div class="input-toolbar">
+            <div class="input-toolbar-left">
+              <button id="picker-btn" class="toolbar-btn" title="选取页面元素" aria-label="选取页面元素">
+                <span class="icon icon-mouse" style="width:14px;height:14px" aria-hidden="true"></span>
+              </button>
+              <button id="image-upload-btn" class="toolbar-btn" title="上传参考图片" aria-label="上传参考图片">
+                <span class="icon icon-image" style="width:14px;height:14px" aria-hidden="true"></span>
+              </button>
+              <input type="file" id="image-upload-input" accept="image/*" multiple hidden>
+            </div>
+            <div class="input-toolbar-right">
+              <button id="send-btn" class="send-btn" title="发送 (Enter)" aria-label="发送">
+                <span class="icon icon-send" style="width:13px;height:13px" aria-hidden="true"></span>
+              </button>
+              <button id="stop-btn" class="stop-btn hidden" title="停止" aria-label="停止">
+                <span class="icon icon-stop" style="width:10px;height:10px" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
         </div>
-        <span class="input-hint" aria-hidden="true">Enter 发送 · Shift+Enter 换行 · 选取元素 · 上传图片</span>
       </footer>
       
     </section>

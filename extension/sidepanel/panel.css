@@ -1099,71 +1099,65 @@ pre code {
   transition: width 1s linear;
 }
 
-/* ---------- 元素选择器 ---------- */
+/* ---------- 输入工具栏按钮（统一风格） ---------- */
 
-/* 选取按钮 — 位于输入框左侧 */
-.picker-btn {
+.toolbar-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: linear-gradient(180deg, var(--color-bg-secondary) 0%, var(--color-bg-tertiary) 100%);
-  color: var(--color-text-secondary);
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-tertiary);
   cursor: pointer;
   flex-shrink: 0;
-  transition: all var(--duration-fast) var(--easing-default);
-  box-shadow: inset 0 1px 0 var(--color-metal-highlight);
+  transition:
+    background var(--duration-fast) var(--easing-default),
+    color var(--duration-fast) var(--easing-default),
+    transform var(--duration-fast) var(--easing-default);
 }
 
-.picker-btn:hover {
-  color: var(--color-text-primary);
-  border-color: var(--color-border-strong);
-  background: linear-gradient(180deg, var(--color-bg-hover) 0%, var(--color-bg-tertiary) 100%);
-  box-shadow: var(--shadow-xs);
+.toolbar-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
 }
 
-.picker-btn:active {
-  transform: scale(0.95);
+.toolbar-btn:active {
+  background: var(--color-bg-active);
+  transform: scale(0.9);
 }
 
-.picker-btn.active {
-  color: var(--color-info);
-  border-color: var(--color-info);
-  background: var(--color-info-bg);
-  box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.15);
+/* 激活态 — 使用品牌主色（替代蓝色） */
+.toolbar-btn.active {
+  color: var(--color-primary);
+  background: var(--color-primary-light);
 }
 
-.picker-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* 选中元素预览条 */
+/* 选中元素预览条 — 品牌暖橙色 */
 .picked-element-bar {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-md);
+  padding: 5px var(--spacing-md);
   margin-bottom: var(--spacing-xs);
-  background: var(--color-info-bg);
-  border: 1px solid rgba(10, 132, 255, 0.2);
+  background: var(--color-primary-light);
+  border: 1px solid color-mix(in oklch, var(--color-primary) 28%, transparent);
   border-radius: var(--radius-lg);
   animation: fadeIn var(--duration-fast) var(--easing-default);
 }
 
 .picked-element-icon {
   flex-shrink: 0;
-  color: var(--color-info);
+  color: var(--color-primary);
 }
 
 .picked-element-label {
   flex: 1;
   font-size: var(--font-size-sm);
   font-family: var(--font-family-mono);
-  color: var(--color-info);
+  color: var(--color-primary);
   font-weight: var(--font-weight-medium);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1174,32 +1168,31 @@ pre code {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   background: transparent;
-  color: var(--color-text-tertiary);
-  font-size: var(--font-size-md);
+  color: color-mix(in oklch, var(--color-primary) 70%, transparent);
   cursor: pointer;
   flex-shrink: 0;
   transition: all var(--duration-fast) var(--easing-default);
 }
 
 .picked-element-clear:hover {
-  background: rgba(10, 132, 255, 0.15);
-  color: var(--color-info);
+  background: color-mix(in oklch, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
 }
 
-/* 图片预览条 */
+/* 图片预览条 — 暖中性 */
 .attached-images-bar {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-md);
+  padding: 5px var(--spacing-md);
   margin-bottom: var(--spacing-xs);
-  background: var(--color-info-bg);
-  border: 1px solid rgba(10, 132, 255, 0.2);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   animation: fadeIn var(--duration-fast) var(--easing-default);
 }
@@ -1256,97 +1249,77 @@ pre code {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--color-text-tertiary);
-  font-size: var(--font-size-md);
   cursor: pointer;
   flex-shrink: 0;
   transition: all var(--duration-fast) var(--easing-default);
 }
 
 .attached-images-clear:hover {
-  background: rgba(10, 132, 255, 0.15);
-  color: var(--color-info);
-}
-
-/* 图片上传按钮 */
-.image-upload-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all var(--duration-fast) var(--easing-default);
-}
-
-.image-upload-btn:hover {
   background: var(--color-bg-hover);
   color: var(--color-text-primary);
 }
 
-.image-upload-btn:active {
-  background: var(--color-bg-active);
-}
-
-/* 输入区 — 金属底条 */
+/* 输入区 — 顶部分割线 + 轻质金属感 */
 .input-area {
   flex-shrink: 0;
-  min-height: var(--input-area-min-height);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: linear-gradient(0deg, var(--color-bg-secondary) 0%, var(--color-bg-primary) 100%);
-  border-top: 1px solid var(--color-border);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
+  background: var(--color-bg-primary);
+  border-top: 1px solid var(--color-border-light);
   box-shadow: 0 -1px 0 var(--color-metal-highlight);
   transition: opacity var(--duration-normal) var(--easing-default);
 }
 
-/* 输入区容器 — 金属凹槽感；多行时按钮底对齐 */
+/* 输入区容器 — 纵向布局：textarea 上方，工具栏下方 */
 .input-wrapper {
   display: flex;
-  align-items: flex-end;
-  gap: var(--spacing-sm);
-  background: linear-gradient(180deg, var(--color-bg-tertiary) 0%, var(--color-bg-secondary) 100%);
+  flex-direction: column;
+  background: var(--color-bg-primary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
-  padding: var(--spacing-sm) var(--spacing-md);
-  box-shadow: inset 0 1px 2px var(--color-metal-shadow);
-  transition: all var(--duration-fast) var(--easing-default);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-xs);
+  box-shadow:
+    inset 0 1px 3px var(--color-metal-shadow),
+    0 1px 0 var(--color-metal-highlight);
+  transition:
+    border-color var(--duration-fast) var(--easing-default),
+    box-shadow var(--duration-fast) var(--easing-default);
 }
 
 .input-wrapper:focus-within {
-  border-color: color-mix(in oklch, var(--color-primary) 40%, transparent);
-  box-shadow: inset 0 1px 2px var(--color-metal-shadow), 0 0 0 2.5px var(--color-primary-light);
+  border-color: color-mix(in oklch, var(--color-primary) 50%, transparent);
+  box-shadow:
+    inset 0 1px 3px var(--color-metal-shadow),
+    0 0 0 2.5px color-mix(in oklch, var(--color-primary) 20%, transparent);
 }
 
-/* 输入框 — 多行友好：默认 2 行可见，最大高度放宽，支持自动增高 */
+/* 输入框 — 自动增高，默认单行，最大展开 */
 .message-input {
   flex: 1;
   border: none;
   background: transparent;
   font-family: var(--font-family);
   font-size: var(--font-size-md);
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--color-text-primary);
   resize: none;
   outline: none;
-  min-height: 44px; /* 约 2 行，触控友好 */
+  width: 100%;
+  min-height: 24px;
   max-height: var(--input-max-height);
-  padding: var(--spacing-sm) 0;
+  padding: 2px 0 var(--spacing-xs);
   overflow-y: auto;
   transition: height var(--duration-fast) var(--easing-default);
 }
 
 .message-input::placeholder {
   color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
 }
 
 .message-input:disabled {
@@ -1354,13 +1327,26 @@ pre code {
   cursor: not-allowed;
 }
 
-/* 输入区底部提示：发送方式说明 */
-.input-hint {
-  display: block;
+/* 输入工具栏 — 底部操作行 */
+.input-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--spacing-xs);
+  border-top: 1px solid var(--color-border-light);
   margin-top: var(--spacing-xs);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-  text-align: center;
+}
+
+.input-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.input-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
 }
 
 /* 发送按钮 — 品牌强调色，唯一彩色 CTA */
@@ -1368,14 +1354,14 @@ pre code {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: var(--color-primary);
   color: var(--color-text-inverse);
   cursor: pointer;
-  box-shadow: 0 1px 3px var(--color-primary-hover);
+  box-shadow: 0 1px 4px color-mix(in oklch, var(--color-primary) 60%, transparent);
   transition:
     background var(--duration-fast) var(--easing-out-quart),
     transform var(--duration-fast) var(--easing-out-quart),
@@ -1383,20 +1369,14 @@ pre code {
   flex-shrink: 0;
 }
 
-.send-btn svg {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-}
-
 .send-btn:hover:not(:disabled) {
   background: var(--color-primary-hover);
-  transform: scale(1.06);
-  box-shadow: 0 2px 8px var(--color-primary-hover);
+  transform: scale(1.07);
+  box-shadow: 0 2px 8px color-mix(in oklch, var(--color-primary) 50%, transparent);
 }
 
 .send-btn:active:not(:disabled) {
-  transform: scale(0.94);
+  transform: scale(0.93);
   box-shadow: none;
 }
 
@@ -1407,16 +1387,16 @@ pre code {
   cursor: not-allowed;
 }
 
-/* 停止按钮 — outline 风格，区分于 CTA */
+/* 停止按钮 — 填充风格，更直观 */
 .stop-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 1.5px solid var(--color-error);
-  border-radius: var(--radius-lg);
-  background-color: transparent;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-error-bg);
   color: var(--color-error);
   cursor: pointer;
   transition:
@@ -1425,39 +1405,38 @@ pre code {
   flex-shrink: 0;
 }
 
-.stop-btn svg {
-  width: 11px;
-  height: 11px;
-  flex-shrink: 0;
-}
-
 .stop-btn:hover {
-  background-color: var(--color-error-bg);
-  transform: scale(1.05);
+  background: color-mix(in oklch, var(--color-error) 18%, transparent);
+  transform: scale(1.07);
 }
 
 .stop-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.93);
 }
 
 /* 处理中状态 */
 .input-area.processing .input-wrapper {
-  background-color: var(--color-bg-tertiary);
-  border-color: var(--color-border-strong);
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border);
 }
 
 .input-area.processing .message-input {
   color: var(--color-text-secondary);
 }
 
+.input-area.processing .toolbar-btn {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 /* 受限页面状态 */
 .input-area.restricted {
-  opacity: 0.6;
+  opacity: 0.55;
   pointer-events: none;
 }
 
 .input-area.restricted .input-wrapper {
-  background-color: var(--color-bg-tertiary);
+  background: var(--color-bg-secondary);
   border-color: var(--color-border-light);
 }
 
@@ -4772,22 +4751,19 @@ pre code {
 
 /* ---------- 输入区状态 ---------- */
 
-#input-area.processing {
-  background-color: var(--color-bg-tertiary);
+#input-area.processing #input-wrapper {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border);
 }
 
-#input-area.processing #message-input {
-  background-color: var(--color-bg-secondary);
+#input-area.processing .toolbar-btn {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 #input-area.restricted {
   opacity: 0.6;
   pointer-events: none;
-}
-
-#input-area.restricted #message-input {
-  background-color: var(--color-bg-tertiary);
-  color: var(--color-text-tertiary);
 }
 
 /* ---------- 技能区状态 ---------- */
