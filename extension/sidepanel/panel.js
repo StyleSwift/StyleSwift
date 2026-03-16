@@ -1102,7 +1102,7 @@ async function initMainView() {
 
   // 获取技能区 DOM 元素
   DOM.skillArea = document.getElementById("skill-area");
-  DOM.skillChips = document.getElementById("skill-chips");
+  DOM.skillChips = document.getElementById("skill-chips-inner") || document.getElementById("skill-chips");
   DOM.skillAreaToggle = document.getElementById("skill-area-toggle");
 
   // 获取错误横幅 DOM 元素
@@ -4528,13 +4528,40 @@ function showEmptyState() {
   const existing = DOM.messagesContainer.querySelector(".chat-area-empty");
   if (existing) existing.remove();
 
+  const examples = [
+    "把所有标题改成深蓝色，字体调大",
+    "整体切换成暗色主题",
+    "增加行间距，让页面呼吸感更好",
+  ];
+
   const emptyState = document.createElement("div");
   emptyState.className = "chat-area-empty";
   emptyState.innerHTML = `
-    <div class="empty-state-icon">💬</div>
-    <div class="empty-state-title">开始对话</div>
-    <div class="empty-state-description">描述你想要的样式效果，或点击上方技能快捷按钮</div>
+    <div class="empty-state-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="m21.64 3.64l-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72M14 7l3 3M5 6v4m14 4v4M10 2v2M7 8H3m18 8h-4M11 3H9"/>
+      </svg>
+    </div>
+    <div class="empty-state-title">你想改变什么？</div>
+    <div class="empty-state-description">用自然语言描述你想要的效果，我来处理 CSS</div>
+    <div class="empty-state-examples">
+      ${examples.map(text => `
+        <button class="example-prompt-chip" data-prompt="${text.replace(/"/g, '&quot;')}">${text}</button>
+      `).join('')}
+    </div>
   `;
+
+  // 点击示例 prompt 填入输入框
+  emptyState.querySelectorAll(".example-prompt-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const input = document.getElementById("message-input");
+      if (input) {
+        input.value = chip.dataset.prompt;
+        input.focus();
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+  });
 
   DOM.messagesContainer.appendChild(emptyState);
 }
