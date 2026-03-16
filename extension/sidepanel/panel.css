@@ -438,6 +438,7 @@ pre code {
   align-items: center;
   gap: var(--spacing-sm);
   flex-shrink: 0;
+  margin-left: 10px;
 }
 
 .topbar-center {
@@ -1524,8 +1525,8 @@ pre code {
 }
 
 .status-indicator .dot {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   object-fit: contain;
   transition: opacity var(--duration-normal) var(--easing-default),
               filter var(--duration-normal) var(--easing-default);
@@ -5386,8 +5387,8 @@ pre code {
 }
 
 .status-dot .dot {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   object-fit: contain;
   transition: opacity var(--duration-normal) var(--easing-default),
               filter var(--duration-normal) var(--easing-default);
