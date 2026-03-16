@@ -1249,6 +1249,40 @@ async function handleStartClick() {
 // ============================================================================
 
 /**
+ * 动态注入 Content Scripts 到当前标签页
+ * 用于处理扩展刷新后已打开页面没有注入脚本的情况
+ * @returns {Promise<void>}
+ */
+async function injectContentScripts() {
+  const { getTargetTabId } = await import("./tools.js");
+  const tabId = await getTargetTabId();
+  
+  // Content Scripts 配置
+  const scripts = [
+    { file: 'content/early-inject.js', name: 'early-inject' },
+    { file: 'content/content.js', name: 'content-script' }
+  ];
+
+  console.log(`[Panel] Dynamically injecting content scripts to tab ${tabId}`);
+  
+  for (const script of scripts) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: [script.file]
+      });
+      console.log(`[Panel] Injected ${script.name}`);
+    } catch (err) {
+      // 忽略已注入或无法注入的错误
+      if (err.message?.includes('Cannot access') || err.message?.includes('Cannot script')) {
+        throw new Error(`Page not injectable: ${err.message}`);
+      }
+      console.log(`[Panel] Failed to inject ${script.name}:`, err.message);
+    }
+  }
+}
+
+/**
  * 初始化主界面
  *
  * 完整初始化流程（设计参考：§16.8 完整使用流程）：
@@ -1352,15 +1386,30 @@ async function initMainView() {
       // 尝试向 Content Script 发送消息获取域名
       domain = await sendToContentScript({ tool: "get_domain" });
     } catch (contentScriptError) {
-      // Content Script 不可达，可能是受限页面
+      // Content Script 不可达，可能是扩展刚刷新导致的
+      // 尝试动态注入 Content Script 后重试
       console.log(
-        "[Panel] Content Script not reachable:",
+        "[Panel] Content Script not reachable, attempting dynamic injection:",
         contentScriptError.message,
       );
-      stateManager.set("pageStatus", "restricted");
-      stateManager.set("currentDomain", null);
-      applyGlobalState();
-      return;
+
+      try {
+        // 动态注入 Content Scripts
+        await injectContentScripts();
+        // 重试获取域名
+        domain = await sendToContentScript({ tool: "get_domain" });
+        console.log("[Panel] Dynamic injection successful, domain:", domain);
+      } catch (retryError) {
+        // 重试失败，确认为受限页面
+        console.log(
+          "[Panel] Content Script still not reachable after dynamic injection:",
+          retryError.message,
+        );
+        stateManager.set("pageStatus", "restricted");
+        stateManager.set("currentDomain", null);
+        applyGlobalState();
+        return;
+      }
     }
 
     if (domain && domain !== "unknown") {
