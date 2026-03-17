@@ -1267,7 +1267,7 @@ async function callLLMStreamSafe(
 // --- Main Loop Constants and State ---
 
 const MAX_ITERATIONS = 30;
-const SUB_MAX_ITERATIONS = 10;
+const SUB_MAX_ITERATIONS = 20;
 let currentAbortController = null;
 let isAgentRunning = false;
 let toolCallHistory = [];
