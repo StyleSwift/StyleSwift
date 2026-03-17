@@ -1,4 +1,8 @@
 {
+  "productName": {
+    "message": "StyleSwift",
+    "description": "Product display name in English"
+  },
   "extName": {
     "message": "StyleSwift",
     "description": "Extension name"

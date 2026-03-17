@@ -1,6 +1,10 @@
 {
+  "productName": {
+    "message": "数字女娲",
+    "description": "Product display name in Chinese"
+  },
   "extName": {
-    "message": "StyleSwift",
+    "message": "数字女娲",
     "description": "Extension name"
   },
   "extDescription": {
@@ -208,7 +212,7 @@
     "description": "About section title"
   },
   "aboutVersion": {
-    "message": "StyleSwift v1.0.0",
+    "message": "数字女娲 v1.0.0",
     "description": "Version text"
   },
   "unsaved": {
