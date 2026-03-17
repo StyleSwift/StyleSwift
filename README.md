@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![数字女娲 Logo](extension/icons/海报.png)
+![数字女娲 Logo](extension/images/海报.png)
 
 **一句话，给常逛的网页换皮肤**
 
@@ -35,7 +35,7 @@
 
 智能样式生成效果展示：
 
-![效果预览 1](extension/icons/demo1.png) | ![效果预览 2](extension/icons/demo2.png) | ![效果预览 3](extension/icons/demo3.png)
+![效果预览 1](extension/images/demo1.png) | ![效果预览 2](extension/images/demo2.png) | ![效果预览 3](extension/images/demo3.png)
 :---:|:---:|:---:
 **旧报纸风格设计** | **黑客帝国风格设计** | **风格一键迁移**
 
@@ -288,7 +288,7 @@ npm run lint
 
 Intelligent style generation demonstration:
 
-![Preview 1](extension/icons/demo1.png) | ![Preview 2](extension/icons/demo2.png) | ![Preview 3](extension/icons/demo3.png)
+![Preview 1](extension/images/demo1.png) | ![Preview 2](extension/images/demo2.png) | ![Preview 3](extension/images/demo3.png)
 :---:|:---:|:---:
 **Old Newspaper Style** | **The Matrix Style** | **One-Click Style Transfer**
 
