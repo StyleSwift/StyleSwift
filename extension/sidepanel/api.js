@@ -185,6 +185,15 @@ async function getSettingsForRequest(hasImages) {
     // 有图片且配置了视觉模型，使用视觉模型配置
     const visionApiBase = settings.visionApiBase || settings.apiBase;
     const visionModel = settings.visionModel;
+    
+    // Debug: Log vision model selection
+    console.log("[getSettingsForRequest] Using vision model:", {
+      hasImages,
+      visionModel,
+      visionApiBase,
+      visionApiKey: settings.visionApiKey ? '(set)' : '(using main key)',
+    });
+    
     return {
       apiKey: settings.visionApiKey || settings.apiKey,
       apiBase: visionApiBase,
@@ -192,6 +201,14 @@ async function getSettingsForRequest(hasImages) {
       provider: detectProvider(visionApiBase, visionModel),
     };
   }
+
+  // Debug: Log main model selection
+  console.log("[getSettingsForRequest] Using main model:", {
+    hasImages,
+    reason: hasImages ? 'visionModel not configured' : 'no images detected',
+    model: settings.model,
+    provider: detectProvider(settings.apiBase, settings.model),
+  });
 
   // 默认使用编码模型配置
   return {

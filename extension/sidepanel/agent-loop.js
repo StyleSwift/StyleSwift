@@ -626,14 +626,17 @@ function _collectMsgTexts(msg, out) {
     if (block.type === "text" && block.text) {
       out.push(block.text);
     } else if (block.type === "image_url") {
-      out.push(block.image_url?.url || "");
+      // Base64 images are very long strings, use fixed estimate instead of actual string length
+      // A typical screenshot base64 is 100k-1M chars, but visually ~1000 tokens
+      // We use a placeholder to avoid counting the full base64 string
+      out.push("[IMAGE_DATA]"); // Fixed placeholder for token estimation
     } else if (block.type === "tool_result") {
       if (typeof block.content === "string") {
         out.push(block.content);
       } else if (Array.isArray(block.content)) {
         for (const c of block.content) {
           if (c.type === "text" && c.text) out.push(c.text);
-          if (c.type === "image_url") out.push(c.image_url?.url || "");
+          if (c.type === "image_url") out.push("[IMAGE_DATA]"); // Fixed placeholder
         }
       }
     } else if (block.type === "tool_use") {
@@ -648,7 +651,14 @@ function _msgTokenEstimate(msg) {
   const texts = [];
   _collectMsgTexts(msg, texts);
   let total = 0;
-  for (const t of texts) total += _estimateTextTokens(t);
+  for (const t of texts) {
+    // Fixed token estimate for image placeholders
+    if (t === "[IMAGE_DATA]") {
+      total += 1000; // Reasonable estimate for vision token usage
+    } else {
+      total += _estimateTextTokens(t);
+    }
+  }
   return total;
 }
 
@@ -874,19 +884,39 @@ async function summarizeOldTurns(oldHistory, existingSummary = null) {
   }
 }
 
-/** Truncate tool_result text over 3000 chars, remove base64 images (fallback) */
+/** Truncate tool_result text over 3000 chars, remove base64 images (but preserve recent images for vision model) */
 function truncateLargeToolResults(messages) {
   const TRUNCATE_THRESHOLD = 3000;
   const KEEP_CHARS = 1000;
 
-  return messages.map((msg) => {
+  // Find the last user message index - preserve images in this message
+  let lastUserMsgIndex = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "user") {
+      lastUserMsgIndex = i;
+      break;
+    }
+  }
+
+  console.log("[truncateLargeToolResults] Preserving images in last user message at index:", lastUserMsgIndex);
+
+  return messages.map((msg, msgIndex) => {
     if (msg.role !== "user" || !Array.isArray(msg.content)) return msg;
+
+    // Check if this is the last user message - we'll preserve its images
+    const isLastUserMsg = msgIndex === lastUserMsgIndex;
 
     let changed = false;
     const newContent = msg.content.map((block) => {
       if (block.type === "image_url") {
-        changed = true;
-        return { type: "text", text: "(Image removed to save context space)" };
+        // Only remove if this is NOT the last user message (preserve recent images for vision model)
+        if (!isLastUserMsg) {
+          changed = true;
+          console.log("[truncateLargeToolResults] Removing image from older message at index:", msgIndex);
+          return { type: "text", text: "(Image removed to save context space)" };
+        }
+        console.log("[truncateLargeToolResults] Preserving image in last user message");
+        return block; // Keep image in last user message
       }
 
       if (block.type !== "tool_result") return block;
@@ -904,8 +934,14 @@ function truncateLargeToolResults(messages) {
         const newInner = block.content
           .filter((c) => {
             if (c.type === "image_url") {
-              innerChanged = true;
-              return false;
+              // Only remove if this is NOT the last user message (preserve recent images)
+              if (!isLastUserMsg) {
+                innerChanged = true;
+                console.log("[truncateLargeToolResults] Removing image from tool_result in older message at index:", msgIndex);
+                return false;
+              }
+              console.log("[truncateLargeToolResults] Preserving image in tool_result in last user message");
+              return true; // Keep image in last user message
             }
             return true;
           })
@@ -984,16 +1020,53 @@ function sleep(ms) {
 
 /** Check if last message contains images (determines whether to use vision model) */
 function _detectImages(messages) {
-  if (!messages.length) return false;
-  const last = messages[messages.length - 1];
-  if (last.role !== "user" || !Array.isArray(last.content)) return false;
-  return last.content.some((c) => {
-    if (c.type === "image_url") return true;
-    if (c.type === "tool_result" && Array.isArray(c.content)) {
-      return c.content.some((inner) => inner.type === "image_url");
-    }
-    return false;
+  // Debug: Log input
+  console.log("[_detectImages] Input:", {
+    messageCount: messages?.length || 0,
+    lastMessageRole: messages?.length > 0 ? messages[messages.length - 1]?.role : "none",
   });
+  
+  if (!messages.length) {
+    console.log("[_detectImages] No messages to check");
+    return false;
+  }
+  
+  const last = messages[messages.length - 1];
+  
+  if (last.role !== "user") {
+    console.log("[_detectImages] Last message is not user role:", last.role);
+    return false;
+  }
+  
+  if (!Array.isArray(last.content)) {
+    console.log("[_detectImages] Last message content is not array:", typeof last.content);
+    return false;
+  }
+  
+  // Debug: Check each content block for images
+  let foundImages = false;
+  const contentTypes = [];
+  
+  for (const c of last.content) {
+    contentTypes.push(c.type);
+    
+    if (c.type === "image_url") {
+      foundImages = true;
+    }
+    
+    if (c.type === "tool_result" && Array.isArray(c.content)) {
+      const innerTypes = c.content.map(inner => inner.type);
+      contentTypes.push(`tool_result[${innerTypes.join(',')}]`);
+      
+      if (c.content.some(inner => inner.type === "image_url")) {
+        foundImages = true;
+      }
+    }
+  }
+  
+  console.log("[_detectImages] Last message content types:", contentTypes, "| hasImages:", foundImages);
+  
+  return foundImages;
 }
 
 /** Strip all images (non-vision rounds don't send images to main model) */
@@ -1018,6 +1091,14 @@ async function callLLMStream(system, messages, tools, callbacks, abortSignal) {
   const hasImages = _detectImages(messages);
   const { getSettingsForRequest } = await import("./api.js");
   const { apiKey, model, apiBase, provider } = await getSettingsForRequest(hasImages);
+  
+  // Debug: Log vision model detection
+  console.log("[callLLMStream] Vision detection:", {
+    hasImages,
+    usingModel: model,
+    provider,
+  });
+  
   const safeMsgs = hasImages ? messages : _stripImagesFromMessages(messages);
 
   try {
@@ -1644,7 +1725,19 @@ async function agentLoop(prompt, uiCallbacks) {
       const tokenCount = lastInputTokens > 0
         ? lastInputTokens + _msgTokenEstimate(llmHistory[llmHistory.length - 1])
         : estimateTokenCount(llmHistory, systemAndToolsOverhead);
+      
+      // Debug: Log token budget check
+      console.log("[Token Budget] Check:", {
+        iteration: iterations,
+        tokenCount,
+        TOKEN_BUDGET,
+        lastInputTokens,
+        historyLength: llmHistory.length,
+        willCompress: tokenCount > TOKEN_BUDGET,
+      });
+      
       if (tokenCount > TOKEN_BUDGET) {
+        console.log("[Token Budget] Triggering compression...");
         llmHistory = await checkAndCompressHistory(llmHistory, tokenCount);
         // 重置 lastInputTokens，避免用压缩前的旧值在下轮再次触发压缩
         lastInputTokens = 0;
