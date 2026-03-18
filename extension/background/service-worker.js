@@ -7,16 +7,16 @@ chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
  * 用于动态注入到已打开的标签页
  */
 const CONTENT_SCRIPTS = [
-  {
-    id: 'early-inject',
-    js: 'content/early-inject.js',
-    runAt: 'document_start'
-  },
-  {
-    id: 'content-script',
-    js: 'content/content.js',
-    runAt: 'document_idle'
-  }
+	{
+		id: "early-inject",
+		js: "content/early-inject.js",
+		runAt: "document_start",
+	},
+	{
+		id: "content-script",
+		js: "content/content.js",
+		runAt: "document_idle",
+	},
 ];
 
 /**
@@ -25,10 +25,19 @@ const CONTENT_SCRIPTS = [
  * @returns {boolean} 是否支持注入
  */
 function isInjectableUrl(url) {
-  if (!url) return false;
-  // 排除 chrome://、chrome-extension://、about:、edge:// 等内部页面
-  const blockedProtocols = ['chrome:', 'chrome-extension:', 'about:', 'edge:', 'brave:', 'opera:', 'vivaldi:', 'file:'];
-  return !blockedProtocols.some(protocol => url.startsWith(protocol));
+	if (!url) return false;
+	// 排除 chrome://、chrome-extension://、about:、edge:// 等内部页面
+	const blockedProtocols = [
+		"chrome:",
+		"chrome-extension:",
+		"about:",
+		"edge:",
+		"brave:",
+		"opera:",
+		"vivaldi:",
+		"file:",
+	];
+	return !blockedProtocols.some((protocol) => url.startsWith(protocol));
 }
 
 /**
@@ -36,32 +45,42 @@ function isInjectableUrl(url) {
  * @param {number} tabId - 标签页 ID
  */
 async function injectContentScripts(tabId) {
-  try {
-    const tab = await chrome.tabs.get(tabId);
-    if (!isInjectableUrl(tab.url)) {
-      console.log(`[ServiceWorker] Tab ${tabId} has non-injectable URL: ${tab.url}`);
-      return;
-    }
+	try {
+		const tab = await chrome.tabs.get(tabId);
+		if (!isInjectableUrl(tab.url)) {
+			console.log(
+				`[ServiceWorker] Tab ${tabId} has non-injectable URL: ${tab.url}`,
+			);
+			return;
+		}
 
-    for (const script of CONTENT_SCRIPTS) {
-      try {
-        await chrome.scripting.executeScript({
-          target: { tabId },
-          files: [script.js]
-        });
-        console.log(`[ServiceWorker] Injected ${script.js} into tab ${tabId}`);
-      } catch (err) {
-        // 忽略已注入的错误
-        if (err.message?.includes('Cannot access')) {
-          console.log(`[ServiceWorker] Cannot inject ${script.js} into tab ${tabId}: restricted page`);
-        } else {
-          console.warn(`[ServiceWorker] Failed to inject ${script.js} into tab ${tabId}:`, err.message);
-        }
-      }
-    }
-  } catch (err) {
-    console.warn(`[ServiceWorker] Error injecting content scripts into tab ${tabId}:`, err.message);
-  }
+		for (const script of CONTENT_SCRIPTS) {
+			try {
+				await chrome.scripting.executeScript({
+					target: { tabId },
+					files: [script.js],
+				});
+				console.log(`[ServiceWorker] Injected ${script.js} into tab ${tabId}`);
+			} catch (err) {
+				// 忽略已注入的错误
+				if (err.message?.includes("Cannot access")) {
+					console.log(
+						`[ServiceWorker] Cannot inject ${script.js} into tab ${tabId}: restricted page`,
+					);
+				} else {
+					console.warn(
+						`[ServiceWorker] Failed to inject ${script.js} into tab ${tabId}:`,
+						err.message,
+					);
+				}
+			}
+		}
+	} catch (err) {
+		console.warn(
+			`[ServiceWorker] Error injecting content scripts into tab ${tabId}:`,
+			err.message,
+		);
+	}
 }
 
 /**
@@ -69,20 +88,22 @@ async function injectContentScripts(tabId) {
  * 用于扩展安装/更新/重新加载时
  */
 async function injectToAllTabs() {
-  try {
-    const tabs = await chrome.tabs.query({});
-    console.log(`[ServiceWorker] Injecting content scripts to ${tabs.length} tabs`);
+	try {
+		const tabs = await chrome.tabs.query({});
+		console.log(
+			`[ServiceWorker] Injecting content scripts to ${tabs.length} tabs`,
+		);
 
-    for (const tab of tabs) {
-      if (tab.id && isInjectableUrl(tab.url)) {
-        await injectContentScripts(tab.id);
-      }
-    }
+		for (const tab of tabs) {
+			if (tab.id && isInjectableUrl(tab.url)) {
+				await injectContentScripts(tab.id);
+			}
+		}
 
-    console.log('[ServiceWorker] Content scripts injection complete');
-  } catch (err) {
-    console.error('[ServiceWorker] Failed to inject to all tabs:', err);
-  }
+		console.log("[ServiceWorker] Content scripts injection complete");
+	} catch (err) {
+		console.error("[ServiceWorker] Failed to inject to all tabs:", err);
+	}
 }
 
 /**
@@ -90,20 +111,29 @@ async function injectToAllTabs() {
  * 这是解决"刷新扩展后已打开页面无法使用"问题的关键
  */
 chrome.runtime.onInstalled.addListener((details) => {
-  console.log(`[ServiceWorker] Extension ${details.reason}:`, details);
+	console.log(`[ServiceWorker] Extension ${details.reason}:`, details);
 
-  if (details.reason === 'install' || details.reason === 'update') {
-    // 延迟一小段时间确保扩展完全加载
-    setTimeout(() => {
-      injectToAllTabs();
-    }, 100);
-  }
+	if (details.reason === "install") {
+		// 首次安装：打开欢迎页面
+		chrome.tabs.create({
+			url: chrome.runtime.getURL("welcome/welcome.html"),
+		});
+		// 延迟一小段时间确保扩展完全加载
+		setTimeout(() => {
+			injectToAllTabs();
+		}, 100);
+	} else if (details.reason === "update") {
+		// 更新：只注入脚本
+		setTimeout(() => {
+			injectToAllTabs();
+		}, 100);
+	}
 });
 
 /**
  * 扩展启动时也注入（处理 Service Worker 重启的情况）
  */
 chrome.runtime.onStartup.addListener(() => {
-  console.log('[ServiceWorker] Extension startup');
-  injectToAllTabs();
+	console.log("[ServiceWorker] Extension startup");
+	injectToAllTabs();
 });

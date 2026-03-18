@@ -88,7 +88,7 @@ old_css: ".header { color: #e0e0e0; }"  // 精确复制
 
 ### LLM 获取当前样式
 
-System Prompt 注入当前完整样式，LLM 从中精确复制要修改的部分。
+通过工具 `get_current_styles` 获取当前会话已应用的完整 CSS，LLM 必须从该返回值中**精确复制**要修改的片段作为 `old_css`。
 
 ---
 

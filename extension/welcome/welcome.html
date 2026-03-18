@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="welcomeTitle">欢迎使用 数字女娲</title>
+  <link rel="stylesheet" href="welcome.css">
+</head>
+<body>
+  <div id="welcome-app">
+    <!-- Progress Indicator -->
+    <div class="progress-bar">
+      <div class="progress-steps">
+        <div class="step active" data-step="1">
+          <div class="step-circle">1</div>
+          <span class="step-label" data-i18n="stepFeatures">功能介绍</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step" data-step="2">
+          <div class="step-circle">2</div>
+          <span class="step-label" data-i18n="stepPin">置顶图标</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step" data-step="3">
+          <div class="step-circle">3</div>
+          <span class="step-label" data-i18n="stepStyles">设计风格</span>
+        </div>
+      </div>
+      <div class="progress-line"></div>
+    </div>
+
+    <!-- Page 1: Core Features (Left: feature list, Right: GIF demo) -->
+    <section id="page-features" class="page active">
+      <div class="page-content features-page">
+        <!-- Left: Feature Points -->
+        <div class="features-left">
+          <div class="features-header">
+            <img src="../icons/icon-48.png" alt="Logo" class="logo-icon">
+            <h1 data-i18n="featuresTitle">一句话，给常逛的网页换皮肤</h1>
+            <p class="page-subtitle" data-i18n="featuresSubtitle">数字女娲 让你用自然语言控制网页样式</p>
+          </div>
+          
+          <div class="feature-list" id="feature-list">
+            <div class="feature-item active" data-feature="0">
+              <div class="feature-item-icon">
+                <span class="icon icon-palette"></span>
+              </div>
+              <div class="feature-item-content">
+                <h3 data-i18n="feature1Title">网页风格化</h3>
+                <p data-i18n="feature1Desc">一键为任意网站换上精美主题，打造个性化浏览体验</p>
+              </div>
+            </div>
+            <div class="feature-item" data-feature="1">
+              <div class="feature-item-icon">
+                <span class="icon icon-shield-check"></span>
+              </div>
+              <div class="feature-item-content">
+                <h3 data-i18n="feature2Title">样式质检</h3>
+                <p data-i18n="feature2Desc">智能检测样式问题，确保可读性和视觉一致性</p>
+              </div>
+            </div>
+            <div class="feature-item" data-feature="2">
+              <div class="feature-item-icon">
+                <span class="icon icon-mouse-pointer"></span>
+              </div>
+              <div class="feature-item-content">
+                <h3 data-i18n="feature3Title">精准编辑</h3>
+                <p data-i18n="feature3Desc">点选任意元素，精准定位并修改特定样式</p>
+              </div>
+            </div>
+            <div class="feature-item" data-feature="3">
+              <div class="feature-item-icon">
+                <span class="icon icon-sparkles"></span>
+              </div>
+              <div class="feature-item-content">
+                <h3 data-i18n="feature4Title">风格技能复用</h3>
+                <p data-i18n="feature4Desc">保存成功的风格方案，跨网站一键复用</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="page-footer features-footer">
+            <button type="button" class="btn-next" data-i18n="btnNext">下一步</button>
+          </div>
+        </div>
+
+        <!-- Right: GIF Demo -->
+        <div class="features-right">
+          <div class="demo-container">
+            <div class="demo-placeholder" id="demo-placeholder">
+              <div class="demo-placeholder-content">
+                <div class="demo-icon">
+                  <span class="icon icon-image"></span>
+                </div>
+                <p class="demo-title" data-i18n="feature1Title">自然语言驱动</p>
+                <p class="demo-hint" data-i18n="demoHint">GIF 演示</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Page 2: Pin Extension Icon (Left: demo image, Right: description) -->
+    <section id="page-pin" class="page">
+      <div class="page-content pin-page">
+        <!-- Left: Demo Image -->
+        <div class="pin-left">
+          <div class="pin-demo-image">
+            <div class="browser-mockup">
+              <div class="browser-header">
+                <div class="browser-dots">
+                  <span class="dot red"></span>
+                  <span class="dot yellow"></span>
+                  <span class="dot green"></span>
+                </div>
+                <div class="browser-address-bar">
+                  <span class="icon icon-lock" style="width:12px;height:12px;"></span>
+                  <span>example.com</span>
+                </div>
+                <div class="browser-toolbar-icons">
+                  <div class="toolbar-icon puzzle-icon">
+                    <span class="icon icon-puzzle" style="width:16px;height:16px;"></span>
+                  </div>
+                  <div class="toolbar-icon pinned-extension">
+                    <img src="../icons/icon-16.png" alt="数字女娲">
+                    <span class="pin-badge">
+                      <span class="icon icon-pin" style="width:10px;height:10px;"></span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div class="browser-content">
+                <div class="mock-content">
+                  <div class="mock-header"></div>
+                  <div class="mock-nav">
+                    <div class="mock-nav-item"></div>
+                    <div class="mock-nav-item"></div>
+                    <div class="mock-nav-item short"></div>
+                  </div>
+                  <div class="mock-article">
+                    <div class="mock-line"></div>
+                    <div class="mock-line medium"></div>
+                    <div class="mock-line short"></div>
+                    <div class="mock-line"></div>
+                    <div class="mock-line medium"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="pin-callout">
+              <span class="icon icon-pin" style="width:14px;height:14px;"></span>
+              <span data-i18n="pinCallout">固定到工具栏</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Description -->
+        <div class="pin-right">
+          <div class="pin-content">
+            <h1 data-i18n="pinTitle">置顶扩展图标</h1>
+            <p class="pin-subtitle" data-i18n="pinSubtitle">将 数字女娲 固定到工具栏，方便随时使用</p>
+            
+            <div class="pin-steps">
+              <div class="pin-step">
+                <div class="pin-step-number">1</div>
+                <div class="pin-step-text">
+                  <strong data-i18n="pinStep1Title">点击拼图图标</strong>
+                  <p data-i18n="pinStep1Desc">在浏览器工具栏右侧找到拼图形状的扩展图标</p>
+                </div>
+              </div>
+              <div class="pin-step">
+                <div class="pin-step-number">2</div>
+                <div class="pin-step-text">
+                  <strong data-i18n="pinStep2Title">找到 数字女娲</strong>
+                  <p data-i18n="pinStep2Desc">在扩展列表中找到"数字女娲"</p>
+                </div>
+              </div>
+              <div class="pin-step">
+                <div class="pin-step-number">3</div>
+                <div class="pin-step-text">
+                  <strong data-i18n="pinStep3Title">点击图钉固定</strong>
+                  <p data-i18n="pinStep3Desc">点击旁边的图钉图标，将其固定到工具栏</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="pin-tips">
+              <div class="tip-icon">
+                <span class="icon icon-zap" style="width:16px;height:16px;"></span>
+              </div>
+              <p data-i18n="pinTip">固定后，点击图标即可快速打开侧边栏开始使用</p>
+            </div>
+
+            <div class="pin-detection" id="pin-detection">
+              <div class="detection-status" id="detection-status">
+                <div class="detection-waiting" id="detection-waiting">
+                  <div class="detection-spinner"></div>
+                  <span data-i18n="detectWaiting">正在检测置顶状态...</span>
+                </div>
+                <div class="detection-success hidden" id="detection-success">
+                  <div class="detection-check-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
+                  <span data-i18n="detectSuccess">已成功置顶！</span>
+                </div>
+              </div>
+              <p class="detection-hint" id="detection-hint" data-i18n="detectHint">请按照上述步骤将插件固定到工具栏</p>
+            </div>
+
+            <div class="page-footer pin-footer">
+              <button type="button" class="btn-skip" id="btn-skip-pin" data-i18n="btnSkip">跳过</button>
+              <button type="button" class="btn-next" id="btn-next-pin" data-i18n="btnNext">下一步</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Page 3: Design Styles -->
+    <section id="page-styles" class="page">
+      <div class="page-content">
+        <div class="page-header">
+          <h1 data-i18n="stylesTitle">探索设计风格</h1>
+          <p class="page-subtitle" data-i18n="stylesSubtitle">选择一个喜欢的风格，立即开始你的定制之旅</p>
+        </div>
+
+        <div class="styles-grid">
+          <div id="style-cards-container" class="style-cards-container">
+            <!-- Cards are rendered by JS -->
+          </div>
+        </div>
+
+        <div class="page-footer">
+          <button type="button" class="btn-back" data-i18n="btnBack">上一步</button>
+          <button type="button" class="btn-start" data-i18n="btnStart">开始使用</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Style Detail Modal -->
+    <div id="style-modal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modal-style-name"></h2>
+          <button type="button" class="modal-close" id="modal-close">
+            <span class="icon icon-x"></span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="style-preview" id="style-preview">
+            <!-- Preview content -->
+          </div>
+          <div class="style-prompt-section">
+            <h3 data-i18n="stylePrompt">风格提示词</h3>
+            <div class="prompt-container">
+              <code id="style-prompt-code"></code>
+              <button type="button" class="btn-copy" id="btn-copy-prompt">
+                <span class="icon icon-copy"></span>
+                <span data-i18n="btnCopy">复制</span>
+              </button>
+            </div>
+          </div>
+          <div class="style-description" id="style-description"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="btn-modal-close" data-i18n="btnClose">关闭</button>
+          <button type="button" class="btn-primary" id="btn-use-style" data-i18n="btnUseStyle">使用此风格</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confetti Container -->
+  <div id="confetti-container" class="confetti-container"></div>
+
+  <script src="welcome.js" type="module"></script>
+</body>
+</html>

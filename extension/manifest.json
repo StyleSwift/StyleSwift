@@ -1,54 +1,59 @@
 {
-  "manifest_version": 3,
-  "name": "__MSG_extName__",
-  "version": "1.0.0",
-  "description": "__MSG_extDescription__",
-  "default_locale": "en",
-  "icons": {
-    "16": "icons/icon-16.png",
-    "48": "icons/icon-48.png",
-    "128": "icons/icon-128.png"
-  },
-  "permissions": [
-    "activeTab",
-    "storage",
-    "sidePanel",
-    "scripting"
-  ],
+	"manifest_version": 3,
+	"name": "__MSG_extName__",
+	"version": "1.0.0",
+	"description": "__MSG_extDescription__",
+	"default_locale": "en",
+	"icons": {
+		"16": "icons/icon-16.png",
+		"48": "icons/icon-48.png",
+		"128": "icons/icon-128.png"
+	},
+	"permissions": ["activeTab", "storage", "sidePanel", "scripting"],
 
-  "host_permissions": [
-    "https://api.anthropic.com/*",
-    "<all_urls>"
-  ],
+	"host_permissions": ["https://api.anthropic.com/*", "<all_urls>"],
 
-  "optional_host_permissions": [],
+	"optional_host_permissions": [],
 
-  "background": {
-    "service_worker": "background/service-worker.js"
-  },
+	"background": {
+		"service_worker": "background/service-worker.js"
+	},
 
-  "side_panel": {
-    "default_path": "sidepanel/index.html"
-  },
+	"side_panel": {
+		"default_path": "sidepanel/index.html"
+	},
 
-  "action": {
-    "default_icon": {
-      "16": "icons/icon-16.png",
-      "48": "icons/icon-48.png",
-      "128": "icons/icon-128.png"
-    }
-  },
+	"action": {
+		"default_icon": {
+			"16": "icons/icon-16.png",
+			"48": "icons/icon-48.png",
+			"128": "icons/icon-128.png"
+		}
+	},
 
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content/early-inject.js"],
-      "run_at": "document_start"
-    },
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content/content.js"],
-      "run_at": "document_idle"
-    }
-  ]
+	"content_scripts": [
+		{
+			"matches": ["<all_urls>"],
+			"js": ["content/early-inject.js"],
+			"run_at": "document_start"
+		},
+		{
+			"matches": ["<all_urls>"],
+			"js": ["content/content.js"],
+			"run_at": "document_idle"
+		}
+	],
+
+	"web_accessible_resources": [
+		{
+			"resources": [
+				"welcome/welcome.html",
+				"welcome/welcome.css",
+				"welcome/welcome.js",
+				"icons/*",
+				"images/*"
+			],
+			"matches": ["<all_urls>"]
+		}
+	]
 }

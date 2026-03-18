@@ -37,7 +37,7 @@ LLM 需要了解页面结构才能生成正确的 CSS 选择器。
 ### 输出
 
 树形文本，包含：
-- 页面元信息（URL、标题、视口尺寸）
+- 页面元信息（标题）
 - 元素树（标签、选择器、关键样式、文本摘要）
 
 ### 结构简化策略
@@ -105,9 +105,7 @@ a.nav-link × 5: 首页|产品|博客|关于|联系
 ### 输出示例
 
 ```
-URL: https://github.com/user/repo
 Title: user/repo - GitHub
-Viewport: 1920 × 1080
 
 body [background-color:#fff; color:#333; font-size:16px]
 ├── header.site-header [position:fixed; height:60px]
