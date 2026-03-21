@@ -43,6 +43,20 @@
 
 </div>
 
+### 更多效果展示
+
+<div align="center">
+
+真实场景应用效果：
+
+![B站韦斯安德森风格](images/B站韦斯安德森风格.png) | ![豆瓣墨水屏风格](images/豆瓣墨水屏风格.png) | ![github像素风](images/github像素风.png)
+:---:|:---:|:---:
+**B站韦斯安德森风格** | **豆瓣墨水屏风格** | **GitHub像素风**
+
+无论是什么网站，数字女娲 都能为你打造独特的视觉体验。
+
+</div>
+
 ### 核心特性
 
 | 特性 | 说明 |
@@ -322,6 +336,20 @@ Intelligent style generation demonstration:
 **Old Newspaper Style** | **The Matrix Style** | **One-Click Style Transfer**
 
 Simply describe your design intent, and 数字女娲 understands and intelligently applies styles.
+
+</div>
+
+### More Effect Showcases
+
+<div align="center">
+
+Real-world application demonstrations:
+
+![B站韦斯安德森风格](images/B站韦斯安德森风格.png) | ![豆瓣墨水屏风格](images/豆瓣墨水屏风格.png) | ![github像素风](images/github像素风.png)
+:---:|:---:|:---:
+**Bilibili Wes Anderson Style** | **Douban E-ink Style** | **GitHub Pixel Art Style**
+
+No matter what website, 数字女娲 creates unique visual experiences for you.
 
 </div>
 
