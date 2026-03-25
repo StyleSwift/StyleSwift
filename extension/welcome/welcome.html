@@ -80,7 +80,7 @@
           </div>
 
           <div class="page-footer features-footer">
-            <button type="button" class="btn-next" data-i18n="btnNext">下一步</button>
+            <button type="button" class="btn-next" data-testid="btn-next-features" data-i18n="btnNext">下一步</button>
           </div>
         </div>
 
@@ -204,8 +204,8 @@
             </div>
 
             <div class="page-footer pin-footer">
-              <button type="button" class="btn-skip" id="btn-skip-pin" data-i18n="btnSkip">跳过</button>
-              <button type="button" class="btn-next" id="btn-next-pin" data-i18n="btnNext">下一步</button>
+              <button type="button" class="btn-skip" id="btn-skip-pin" data-testid="btn-skip-pin" data-i18n="btnSkip">跳过</button>
+              <button type="button" class="btn-next" id="btn-next-pin" data-testid="btn-next-pin" data-i18n="btnNext">下一步</button>
             </div>
           </div>
         </div>
@@ -227,19 +227,19 @@
         </div>
 
         <div class="page-footer">
-          <button type="button" class="btn-back" data-i18n="btnBack">上一步</button>
-          <button type="button" class="btn-start" data-i18n="btnStart">开始使用</button>
+          <button type="button" class="btn-back" data-testid="btn-back-styles" data-i18n="btnBack">上一步</button>
+          <button type="button" class="btn-start" data-testid="btn-start" data-i18n="btnStart">开始使用</button>
         </div>
       </div>
     </section>
 
     <!-- Style Detail Modal -->
-    <div id="style-modal" class="modal hidden">
+    <div id="style-modal" class="modal hidden" data-testid="style-modal">
       <div class="modal-backdrop"></div>
       <div class="modal-content">
         <div class="modal-header">
-          <h2 id="modal-style-name"></h2>
-          <button type="button" class="modal-close" id="modal-close">
+          <h2 id="modal-style-name" data-testid="modal-style-name"></h2>
+          <button type="button" class="modal-close" id="modal-close" data-testid="modal-close">
             <span class="icon icon-x"></span>
           </button>
         </div>
@@ -250,25 +250,25 @@
           <div class="style-prompt-section">
             <h3 data-i18n="stylePrompt">风格提示词</h3>
             <div class="prompt-container">
-              <code id="style-prompt-code"></code>
-              <button type="button" class="btn-copy" id="btn-copy-prompt">
+              <code id="style-prompt-code" data-testid="style-prompt-code"></code>
+              <button type="button" class="btn-copy" id="btn-copy-prompt" data-testid="btn-copy-prompt">
                 <span class="icon icon-copy"></span>
                 <span data-i18n="btnCopy">复制</span>
               </button>
             </div>
           </div>
-          <div class="style-description" id="style-description"></div>
+          <div class="style-description" id="style-description" data-testid="style-description"></div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn-secondary" id="btn-modal-close" data-i18n="btnClose">关闭</button>
-          <button type="button" class="btn-primary" id="btn-use-style" data-i18n="btnUseStyle">使用此风格</button>
+          <button type="button" class="btn-secondary" id="btn-modal-close" data-testid="btn-modal-close" data-i18n="btnClose">关闭</button>
+          <button type="button" class="btn-primary" id="btn-use-style" data-testid="btn-use-style" data-i18n="btnUseStyle">使用此风格</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Confetti Container -->
-  <div id="confetti-container" class="confetti-container"></div>
+  <div id="confetti-container" class="confetti-container" data-testid="confetti-container"></div>
 
   <script src="welcome.js" type="module"></script>
 </body>

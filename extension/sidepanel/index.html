@@ -24,23 +24,23 @@
         <div class="setup-form">
           <div class="form-group">
             <label for="api-key-input" data-i18n="apiKeyLabel">API Key</label>
-            <input type="password" id="api-key-input" placeholder="sk-ant-..." autocomplete="off">
+            <input type="password" id="api-key-input" data-testid="api-key-input" placeholder="sk-ant-..." autocomplete="off">
             <p class="hint" data-i18n="apiKeyPlaceholder">Enter your API Key</p>
           </div>
           
           <div class="form-group">
             <label for="api-base-input" data-i18n="apiAddressLabel">API Address (optional)</label>
-            <input type="text" id="api-base-input" data-i18n-placeholder="defaultApiUrl" autocomplete="off">
+            <input type="text" id="api-base-input" data-testid="api-base-input" data-i18n-placeholder="defaultApiUrl" autocomplete="off">
             <p class="hint" data-i18n="apiAddressPlaceholder">Use Anthropic official address by default</p>
           </div>
 
           <div class="form-group">
             <label for="model-input" data-i18n="modelLabel">Model (optional)</label>
-            <input type="text" id="model-input" data-i18n-placeholder="defaultModel" autocomplete="off">
+            <input type="text" id="model-input" data-testid="model-input" data-i18n-placeholder="defaultModel" autocomplete="off">
             <p class="hint" data-i18n="modelPlaceholder">Use deepseek/deepseek-r1 by default</p>
           </div>
 
-          <button id="start-btn" class="btn-primary" disabled data-i18n="startUsing">Get Started</button>
+          <button id="start-btn" class="btn-primary" data-testid="start-btn" disabled data-i18n="startUsing">Get Started</button>
           
           <div id="setup-error" class="error-message hidden"></div>
           
@@ -61,14 +61,14 @@
             <img src="../icons/icon-16.png" alt="StyleSwift" class="dot ready">
           </div>
         </div>
-        <div class="topbar-center" id="session-header" data-i18n-title="clickToSwitchSession">
-          <span id="current-domain" class="domain">--</span>
+        <div class="topbar-center" id="session-header" data-testid="session-header" data-i18n-title="clickToSwitchSession">
+          <span id="current-domain" class="domain" data-testid="current-domain">--</span>
           <span class="separator">·</span>
-          <span id="session-title" class="title" data-i18n="newSession">New Session</span>
+          <span id="session-title" class="title" data-testid="session-title" data-i18n="newSession">New Session</span>
           <span class="icon icon-chevron-down dropdown-arrow" style="width:10px;height:10px" aria-hidden="true"></span>
         </div>
         <div class="topbar-right">
-          <button id="settings-btn" class="btn-ghost btn-icon" data-i18n-title="settings">
+          <button id="settings-btn" class="btn-ghost btn-icon" data-testid="settings-btn" data-i18n-title="settings">
             <span class="icon icon-settings" style="width:16px;height:16px" aria-hidden="true"></span>
           </button>
         </div>
@@ -76,7 +76,7 @@
           <div id="session-list-panel" class="session-dropdown-panel hidden">
           <div class="session-dropdown-header">
             <span data-i18n="sessionHistory">Session History</span>
-            <button id="new-session-btn" class="new-session-btn">
+            <button id="new-session-btn" class="new-session-btn" data-testid="new-session-btn">
               <span class="icon icon-plus" style="width:12px;height:12px" aria-hidden="true"></span>
               <span data-i18n="newSession">New Session</span>
             </button>
@@ -88,13 +88,13 @@
       </header>
       
       <!-- Error Banner -->
-      <div id="error-banner" class="error-banner hidden">
+      <div id="error-banner" class="error-banner hidden" data-testid="error-banner">
         <div class="error-banner-content">
           <span class="icon icon-alert error-banner-icon" style="width:14px;height:14px" aria-hidden="true"></span>
-          <span id="error-banner-message" class="error-banner-message"></span>
-          <button id="error-banner-action" class="error-banner-action"></button>
+          <span id="error-banner-message" class="error-banner-message" data-testid="error-banner-message"></span>
+          <button id="error-banner-action" class="error-banner-action" data-testid="error-banner-action"></button>
         </div>
-        <button id="error-banner-close" class="error-banner-close" data-i18n-title="closeError" data-i18n-aria-label="closeError">
+        <button id="error-banner-close" class="error-banner-close" data-testid="error-banner-close" data-i18n-title="closeError" data-i18n-aria-label="closeError">
           <span class="icon icon-x" style="width:12px;height:12px" aria-hidden="true"></span>
         </button>
       </div>
@@ -117,14 +117,14 @@
       
       <!-- Chat Area -->
       <main id="chat-area" class="chat-area">
-        <div id="messages-container">
+        <div id="messages-container" data-testid="messages-container">
           <!-- Dynamically generated messages -->
         </div>
         
         <!-- Styles Summary -->
-        <div id="styles-summary" class="hidden">
+        <div id="styles-summary" class="styles-summary hidden" data-testid="styles-summary">
           <span class="label" data-i18n="appliedStyles">Applied Styles:</span>
-          <span id="styles-info" class="info"></span>
+          <span id="styles-info" class="info" data-testid="styles-info"></span>
         </div>
       </main>
       
@@ -156,25 +156,26 @@
           <textarea
             id="message-input"
             class="message-input"
+            data-testid="message-input"
             placeholder=""
             rows="1"
             data-i18n-aria-label="inputStyleDesc"
           ></textarea>
           <div class="input-toolbar">
             <div class="input-toolbar-left">
-              <button id="picker-btn" class="toolbar-btn" data-i18n-title="pickPageElement" data-i18n-aria-label="pickPageElement">
+              <button id="picker-btn" class="toolbar-btn" data-testid="picker-btn" data-i18n-title="pickPageElement" data-i18n-aria-label="pickPageElement">
                 <span class="icon icon-mouse" style="width:14px;height:14px" aria-hidden="true"></span>
               </button>
-              <button id="image-upload-btn" class="toolbar-btn" data-i18n-title="uploadRefImage" data-i18n-aria-label="uploadRefImage">
+              <button id="image-upload-btn" class="toolbar-btn" data-testid="image-upload-btn" data-i18n-title="uploadRefImage" data-i18n-aria-label="uploadRefImage">
                 <span class="icon icon-image" style="width:14px;height:14px" aria-hidden="true"></span>
               </button>
-              <input type="file" id="image-upload-input" accept="image/*" multiple hidden>
+              <input type="file" id="image-upload-input" data-testid="image-upload-input" accept="image/*" multiple hidden>
             </div>
             <div class="input-toolbar-right">
-              <button id="send-btn" class="send-btn" data-i18n-title="send" data-i18n-aria-label="send">
+              <button id="send-btn" class="send-btn" data-testid="send-btn" data-i18n-title="send" data-i18n-aria-label="send">
                 <span class="icon icon-send" style="width:13px;height:13px" aria-hidden="true"></span>
               </button>
-              <button id="stop-btn" class="stop-btn hidden" data-i18n-title="stop" data-i18n-aria-label="stop">
+              <button id="stop-btn" class="stop-btn hidden" data-testid="stop-btn" data-i18n-title="stop" data-i18n-aria-label="stop">
                 <span class="icon icon-stop" style="width:10px;height:10px" aria-hidden="true"></span>
               </button>
             </div>
@@ -201,22 +202,22 @@
           <div class="form-group">
             <label for="settings-api-key" data-i18n="apiKeyLabel">API Key</label>
             <div class="input-with-action">
-              <input type="password" id="settings-api-key" placeholder="sk-ant-...">
-              <button id="toggle-key-visibility" class="icon-btn" data-i18n-title="toggleVisibility" data-i18n-aria-label="toggleVisibility">
+              <input type="password" id="settings-api-key" data-testid="settings-api-key" placeholder="sk-ant-...">
+              <button id="toggle-key-visibility" class="icon-btn" data-testid="toggle-key-visibility" data-i18n-title="toggleVisibility" data-i18n-aria-label="toggleVisibility">
                 <span class="icon icon-eye" style="width:16px;height:16px" aria-hidden="true"></span>
               </button>
             </div>
           </div>
           <div class="form-group">
             <label for="settings-api-base" data-i18n="apiAddressLabel">API Address</label>
-            <input type="text" id="settings-api-base" data-i18n-placeholder="defaultApiUrl">
+            <input type="text" id="settings-api-base" data-testid="settings-api-base" data-i18n-placeholder="defaultApiUrl">
           </div>
           <div class="form-group">
             <label for="settings-model" data-i18n="modelLabel">Model</label>
-            <input type="text" id="settings-model" data-i18n-placeholder="defaultModel2">
+            <input type="text" id="settings-model" data-testid="settings-model" data-i18n-placeholder="defaultModel2">
           </div>
-          <button id="verify-connection-btn" class="btn-secondary" data-i18n="verifyConnection">Verify Connection</button>
-          <div id="connection-status" class="status-message hidden"></div>
+          <button id="verify-connection-btn" class="btn-secondary" data-testid="verify-connection-btn" data-i18n="verifyConnection">Verify Connection</button>
+          <div id="connection-status" class="status-message hidden" data-testid="connection-status"></div>
         </div>
 
         <div class="settings-group">
@@ -305,14 +306,14 @@
     </section>
     
     <!-- Loading Overlay -->
-    <div id="loading-overlay" class="overlay hidden">
+    <div id="loading-overlay" class="overlay hidden" data-testid="loading-overlay">
       <div class="loading-spinner"></div>
     </div>
     
     <!-- Error Toast -->
-    <div id="error-toast" class="toast hidden">
-      <span id="error-message"></span>
-      <button id="dismiss-error" class="icon-btn" data-i18n-aria-label="close">
+    <div id="error-toast" class="toast hidden" data-testid="error-toast">
+      <span id="error-message" data-testid="error-message"></span>
+      <button id="dismiss-error" class="icon-btn" data-testid="dismiss-error" data-i18n-aria-label="close">
         <span class="icon icon-x" style="width:12px;height:12px" aria-hidden="true"></span>
       </button>
     </div>
