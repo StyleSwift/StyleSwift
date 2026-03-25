@@ -215,6 +215,22 @@
     "message": "数字女娲 v1.0.0",
     "description": "Version text"
   },
+  "githubLabel": {
+    "message": "开源地址",
+    "description": "GitHub label"
+  },
+  "githubLink": {
+    "message": "https://github.com/StyleSwift/StyleSwift",
+    "description": "GitHub repository URL"
+  },
+  "feedbackLabel": {
+    "message": "反馈邮箱",
+    "description": "Feedback email label"
+  },
+  "feedbackEmail": {
+    "message": "2270364052@qq.com",
+    "description": "Feedback email address"
+  },
   "unsaved": {
     "message": "未保存",
     "description": "Unsaved changes hint"

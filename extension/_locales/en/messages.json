@@ -215,6 +215,22 @@
     "message": "StyleSwift v1.0.0",
     "description": "Version text"
   },
+  "githubLabel": {
+    "message": "GitHub",
+    "description": "GitHub label"
+  },
+  "githubLink": {
+    "message": "https://github.com/StyleSwift/StyleSwift",
+    "description": "GitHub repository URL"
+  },
+  "feedbackLabel": {
+    "message": "Feedback",
+    "description": "Feedback email label"
+  },
+  "feedbackEmail": {
+    "message": "2270364052@qq.com",
+    "description": "Feedback email address"
+  },
   "unsaved": {
     "message": "Unsaved",
     "description": "Unsaved changes hint"

@@ -251,32 +251,7 @@ npm run lint
 
 ### 许可证
 
-本项目采用 **Server Side Public License (SSPL)** 开源许可证。
-
-#### 允许的使用方式
-
-- 个人学习和研究
-- 内部使用和部署
-- 修改和分发源代码
-- 部署为自己的服务（需开源完整服务端代码）
-
-#### 禁止的使用方式
-
-- 提供商业云服务
-- 商业销售或分发
-- 嵌入商业产品
-
-#### 商业许可
-
-如果要将 数字女娲 嵌入商业产品
-- 提供商业 SaaS 服务
-- 获得优先技术支持
-
-请联系我们获取商业许可：
-- Email: 2270364052@qq.com
-- Website: https://github.com/zhushen12580/StyleSwift
-
-详见 [LICENSE](LICENSE) 文件
+数字女娲是开源项目，采用 Server Side Public License (SSPL) 开源许可证，详情请参阅 [LICENSE](LICENSE) 文件。
 
 ### 致谢
 
@@ -546,33 +521,7 @@ Contributions are welcome! Feel free to submit issues or pull requests.
 
 ### License
 
-This project is licensed under the **Server Side Public License (SSPL)**.
-
-#### Permitted Uses
-
-- Personal learning and research
-- Internal use and deployment
-- Modifying and distributing source code
-- Self-hosting as a service (with full server-side source code disclosure)
-
-#### Prohibited Uses
-
-- Offering commercial cloud services
-- Commercial sales or distribution
-- Embedding in commercial products
-
-#### Commercial Licensing
-
-For commercial use, please contact us:
-- Email: 2270364052@qq.com
-- Website: https://github.com/zhushen12580/StyleSwift
-
-Commercial licenses are available for:
-- Embedding 数字女娲 (StyleSwift) in commercial products
-- Offering 数字女娲 (StyleSwift) as a commercial SaaS service
-- Proprietary modifications and distributions
-
-See [LICENSE](LICENSE) file for full details.
+数字女娲 is an open source project licensed under the Server Side Public License (SSPL). See [LICENSE](LICENSE) file for details.
 
 ### Acknowledgments
 
