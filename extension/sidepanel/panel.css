@@ -824,8 +824,9 @@ pre code {
 /* Scroll to Bottom Floating Button */
 .scroll-to-bottom-btn {
   position: fixed;
-  bottom: calc(var(--input-area-min-height) + 12px);
-  right: 20px;
+  bottom: calc(var(--input-area-min-height) + 16px);
+  left: 50%;
+  margin-left: -14px;
   width: 28px;
   height: 28px;
   border-radius: var(--radius-full);
@@ -1694,6 +1695,59 @@ pre code {
   50%       { opacity: 0.55; }
 }
 
+/* ---------- 压缩状态指示器 ---------- */
+
+/*
+ * 压缩状态显示组件
+ * 用于显示上下文压缩进度：压缩历史、生成摘要、压缩工具结果
+ * 设计原则：品牌暖色调 + 金属质感 + 微妙动画
+ */
+.compression-status {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  animation: compression-fade-in var(--duration-normal) var(--easing-default);
+}
+
+.compression-status-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.compression-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+}
+
+.compression-icon .icon {
+  animation: icon-spin 1s linear infinite;
+}
+
+.compression-text {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary-active);
+  letter-spacing: 0.01em;
+}
+
+/* 淡入动画 */
+@keyframes compression-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 /* ---------- 按钮 ---------- */
 
 .btn {
@@ -5912,5 +5966,72 @@ pre code {
 
 .skill-delete-modal .btn-danger:hover {
   background: #dc2626;
+}
+
+/* ============================================================
+   上下文压缩状态指示器
+   Context Compression Status Indicator
+   ============================================================ */
+
+.compression-status {
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  background: linear-gradient(135deg, var(--color-info-bg) 0%, var(--color-bg-secondary) 100%);
+  border: 1px solid var(--color-info);
+  border-radius: var(--radius-md);
+  animation: compressionPulse 1.5s ease-in-out infinite;
+}
+
+.compression-status-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.compression-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.compression-icon .icon {
+  animation: iconSpin 1s linear infinite;
+}
+
+.compression-text {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-info);
+}
+
+@keyframes compressionPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes iconSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Dark mode support for compression status */
+@media (prefers-color-scheme: dark) {
+  .compression-status {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, var(--color-bg-tertiary) 100%);
+    border-color: rgba(59, 130, 246, 0.5);
+  }
+  
+  .compression-text {
+    color: #60a5fa;
+  }
 }
 

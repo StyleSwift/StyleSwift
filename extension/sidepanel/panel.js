@@ -2033,6 +2033,30 @@ async function handleSendClick() {
 			onTodoUpdate: (todos, meta) => {
 				todoCardManager.updateTodos(todos, meta?.awaitingConfirmation);
 			},
+
+			/**
+			 * 上下文压缩开始时调用
+			 * 在助手消息气泡中显示压缩状态指示器
+			 */
+			onCompressionStart: () => {
+				showCompressionStatus("compressing_history");
+			},
+
+			/**
+			 * 上下文压缩进度更新时调用
+			 * @param {string} phase - 压缩阶段: 'summarizing_history' | 'compressing_tool_results'
+			 */
+			onCompressionProgress: (phase) => {
+				showCompressionStatus(phase);
+			},
+
+			/**
+			 * 上下文压缩完成时调用
+			 * 移除压缩状态指示器
+			 */
+			onCompressionEnd: () => {
+				hideCompressionStatus();
+			},
 		};
 
 		// 调用 Agent Loop（传递多模态内容）
@@ -5377,6 +5401,90 @@ function showEmptyState() {
 	}
 }
 
+// ============================================================================
+// 上下文压缩状态显示
+// ============================================================================
+
+/**
+ * 压缩状态元素引用
+ * @type {HTMLElement|null}
+ */
+let compressionStatusEl = null;
+
+/**
+ * 显示上下文压缩状态指示器
+ * 
+ * 在助手消息气泡中显示压缩进度，让用户知道 Agent 正在进行上下文压缩操作。
+ * 
+ * @param {string} phase - 压缩阶段:
+ *   - 'compressing_history': 开始压缩历史记录
+ *   - 'summarizing_history': 正在生成摘要
+ *   - 'compressing_tool_results': 正在压缩工具结果
+ */
+function showCompressionStatus(phase) {
+	// 获取当前助手消息气泡
+	const assistantMessages = DOM.messagesContainer?.querySelectorAll(".message-assistant");
+	if (!assistantMessages || assistantMessages.length === 0) {
+		console.warn("[Compression Status] No assistant message container found");
+		return;
+	}
+
+	const lastAssistantMsg = assistantMessages[assistantMessages.length - 1];
+	const bubble = lastAssistantMsg?.querySelector(".message-bubble");
+	if (!bubble) {
+		console.warn("[Compression Status] No message bubble found");
+		return;
+	}
+
+	// 移除已存在的压缩状态元素
+	hideCompressionStatus();
+
+	// 创建压缩状态元素
+	compressionStatusEl = document.createElement("div");
+	compressionStatusEl.className = "compression-status";
+	
+	// 根据阶段设置不同的文本和图标
+	const statusConfig = {
+		compressing_history: {
+			icon: "loader",
+			text: getMessage("compressingHistory"),
+		},
+		summarizing_history: {
+			icon: "loader",
+			text: getMessage("summarizingHistory"),
+		},
+		compressing_tool_results: {
+			icon: "loader",
+			text: getMessage("compressingToolResults"),
+		},
+	};
+
+	const config = statusConfig[phase] || statusConfig.compression_history;
+
+	compressionStatusEl.innerHTML = `
+		<div class="compression-status-content">
+			<span class="compression-icon">${iconHtml(config.icon, 14, "spin")}</span>
+			<span class="compression-text">${config.text}</span>
+		</div>
+	`;
+
+	// 插入到气泡内容的最前面（在已有内容之前）
+	bubble.insertBefore(compressionStatusEl, bubble.firstChild);
+
+	console.log(`[Compression Status] Showing: ${phase}`);
+}
+
+/**
+ * 隐藏上下文压缩状态指示器
+ */
+function hideCompressionStatus() {
+	if (compressionStatusEl) {
+		compressionStatusEl.remove();
+		compressionStatusEl = null;
+		console.log("[Compression Status] Hidden");
+	}
+}
+
 /**
  * 渲染历史消息到对话区
  *
@@ -5400,12 +5508,20 @@ function renderHistoryMessages(history) {
 	clearMessages();
 
 	// 兼容新旧格式：可传入 messages 数组或 { messages, snapshots } 对象
-	const messages = Array.isArray(history) ? history : history?.messages || [];
+	const rawMessages = Array.isArray(history) ? history : history?.messages || [];
 
-	if (!messages || messages.length === 0) {
+	if (!rawMessages || rawMessages.length === 0) {
 		showEmptyState();
 		return;
 	}
+
+	// 过滤掉摘要和学习确认消息（不显示在 UI 上）
+	// _isSummary: 历史摘要消息 - AI 生成的压缩摘要
+	// _isLearned: "OK, I've learned about the previous conversation." 确认消息
+	// 注意: _isCompressed 消息保留显示，用户可以看到早期对话记录
+	const messages = rawMessages.filter(
+		(msg) => !msg._isSummary && !msg._isLearned,
+	);
 
 	// 统计总轮次数（用于决定是否显示回退按钮）
 	let totalTurns = 0;

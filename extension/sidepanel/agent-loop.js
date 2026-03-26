@@ -866,7 +866,8 @@ function _isToolResultMessage(msg) {
 }
 
 /**
- * Accumulate from end to reach 60% of budget, with cut point landing on a clean user message (not tool_result).
+ * Accumulate from end to reach 40% of budget (aggressive compression for longer history).
+ * Cut point lands on a clean user message (not tool_result).
  * Always keep at least MIN_KEEP_MSGS recent messages to avoid empty recentPart.
  */
 const MIN_KEEP_MSGS = 6;
@@ -874,7 +875,7 @@ const MIN_KEEP_MSGS = 6;
 function findKeepBoundary(history, tokenBudget) {
   if (history.length <= MIN_KEEP_MSGS) return 0;
 
-  const keepLimit = Math.floor(tokenBudget * 0.6);
+  const keepLimit = Math.floor(tokenBudget * 0.4);
   let accTokens = 0;
   // Candidate cut point: default to keeping all recent MIN_KEEP_MSGS messages
   let cutIndex = history.length - MIN_KEEP_MSGS;
@@ -903,56 +904,139 @@ function findKeepBoundary(history, tokenBudget) {
   return cutIndex;
 }
 
-/** When over budget, summarize old messages + keep recent context, truncate large tool results if still over */
-async function checkAndCompressHistory(history, estimatedTokens) {
+/**
+ * Extract effective history for LLM from full history.
+ * Rules: Keep summary messages + un-compressed messages, skip _isCompressed messages.
+ *
+ * @param {Array} fullHistory - Complete history including compressed messages
+ * @returns {Array} - Effective history for LLM (summary + un-compressed messages)
+ */
+function extractEffectiveHistory(fullHistory) {
+  if (!Array.isArray(fullHistory)) return [];
+
+  return fullHistory.filter((msg) =>
+    // Summary messages: always keep
+    msg._isSummary === true ||
+    // Learned confirmation: always keep
+    msg._isLearned === true ||
+    // Un-compressed messages: keep
+    msg._isCompressed !== true,
+  );
+}
+
+/**
+ * Compression result containing both histories:
+ * - fullHistory: Complete history with _isCompressed marks (for storage)
+ * - llmHistory: Effective history without _isCompressed messages (for LLM)
+ */
+/**
+ * @typedef {Object} CompressionResult
+ * @property {Array} fullHistory - Complete history with _isCompressed marks
+ * @property {Array} llmHistory - Effective history without _isCompressed messages
+ */
+
+/** When over budget, summarize old messages + keep recent context, truncate large tool results if still over
+ * @returns {CompressionResult} Object with fullHistory and llmHistory
+ */
+async function checkAndCompressHistory(history, estimatedTokens, callbacks) {
   if (estimatedTokens <= TOKEN_BUDGET) {
-    return history;
+    return { fullHistory: history, llmHistory: history };
   }
+
+  // Notify UI that compression is starting
+  callbacks?.onCompressionStart?.();
 
   const keepFrom = findKeepBoundary(history, TOKEN_BUDGET);
 
   if (keepFrom <= 0) {
-    return truncateLargeToolResults(history);
+    callbacks?.onCompressionProgress?.("compressing_tool_results");
+    const result = truncateLargeToolResults(history);
+    callbacks?.onCompressionEnd?.();
+    return { fullHistory: result, llmHistory: result };
   }
 
   const oldPart = history.slice(0, keepFrom);
   const recentPart = history.slice(keepFrom);
 
   if (oldPart.length === 0) {
-    return truncateLargeToolResults(history);
+    callbacks?.onCompressionProgress?.("compressing_tool_results");
+    const result = truncateLargeToolResults(history);
+    callbacks?.onCompressionEnd?.();
+    return { fullHistory: result, llmHistory: result };
   }
+
+  // Extract existing summary from _isSummary message (if any)
+  // Skip _isCompressed messages when generating new summary
   let existingSummary = null;
-  const nonSummaryOld = [];
+  const nonCompressedOld = [];
+
   for (const msg of oldPart) {
     if (msg._isSummary) {
-      existingSummary = typeof msg.content === "string" ? msg.content : null;
-    } else {
-      nonSummaryOld.push(msg);
+      // Extract existing summary content
+      existingSummary = typeof msg.content === "string"
+        ? msg.content.replace(/^\[Conversation History Summary\]\n?/, "")
+        : null;
+    } else if (!msg._isCompressed) {
+      // Only collect un-compressed messages for summary generation
+      nonCompressedOld.push(msg);
     }
+    // _isCompressed messages are skipped entirely
   }
-  const oldForSummary = nonSummaryOld.filter(
+
+  // Filter out the "OK, I've learned" confirmation when generating summary
+  const oldForSummary = nonCompressedOld.filter(
     (msg) => !(msg.role === "assistant"
       && Array.isArray(msg.content)
       && msg.content.length === 1
       && msg.content[0]?.text === "OK, I've learned about the previous conversation."),
   );
 
+  // Notify UI that summarization is in progress
+  callbacks?.onCompressionProgress?.("summarizing_history");
+
   const summary = await summarizeOldTurns(oldForSummary, existingSummary);
 
-  let compressed = [
+  // Mark oldPart messages as compressed (they will be kept in fullHistory but skipped for LLM)
+  const compressedPart = oldPart.map((msg) => ({
+    ...msg,
+    _isCompressed: true,
+  }));
+
+  // Build fullHistory: summary + compressed messages (marked) + recent messages
+  // This is stored in IndexedDB for user review
+  const fullHistory = [
     { role: "user", content: `[Conversation History Summary]\n${summary}`, _isSummary: true },
     {
       role: "assistant",
       content: [{ type: "text", text: "OK, I've learned about the previous conversation." }],
+      _isLearned: true,
+    },
+    ...compressedPart,
+    ...recentPart,
+  ];
+
+  // Build llmHistory: summary + recent messages (skip _isCompressed messages)
+  // This is sent to LLM, excluding compressed content
+  let llmHistory = [
+    { role: "user", content: `[Conversation History Summary]\n${summary}`, _isSummary: true },
+    {
+      role: "assistant",
+      content: [{ type: "text", text: "OK, I've learned about the previous conversation." }],
+      _isLearned: true,
     },
     ...recentPart,
   ];
-  const postEstimate = estimateTokenCount(compressed);
+
+  const postEstimate = estimateTokenCount(llmHistory);
   if (postEstimate > TOKEN_BUDGET) {
-    compressed = truncateLargeToolResults(compressed);
+    callbacks?.onCompressionProgress?.("compressing_tool_results");
+    llmHistory = truncateLargeToolResults(llmHistory);
   }
 
-  return compressed;
+  // Notify UI that compression is complete
+  callbacks?.onCompressionEnd?.();
+
+  return { fullHistory, llmHistory };
 }
 
 /** Use LLM to summarize old conversation turns into a paragraph; integrate when existingSummary exists */
@@ -1001,12 +1085,54 @@ async function summarizeOldTurns(oldHistory, existingSummary = null) {
   let systemPrompt;
 
   if (existingSummary) {
-    systemPrompt =
-      "You are a conversation history compression assistant. Please integrate the existing conversation overview and new conversation content to generate a complete summary. Focus on preserving: user style preferences, applied style changes (including key selectors and properties), and unfinished requests. No more than 500 words.";
-    userContent = `[Existing Summary]\n${existingSummary}\n\n[New Content]\n${condensed || "(No new content)"}`;
+    systemPrompt = `You are a conversation history compression assistant. Integrate the existing summary with new conversation content.
+
+OUTPUT FORMAT (strict structure):
+## Applied Styles
+- [selector] { property: value; } (status: applied/reverted)
+- ...
+
+## User Preferences
+- [preference type]: [specific description]
+- ...
+
+## Pending Requests
+- [unfinished task description]
+
+## Context Notes
+- [important context for understanding recent requests]
+
+RULES:
+1. Merge new Applied Styles with existing ones; remove reverted/overwritten ones
+2. Accumulate User Preferences; note conflicting preferences
+3. Clear Pending Requests if completed in new content
+4. Keep Context Notes concise (relevant for recent context only)
+5. Total output under 400 words`;
+    userContent = `[Existing Summary]\n${existingSummary}\n\n[New Conversation]\n${condensed || "(No new content)"}`;
   } else {
-    systemPrompt =
-      "You are a conversation history compression assistant. Summarize the conversation history in a concise paragraph, focusing on preserving: user style preferences, applied style changes (including key selectors and properties), and unfinished requests. No more than 500 words.";
+    systemPrompt = `You are a conversation history compression assistant. Compress conversation into structured summary.
+
+OUTPUT FORMAT (strict structure):
+## Applied Styles
+- [selector] { property: value; } (status: applied)
+- ...
+
+## User Preferences
+- [preference type]: [specific description]
+- ...
+
+## Pending Requests
+- [unfinished task description]
+
+## Context Notes
+- [important context for understanding recent requests]
+
+RULES:
+1. Applied Styles: Extract exact CSS selectors and properties. Skip intermediate attempts, keep final state.
+2. User Preferences: Extract explicit preferences (colors, fonts, spacing, etc.). Skip procedural exchanges.
+3. Pending Requests: Only include explicitly stated but not yet fulfilled requests.
+4. Context Notes: Only include context needed for recent request understanding.
+5. Total output under 400 words.`;
     userContent = condensed;
   }
 
@@ -1925,7 +2051,7 @@ async function agentLoop(prompt, uiCallbacks) {
     const session = new SessionContext(domain, sessionId);
     setCurrentSession(session);
     const historyData = await loadAndPrepareHistory(domain, sessionId);
-    const fullHistory = historyData.messages;
+    let fullHistory = historyData.messages;
     const snapshots = historyData.snapshots;
     _saveState = { domain, sessionId, fullHistory, snapshots, saveHistory };
 
@@ -1950,7 +2076,8 @@ async function agentLoop(prompt, uiCallbacks) {
     }
     const userMsg = { role: "user", content: textOnlyContent };
     fullHistory.push(userMsg);
-    let llmHistory = [...fullHistory];
+    // Extract effective history: filter out _isCompressed messages, keep summary + un-compressed
+    let llmHistory = extractEffectiveHistory(fullHistory);
 
     let lastInputTokens = 0;
     let response;
@@ -2008,8 +2135,11 @@ async function agentLoop(prompt, uiCallbacks) {
       
       if (tokenCount > TOKEN_BUDGET) {
         console.log("[Token Budget] Triggering compression...");
-        llmHistory = await checkAndCompressHistory(llmHistory, tokenCount);
-        // 重置 lastInputTokens，避免用压缩前的旧值在下轮再次触发压缩
+        const compressionResult = await checkAndCompressHistory(llmHistory, tokenCount, uiCallbacks);
+        // Update both histories: fullHistory stores everything, llmHistory excludes _isCompressed
+        fullHistory = compressionResult.fullHistory;
+        llmHistory = compressionResult.llmHistory;
+        // Reset lastInputTokens to avoid re-triggering compression with stale value
         lastInputTokens = 0;
       }
       let currentLlmHistory = llmHistory;
@@ -2272,6 +2402,7 @@ export {
   TOKEN_BUDGET,
   findKeepBoundary,
   checkAndCompressHistory,
+  extractEffectiveHistory,
   summarizeOldTurns,
   estimateTokenCount,
   truncateLargeToolResults,

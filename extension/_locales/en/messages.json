@@ -686,5 +686,17 @@
   "scrollToBottom": {
     "message": "Scroll to latest message",
     "description": "Scroll to bottom button tooltip"
+  },
+  "compressingHistory": {
+    "message": "Compressing conversation history...",
+    "description": "Status message when compressing conversation history"
+  },
+  "summarizingHistory": {
+    "message": "Summarizing conversation...",
+    "description": "Status message when summarizing old conversation turns"
+  },
+  "compressingToolResults": {
+    "message": "Compressing tool results...",
+    "description": "Status message when compressing large tool results"
   }
 }

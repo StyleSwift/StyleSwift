@@ -686,5 +686,17 @@
   "scrollToBottom": {
     "message": "滚动到最新消息",
     "description": "Scroll to bottom button tooltip"
+  },
+  "compressingHistory": {
+    "message": "正在压缩历史记录...",
+    "description": "Status message when compressing conversation history"
+  },
+  "summarizingHistory": {
+    "message": "正在生成摘要...",
+    "description": "Status message when summarizing old conversation turns"
+  },
+  "compressingToolResults": {
+    "message": "正在压缩工具结果...",
+    "description": "Status message when compressing large tool results"
   }
 }

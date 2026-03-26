@@ -301,6 +301,14 @@ async function loadHistory(domain, sessionId) {
  * 从 IndexedDB 加载对话历史，返回 { messages, snapshots } 格式。
  * 兼容旧格式（纯 Array）和新格式（{ messages, snapshots }）。
  *
+ * 消息格式说明：
+ * - 普通消息：无特殊标记
+ * - 摘要消息：带 _isSummary: true 标记，存储压缩后的历史摘要
+ * - 学习确认：带 _isLearned: true 标记，表示已学习摘要内容
+ * - 已压缩消息：带 _isCompressed: true 标记，表示该消息已被压缩进摘要
+ *
+ * 调用方应使用 extractEffectiveHistory() 过滤 _isCompressed 消息后再发送给 LLM。
+ *
  * @param {string} domain - 域名，如 'github.com'
  * @param {string} sessionId - 会话 ID
  * @returns {Promise<{messages: Array, snapshots: Object}>}
@@ -1088,10 +1096,12 @@ async function updateStylesSummary() {
 // ============================================================================
 
 /**
- * 统计 messages 中用户文本消息的数量（即"轮次数"）
+ * 统计用户文本消息的数量（用于计算轮次号）
  *
- * 一条 role === 'user' 且 content 为 string 的消息代表一轮的开始。
+ * 用户文本消息是 role: "user" 且 content 为字符串的消息。
  * tool_result 消息（content 为数组）不计入轮次。
+ * _isSummary 消息（摘要消息）不计入轮次，因为它是 AI 生成的压缩摘要。
+ * _isLearned 消息（学习确认）不计入轮次，因为它是自动生成的确认消息。
  *
  * @param {Array} messages - 对话历史数组
  * @returns {number} 用户文本消息的数量
@@ -1099,7 +1109,11 @@ async function updateStylesSummary() {
 function countUserTextMessages(messages) {
   let count = 0;
   for (const msg of messages) {
-    if (msg.role === "user" && typeof msg.content === "string") {
+    if (
+      msg.role === "user" &&
+      typeof msg.content === "string" &&
+      !msg._isSummary // 跳过摘要消息，不计入用户对话轮次
+    ) {
       count++;
     }
   }
@@ -1118,7 +1132,8 @@ function findTurnMessageIndex(messages, turn) {
   for (let i = 0; i < messages.length; i++) {
     if (
       messages[i].role === "user" &&
-      typeof messages[i].content === "string"
+      typeof messages[i].content === "string" &&
+      !messages[i]._isSummary // 跳过摘要消息
     ) {
       count++;
       if (count === turn) return i;

@@ -24,6 +24,7 @@ import {
   TOKEN_BUDGET,
   findKeepBoundary,
   checkAndCompressHistory,
+  extractEffectiveHistory,
   summarizeOldTurns,
   estimateTokenCount,
   truncateLargeToolResults,
@@ -232,6 +233,81 @@ describe("truncateLargeToolResults 函数", () => {
   });
 });
 
+describe("extractEffectiveHistory 函数", () => {
+  test("过滤 _isCompressed 消息", () => {
+    const history = [
+      { role: "user", content: "[摘要]", _isSummary: true },
+      { role: "assistant", content: [{ type: "text", text: "OK" }], _isLearned: true },
+      { role: "user", content: "旧消息1", _isCompressed: true },
+      { role: "assistant", content: [{ type: "text", text: "旧回复1" }], _isCompressed: true },
+      { role: "user", content: "新消息1" },
+      { role: "assistant", content: [{ type: "text", text: "新回复1" }] },
+    ];
+
+    const effective = extractEffectiveHistory(history);
+
+    // 应该保留摘要、学习和未压缩消息，跳过已压缩消息
+    expect(effective.length).toBe(4);
+    expect(effective.find((m) => m._isCompressed)).toBeUndefined();
+    expect(effective[0]._isSummary).toBe(true);
+    expect(effective[1]._isLearned).toBe(true);
+    expect(effective[2].content).toBe("新消息1");
+    expect(effective[3].content[0].text).toBe("新回复1");
+  });
+
+  test("空数组返回空数组", () => {
+    const result = extractEffectiveHistory([]);
+    expect(result).toEqual([]);
+  });
+
+  test("无压缩标记时返回全部历史", () => {
+    const history = [
+      { role: "user", content: "消息1" },
+      { role: "assistant", content: [{ type: "text", text: "回复1" }] },
+      { role: "user", content: "消息2" },
+      { role: "assistant", content: [{ type: "text", text: "回复2" }] },
+    ];
+
+    const effective = extractEffectiveHistory(history);
+    expect(effective.length).toBe(4);
+    expect(effective).toEqual(history);
+  });
+
+  test("只有压缩消息时返回空数组", () => {
+    const history = [
+      { role: "user", content: "旧消息1", _isCompressed: true },
+      { role: "assistant", content: [{ type: "text", text: "旧回复1" }], _isCompressed: true },
+      { role: "user", content: "旧消息2", _isCompressed: true },
+    ];
+
+    const effective = extractEffectiveHistory(history);
+    expect(effective.length).toBe(0);
+  });
+
+  test("摘要和消息混合时正确过滤", () => {
+    const history = [
+      { role: "user", content: "[摘要]", _isSummary: true },
+      { role: "assistant", content: [{ type: "text", text: "OK" }], _isLearned: true },
+      { role: "user", content: "已压缩消息1", _isCompressed: true },
+      { role: "assistant", content: [{ type: "text", text: "已压缩回复1" }], _isCompressed: true },
+      { role: "user", content: "新消息1" },
+      { role: "assistant", content: [{ type: "text", text: "新回复1" }] },
+      { role: "user", content: "已压缩消息2", _isCompressed: true },
+      { role: "user", content: "新消息2" },
+    ];
+
+    const effective = extractEffectiveHistory(history);
+
+    // 应该保留：摘要 + 确认 + 新消息1 + 新回复1 + 新消息2
+    expect(effective.length).toBe(5);
+    expect(effective[0]._isSummary).toBe(true);
+    expect(effective[1]._isLearned).toBe(true);
+    expect(effective[2].content).toBe("新消息1");
+    expect(effective[3].content[0].text).toBe("新回复1");
+    expect(effective[4].content).toBe("新消息2");
+  });
+});
+
 describe("checkAndCompressHistory 函数", () => {
   test("未超预算不压缩", async () => {
     const history = [
@@ -240,7 +316,11 @@ describe("checkAndCompressHistory 函数", () => {
     ];
 
     const result = await checkAndCompressHistory(history, 30000);
-    expect(result).toBe(history);
+    // When no compression needed, both histories are the same as input
+    expect(result).toHaveProperty("fullHistory");
+    expect(result).toHaveProperty("llmHistory");
+    expect(result.fullHistory).toBe(history);
+    expect(result.llmHistory).toBe(history);
   });
 
   test("刚好等于预算不压缩", async () => {
@@ -250,10 +330,14 @@ describe("checkAndCompressHistory 函数", () => {
     ];
 
     const result = await checkAndCompressHistory(history, 50000);
-    expect(result).toBe(history);
+    // When no compression needed, both histories are the same as input
+    expect(result).toHaveProperty("fullHistory");
+    expect(result).toHaveProperty("llmHistory");
+    expect(result.fullHistory).toBe(history);
+    expect(result.llmHistory).toBe(history);
   });
 
-  test("超预算后生成摘要 + 保留最近上下文", async () => {
+  test("超预算后生成摘要 + 保留最近上下文 + 标记已压缩消息", async () => {
     global.chrome = {
       storage: {
         local: {
@@ -288,27 +372,48 @@ describe("checkAndCompressHistory 函数", () => {
 
     const result = await checkAndCompressHistory(history, 200000);
 
-    expect(result).not.toBe(history);
+    // New format: { fullHistory, llmHistory }
+    expect(result).toHaveProperty("fullHistory");
+    expect(result).toHaveProperty("llmHistory");
+
+    const { fullHistory, llmHistory } = result;
+
+    // fullHistory 应包含已压缩消息
+    expect(fullHistory).not.toBe(history);
+    expect(fullHistory.length).toBeGreaterThan(0);
+
+    // llmHistory 应不含 _isCompressed 消息
+    const compressedInLlm = llmHistory.filter((m) => m._isCompressed);
+    expect(compressedInLlm.length).toBe(0);
 
     // 第一条应该是摘要消息（带 _isSummary 标记）
-    expect(result[0].role).toBe("user");
-    expect(result[0].content).toContain("[对话历史摘要]");
-    expect(result[0].content).toContain(mockSummary);
-    expect(result[0]._isSummary).toBe(true);
+    expect(llmHistory[0].role).toBe("user");
+    expect(llmHistory[0].content).toContain("[Conversation History Summary]");
+    expect(llmHistory[0].content).toContain(mockSummary);
+    expect(llmHistory[0]._isSummary).toBe(true);
 
-    // 第二条应该是 assistant 确认
-    expect(result[1].role).toBe("assistant");
+    // 第二条应该是 assistant 确认（带 _isLearned 标记）
+    expect(llmHistory[1].role).toBe("assistant");
+    expect(llmHistory[1]._isLearned).toBe(true);
 
-    // 最后一条应该是最后一轮的助手回复
-    expect(result[result.length - 1].role).toBe("assistant");
+    // fullHistory 中检查被压缩的旧消息是否被标记为 _isCompressed
+    const compressedMsgs = fullHistory.filter((m) => m._isCompressed);
+    expect(compressedMsgs.length).toBeGreaterThan(0);
 
-    // 压缩后长度应该比原来短
-    expect(result.length).toBeLessThan(history.length);
+    // llmHistory 的最后应该是未压缩的最近消息（没有 _isSummary, _isLearned, _isCompressed 标记）
+    const recentMsgs = llmHistory.filter((m) => !m._isSummary && !m._isLearned && !m._isCompressed);
+    expect(recentMsgs.length).toBeGreaterThan(0);
+
+    // 最后一条应该是助手回复
+    expect(llmHistory[llmHistory.length - 1].role).toBe("assistant");
+
+    // llmHistory 应比 fullHistory 短（不包含已压缩消息）
+    expect(llmHistory.length).toBeLessThan(fullHistory.length);
 
     vi.clearAllMocks();
   });
 
-  test("二次压缩时整合旧摘要", async () => {
+  test("二次压缩时整合旧摘要 + 跳过已压缩消息", async () => {
     global.chrome = {
       storage: {
         local: {
@@ -331,10 +436,15 @@ describe("checkAndCompressHistory 函数", () => {
       }),
     });
 
-    // 模拟已经压缩过一次的历史，每条消息足够大以确保 findKeepBoundary 能切分
+    // 模拟已经压缩过一次的历史，包含摘要和已压缩消息
     const history = [
-      { role: "user", content: "[对话历史摘要]\n旧摘要内容", _isSummary: true },
-      { role: "assistant", content: [{ type: "text", text: "好的，我已了解之前的对话内容。" }] },
+      { role: "user", content: "[Conversation History Summary]\n旧摘要内容", _isSummary: true },
+      { role: "assistant", content: [{ type: "text", text: "OK, I've learned about the previous conversation." }], _isLearned: true },
+      // 已压缩的旧消息（二次压缩时应跳过这些）
+      { role: "user", content: "旧消息1", _isCompressed: true },
+      { role: "assistant", content: [{ type: "text", text: "旧回复1" }], _isCompressed: true },
+      { role: "user", content: "旧消息2", _isCompressed: true },
+      { role: "assistant", content: [{ type: "text", text: "旧回复2" }], _isCompressed: true },
     ];
     // 添加足够多的大消息以超出保留预算
     for (let i = 0; i < 20; i++) {
@@ -345,10 +455,27 @@ describe("checkAndCompressHistory 函数", () => {
 
     const result = await checkAndCompressHistory(history, 200000);
 
+    // New format: { fullHistory, llmHistory }
+    expect(result).toHaveProperty("fullHistory");
+    expect(result).toHaveProperty("llmHistory");
+
+    const { fullHistory, llmHistory } = result;
+
     // 应该包含新摘要
-    const summaryMsg = result.find((m) => m._isSummary);
+    const summaryMsg = llmHistory.find((m) => m._isSummary);
     expect(summaryMsg).toBeDefined();
     expect(summaryMsg.content).toContain(mockSummary);
+
+    // fullHistory 中应包含已压缩的消息（_isCompressed: true）
+    const compressedMsgs = fullHistory.filter((m) => m._isCompressed);
+    expect(compressedMsgs.length).toBeGreaterThan(0);
+
+    // llmHistory 中不应包含已压缩消息
+    const compressedInLlm = llmHistory.filter((m) => m._isCompressed);
+    expect(compressedInLlm.length).toBe(0);
+
+    // llmHistory 应以摘要开始
+    expect(llmHistory[0]._isSummary).toBe(true);
 
     vi.clearAllMocks();
   });
