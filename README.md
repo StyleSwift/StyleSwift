@@ -18,16 +18,31 @@
 
 ### 项目简介
 
-数字女娲 (StyleSwift) 是一个基于 AI Agent 的 Chrome 浏览器扩展。不同于传统的模板系统，它能够理解你的自然语言描述，分析页面结构，自主规划样式方案，并智能地应用到页面元素。无需编写代码，只需描述你想要的效果，AI Agent 会完成从理解意图到执行样式的全部流程。
+**数字女娲 (StyleSwift) 是一个 AI Agent 系统，专注于网页样式个性化。**
 
-**核心能力**：
-- **自然语言理解**：用日常语言描述需求，Agent 自动解析意图并规划执行步骤
-- **智能页面分析**：自动识别页面结构、元素层级、现有样式，无需手动定位选择器
-- **动态样式生成**：根据页面特征和用户意图，实时生成最适合的 CSS 规则
-- **视觉质检能力**：样式应用后自动检测视觉问题（对比度、可访问性、样式冲突等），主动发现并修复潜在缺陷
-- **隐私优先保护**：只传递页面结构代码给 AI，不传递页面核心内容（文本、图片等），保护用户隐私数据安全
-- **自主学习优化**：记住你的风格偏好，在新页面自动应用相似的设计语言
-- **多轮对话调整**：像和设计师对话一样，持续优化直到满意，支持撤销和回滚
+核心是一个遵循"**模型即智能体**"设计理念的 Agent 内核——代码只提供原子化能力（工具），模型负责推理、规划和决策。用户用自然语言描述意图，Agent 自主分析页面、规划执行步骤、调用工具完成任务。
+
+Chrome 扩展是 Agent 的**运行载体**，提供与用户交互的界面和与浏览器页面通信的能力。这种架构设计使 Agent 内核与平台解耦，理论上可以适配其他运行环境。
+
+**Agent 核心能力**：
+
+| 能力 | 说明 |
+|------|------|
+| **自然语言理解** | 解析用户意图，自主规划执行步骤，无需预设工作流 |
+| **自主页面分析** | 模型决定需要哪些页面信息，按需调用 `get_page_structure` 或 `grep` 工具 |
+| **动态样式生成** | 根意图和页面特征，生成最优 CSS 规则，支持回滚 |
+| **视觉质检循环** | 样式应用后自动检测问题（对比度、可访问性），发现缺陷可自主修复 |
+| **风格学习迁移** | 提取视觉特征，跨网站复用风格，持续学习用户偏好 |
+| **多轮对话记忆** | 会话隔离、上下文管理、历史压缩，支持长对话场景 |
+
+**设计哲学**：
+
+> **The model already knows how to be an agent. Your job is to get out of the way.**
+
+传统方案预设工作流，代码做决策；本系统的 Agent 让模型自己决定流程，灵活适应用户需求：
+- 用户说"把标题改成红色"→ Agent 自己推理：不需要获取整个页面结构，直接调用 `grep` 找标题元素
+- 用户说"撤销"→ Agent 理解意图，调用 `apply_styles(mode='rollback_last')`
+- 模型能力提升时，系统自动获益，无需修改代码
 
 ### 效果预览
 
@@ -57,179 +72,207 @@
 
 </div>
 
-### 核心特性
+### Agent 架构
 
-| 特性 | 说明 |
-|------|------|
-| **AI 驱动** | 基于大语言模型，理解自然语言指令 |
-| **元素选择器** | 点选页面元素，精准定位修改目标 |
-| **图片上传** | 上传参考图片，AI 分析视觉风格 |
-| **风格技能** | 保存成功的风格，跨网站复用 |
-| **多语言支持** | 支持中文和英文界面 |
-| **会话管理** | 按域名隔离，支持多会话历史 |
-| **隐私优先** | 仅传递页面结构给 AI，不传递页面内容，API Key 本地存储，数据不上传 |
-| **零配置** | 安装即用，无需后端服务 |
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Agent 核心循环                            │
+│                                                                 │
+│   用户消息 → 构建上下文 → 模型推理 → 工具调用 → 执行 → 循环         │
+│                              ↓                                  │
+│                    ┌─────────────────┐                         │
+│                    │ 工具系统 (Tools)  │                         │
+│                    └─────────────────┘                         │
+│                              ↓                                  │
+│        ┌─────────────────────┼─────────────────────┐           │
+│        ↓                     ↓                     ↓           │
+│  get_page_structure    grep(element)      apply_styles         │
+│  (页面结构获取)        (元素搜索)         (样式应用/回滚)         │
+│        ↓                     ↓                     ↓           │
+│  edit_css              user_profile       style_skill          │
+│  (样式编辑)            (用户画像)         (风格迁移)             │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                    运行载体 (Chrome Extension)                  │
+│                                                                 │
+│   ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
+│   │  Side Panel  │    │ Content      │    │  Storage     │      │
+│   │  (Agent宿主) │←──→│ Script       │    │  (会话/画像)  │      │
+│   └──────────────┘    │ (页面操作)   │    └──────────────┘      │
+│                       └──────────────┘                           │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-### 快速开始
+**Agent 核心**：
+- **Agent Loop**：运行在 Side Panel，驱动整个对话循环
+- **工具系统**：6 个原子化工具，每个只做一件事
+- **上下文管理**：Token 预算、历史压缩、去重保护
+- **死循环保护**：监测重复调用，自动终止无效循环
+
+**运行载体**：
+- **Side Panel**：UI 交互、会话管理、API 调用、工具调度
+- **Content Script**：页面结构提取、元素搜索、CSS 注入/回滚
+- **Storage**：会话数据、用户画像、风格技能持久化
+
+### Agent 工具系统
+
+Agent 内核通过原子化的工具与页面交互。每个工具只做一件事，不含推理逻辑——判断由模型完成。
+
+| 工具 | 功能 | 输出 |
+|------|------|------|
+| `get_page_structure` | 获取页面 DOM 树形结构 | 页面结构文本（事实） |
+| `grep` | 按选择器或关键词搜索元素 | 匹配元素列表 |
+| `apply_styles` | 注入 CSS，支持应用/回滚/撤销 | 操作结果 |
+| `edit_css` | 精准修改已应用的 CSS 规则 | 修改结果 |
+| `user_profile` | 读写用户偏好设置 | 用户画像数据 |
+| `style_skill` | 风格提取、保存、检索、应用 | 风格数据 |
+
+**工具设计原则**：
+- **原子性**：每个工具只做一件事，组合使用完成复杂任务
+- **事实输出**：返回数据和状态，不做判断推荐
+- **幂等性**：相同输入产生相同结果，无副作用
+
+**Agent 决策示例**：
+
+```
+用户："把页面标题改成蓝色"
+
+模型推理：
+1. 不需要 get_page_structure（粒度太粗）
+2. 调用 grep(query="h1, h2, .title") 找标题
+3. 分析返回结果，确定目标选择器
+4. 调用 apply_styles(selectors, {color: blue})
+5. 完成
+
+vs 传统预设流程：
+1. 获取整个页面结构（冗余）
+2. 硬编码逻辑找标题
+3. 应用样式
+```
+
+### 运行环境：Chrome 扩展
+
+Agent 内核需要一个运行载体。目前实现的载体是 **Chrome 扩展**，提供：
+- 用户界面（Side Panel）
+- 页面操作能力（Content Script）
+- 数据持久化（Chrome Storage + IndexedDB）
 
 #### 安装
 
-**插件已上架 Chrome 应用商店，推荐直接安装体验：**
-
-https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli
+**已上架 Chrome 应用商店**：https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli
 
 ---
 
-**或者从源码安装**：
+**从源码安装**：
    ```bash
-   # 克隆仓库
    git clone https://github.com/yourusername/StyleSwift.git
    cd StyleSwift
    ```
 
-2. **加载扩展**：
-   - 打开 Chrome 浏览器，访问 `chrome://extensions/`
-   - 启用右上角的「开发者模式」
-   - 点击「加载已解压的扩展程序」
-   - 选择 `extension` 文件夹
-
-#### 配置
-
-1. 首次使用会看到引导页面
-2. 输入你的 API Key（支持 OpenAI 和 Anthropic API 格式）
-3. 可选：配置自定义 API 地址和模型
+加载扩展：
+- 打开 Chrome，访问 `chrome://extensions/`
+- 启用「开发者模式」
+- 点击「加载已解压的扩展程序」
+- 选择 `extension` 文件夹
 
 #### 使用
 
-1. **打开侧边栏**：点击浏览器工具栏的扩展图标
-2. **输入指令**：在输入框中描述你想要的风格
-   - 示例：「给页面换个深色模式」
-   - 示例：「把标题字体放大一点」
-   - 示例：「隐藏这个广告元素」（先点击元素选择器）
-3. **上传图片**：点击图片按钮上传参考图片
-4. **查看结果**：样式会立即应用到页面
-5. **确认或撤销**：满意后点击确认，不满意点击撤销
+1. **配置 API**：首次启动输入 API Key（支持 OpenAI 和 Anthropic 格式）
+2. **打开面板**：点击扩展图标打开 Side Panel
+3. **自然语言交互**：描述你的需求
+   - 「给这个页面换个深色模式」
+   - 「把导航栏放大一点」
+   - 「隐藏这个广告」（先点元素选择器）
+4. **风格迁移**：保存成功的风格，在其他网站复用
 
-### 风格技能
-
-**保存风格**：
-```
-用户：「保存这个风格为"赛博朋克"」
-AI 会提取当前的视觉特征并保存
-```
-
-**应用风格**：
-```
-用户：「用我的"赛博朋克"风格」
-AI 会自动适配到当前网站
-```
-
-### 架构概览
+### 交互流程
 
 ```
-Chrome Extension (Manifest V3)
-│
-├── Side Panel                    # UI + Agent 运行环境
-│   ├── 会话管理
-│   ├── Agent Loop
-│   └── LLM API 调用
-│
-├── Service Worker                # 扩展生命周期
-│
-├── Content Script × 2
-│   ├── early-inject.js           # 样式预注入 (document_start)
-│   └── content.js                # DOM 操作 (document_idle)
-│
-└── Storage
-    ├── chrome.storage.local      # 轻量数据（设置、会话索引）
-    └── IndexedDB                 # 对话历史
+┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+│  用户输入  │ ──→ │ Agent Loop│ ──→ │ 模型推理  │ ──→ │ 工具调用  │
+└──────────┘     └──────────┘     └──────────┘     └──────────┘
+      ↑                                                    │
+      │                                                    ↓
+      │                                              ┌──────────┐
+      │                                              │ 页面操作  │
+      │                                              │ Content  │
+      │                                              │ Script   │
+      │                                              └──────────┘
+      │                                                    │
+      └──────────────────── 结果反馈 ←─────────────────────┘
 ```
 
-**核心设计理念**：
-- **模型即智能体**：代码只提供能力，模型负责推理决策
-- **能力原子化**：每个工具只做一件事
-- **上下文珍贵**：分层管理，按需获取
-- **会话隔离**：按域名分割，支持多会话
+**Agent 特性**：
+- **多轮对话**：像和设计师对话，持续优化
+- **撤销回滚**：支持回退操作历史
+- **自主学习**：记住风格偏好，智能推荐
 
-### 核心功能
+### 架构设计决策
 
-| 功能 | 说明 | 文档 |
-|------|------|------|
-| 页面结构获取 | 返回 DOM 树形文本 | [查看](doc/features/get-page-structure.md) |
-| 元素搜索 | 按选择器或关键词搜索 | [查看](doc/features/grep.md) |
-| 样式应用 | 注入 CSS，支持回滚 | [查看](doc/features/apply-styles.md) |
-| 样式编辑 | 精准修改已应用 CSS | [查看](doc/features/edit-css.md) |
-| 用户画像 | 存储用户偏好 | [查看](doc/features/user-profile.md) |
-| 风格迁移 | 跨网站应用风格 | [查看](doc/features/style-skill.md) |
+本项目使用 ADR (Architecture Decision Records) 记录重要设计决策：
+
+| ADR | 主题 | 说明 |
+|-----|------|------|
+| [ADR-001](doc/ADR/001-sidepanel-vs-popup.md) | Side Panel vs Popup | 为什么选择 Side Panel |
+| [ADR-002](doc/ADR/002-dual-content-script.md) | 双 Content Script 策略 | 早期注入 + 延迟操作 |
+| [ADR-003](doc/ADR/003-dual-storage.md) | 双层存储架构 | chrome.storage + IndexedDB |
+| [ADR-004](doc/ADR/004-style-skill.md) | 风格迁移方案 | 跨网站风格复用 |
+| [ADR-005](doc/ADR/005-session-isolation.md) | 会话隔离模型 | 域名级隔离 |
+| [ADR-006](doc/ADR/006-agent-philosophy.md) | **Agent 设计理念** | 模型即智能体 |
+| [ADR-007](doc/ADR/007-tab-locking.md) | Tab 锁定机制 | 并发控制 |
+
+**核心设计原则**：
+
+| 原则 | 说明 |
+|------|------|
+| **模型即智能体** | 代码只提供能力，模型负责推理——不预设工作流 |
+| **能力原子化** | 每个工具只做一件事，不含判断逻辑 |
+| **上下文珍贵** | Token 预算、按需获取、历史压缩 |
+| **会话隔离** | 按域名分割，支持多会话并行 |
+| **零部署** | 纯扩展形态，用户自带 API Key |
+
+详细架构文档：[ARCHITECTURE.md](doc/ARCHITECTURE.md)
 
 ### 项目结构
 
 ```
 StyleSwift/
-├── extension/                 # 扩展源码
-│   ├── sidepanel/            # 侧边栏 UI 和逻辑
-│   │   ├── panel.js          # 主面板逻辑
-│   │   ├── agent-loop.js     # Agent 循环
-│   │   ├── api.js            # API 调用
-│   │   ├── tools.js          # 工具定义
+├── extension/                 # 运行载体实现
+│   ├── sidepanel/            # Agent 宿主环境
+│   │   ├── panel.js          # UI 逻辑
+│   │   ├── agent-loop.js     # Agent 决策循环 ⭐
+│   │   ├── api.js            # LLM API 调用
+│   │   ├── tools.js          # 工具定义 ⭐
 │   │   ├── session.js        # 会话管理
-│   │   └── style-skill.js    # 风格技能管理
-│   ├── content/              # 内容脚本
-│   │   ├── early-inject.js   # 早期样式注入
+│   │   └── style-skill.js    # 风格技能
+│   ├── content/              # 页面操作层
+│   │   ├── early-inject.js   # 早期注入
 │   │   └── content.js        # DOM 操作
-│   ├── background/           # 后台服务
-│   │   └── service-worker.js # Service Worker
-│   ├── _locales/             # 国际化
-│   │   ├── en/               # 英文
-│   │   └── zh_CN/            # 中文
-│   ├── icons/                # 图标资源
-│   ├── skills/               # 静态技能库
-│   └── manifest.json         # 扩展配置
-├── doc/                      # 文档
-│   ├── ARCHITECTURE.md       # 架构文档
-│   ├── ui-design.md          # UI 设计文档
+│   ├── background/           # 生命周期管理
+│   │   └── service-worker.js
+│   └── skills/               # 预置风格模板
+├── doc/                      # 架构文档
+│   ├── ARCHITECTURE.md       # 架构总览
 │   ├── ADR/                  # 架构决策记录
-│   └── features/             # 功能文档
-└── tests/                    # 测试文件
+│   └── features/             # 功能设计
+└── tests/                    # 测试
 ```
 
 ### 技术栈
 
-- **Manifest V3**：Chrome 扩展最新标准
-- **Side Panel API**：现代化扩展 UI
-- **JavaScript**：原生 JS，无框架依赖
-- **Chrome Storage API**：数据持久化
-- **IndexedDB**：大规模数据存储
-- **OpenAI/Anthropic API**：大语言模型接口
+**Agent 内核**：
+- LLM Provider API（OpenAI / Anthropic 兼容格式）
+- Function Calling（工具调用协议）
 
-### 开发指南
+**运行载体**：
+- Manifest V3（Chrome 扩展标准）
+- Side Panel API（现代化扩展 UI）
+- Content Script（页面操作能力）
+- Chrome Storage API + IndexedDB（数据持久化）
 
-#### 本地开发
-
-```bash
-# 安装依赖（如果需要）
-npm install
-
-# 运行测试
-npm test
-
-# 代码检查
-npm run lint
-```
-
-#### 架构决策
-
-本项目使用 ADR (Architecture Decision Records) 记录重要设计决策：
-
-- [ADR-001: Side Panel vs Popup](doc/ADR/001-sidepanel-vs-popup.md)
-- [ADR-002: 双 Content Script 策略](doc/ADR/002-dual-content-script.md)
-- [ADR-003: 双层存储架构](doc/ADR/003-dual-storage.md)
-- [ADR-004: 风格迁移方案](doc/ADR/004-style-skill.md)
-- [ADR-005: 会话隔离模型](doc/ADR/005-session-isolation.md)
-- [ADR-006: Agent 设计理念](doc/ADR/006-agent-philosophy.md)
-- [ADR-007: Tab 锁定机制](doc/ADR/007-tab-locking.md)
-
-### 贡献指南
+### 效果展示
 
 欢迎贡献代码、报告问题或提出建议！
 
@@ -289,16 +332,168 @@ PPIO 是一个去中心化的存储与计算平台，致力于为开发者提供
 
 ### Introduction
 
-数字女娲 (StyleSwift) is an AI Agent-powered Chrome extension. Unlike traditional template systems, it understands your natural language descriptions, analyzes page structure, autonomously plans styling strategies, and intelligently applies them to page elements. No coding required—just describe the effect you want, and the AI Agent handles the entire process from intent understanding to style execution.
+**数字女娲 (StyleSwift) is an AI Agent system focused on web page style personalization.**
 
-**Core Capabilities**:
-- **Natural Language Understanding**: Describe requirements in everyday language, Agent automatically parses intent and plans execution steps
-- **Intelligent Page Analysis**: Automatically identifies page structure, element hierarchy, and existing styles—no manual selector targeting needed
-- **Dynamic Style Generation**: Generates optimal CSS rules in real-time based on page characteristics and user intent
-- **Visual Quality Assurance**: Automatically detects visual issues after style application (contrast, accessibility, style conflicts, etc.) and proactively identifies and fixes potential defects
-- **Privacy-First Protection**: Only sends page structure code to AI, never sends page core content (text, images, etc.)—protecting user privacy data security
-- **Adaptive Learning**: Remembers your style preferences and automatically applies similar design language on new pages
-- **Conversational Refinement**: Like talking to a designer—continuously optimize until satisfied, with undo and rollback support
+At its core is an Agent kernel following the **"Model as Agent"** design philosophy—code provides only atomic capabilities (tools), while the model handles reasoning, planning, and decision-making. Users describe their intent in natural language, and the Agent autonomously analyzes the page, plans execution steps, and invokes tools to complete tasks.
+
+The Chrome extension serves as the **runtime carrier** for the Agent, providing user interface and browser page communication capabilities. This architecture decouples the Agent kernel from the platform, theoretically enabling adaptation to other runtime environments.
+
+**Agent Core Capabilities**:
+
+| Capability | Description |
+|------------|-------------|
+| **Natural Language Understanding** | Parses user intent, autonomously plans execution steps without preset workflows |
+| **Autonomous Page Analysis** | Model decides what page information is needed, invokes `get_page_structure` or `grep` tools on demand |
+| **Dynamic Style Generation** | Generates optimal CSS rules based on intent and page characteristics, supports rollback |
+| **Visual Quality Loop** | Automatically detects issues after style application (contrast, accessibility), can self-repair defects |
+| **Style Learning & Transfer** | Extracts visual features, reuses styles across websites, continuously learns user preferences |
+| **Multi-turn Dialogue Memory** | Session isolation, context management, history compression for long conversations |
+
+**Design Philosophy**:
+
+> **The model already knows how to be an agent. Your job is to get out of the way.**
+
+Traditional approaches preset workflows where code makes decisions; this system's Agent lets the model decide the flow itself, flexibly adapting to user needs:
+- User says "change the title to red" → Agent reasons: don't need entire page structure, directly invoke `grep` to find title elements
+- User says "undo" → Agent understands intent, invokes `apply_styles(mode='rollback_last')`
+- When model capabilities improve, the system benefits automatically without code changes
+
+### Agent Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Agent Core Loop                          │
+│                                                                 │
+│   User Message → Build Context → Model Reasoning → Tool Call   │
+│                              ↓                                  │
+│                    ┌─────────────────┐                         │
+│                    │   Tools System   │                         │
+│                    └─────────────────┘                         │
+│                              ↓                                  │
+│        ┌─────────────────────┼─────────────────────┐           │
+│        ↓                     ↓                     ↓           │
+│  get_page_structure    grep(element)      apply_styles         │
+│  (page structure)    (element search)    (style apply/rollback)│
+│        ↓                     ↓                     ↓           │
+│  edit_css              user_profile       style_skill          │
+│  (style editing)       (user profile)      (style transfer)    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                   Runtime Carrier (Chrome Extension)            │
+│                                                                 │
+│   ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
+│   │  Side Panel  │    │ Content      │    │  Storage     │      │
+│   │ (Agent Host) │←──→│ Script       │    │ (Sessions)  │      │
+│   └──────────────┘    │ (Page Ops)   │    └──────────────┘      │
+│                       └──────────────┘                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Agent Core**:
+- **Agent Loop**: Runs in Side Panel, drives the entire dialogue loop
+- **Tools System**: 6 atomic tools, each doing one thing
+- **Context Management**: Token budget, history compression, deduplication protection
+- **Infinite Loop Protection**: Monitors repeated calls, auto-terminates invalid loops
+
+**Runtime Carrier**:
+- **Side Panel**: UI interaction, session management, API calls, tool dispatch
+- **Content Script**: Page structure extraction, element search, CSS injection/rollback
+- **Storage**: Session data, user profile, style skills persistence
+
+### Agent Tools System
+
+The Agent kernel interacts with pages through atomic tools. Each tool does one thing without reasoning logic—judgment is left to the model.
+
+| Tool | Function | Output |
+|------|----------|--------|
+| `get_page_structure` | Get page DOM tree structure | Page structure text (facts) |
+| `grep` | Search elements by selector or keyword | Matched element list |
+| `apply_styles` | Inject CSS, supports apply/rollback/undo | Operation result |
+| `edit_css` | Precisely modify applied CSS rules | Modification result |
+| `user_profile` | Read/write user preference settings | User profile data |
+| `style_skill` | Extract, save, retrieve, apply styles | Style data |
+
+**Tool Design Principles**:
+- **Atomicity**: Each tool does one thing, combined use for complex tasks
+- **Factual Output**: Returns data and status, no judgment or recommendations
+- **Idempotency**: Same input produces same result, no side effects
+
+**Agent Decision Example**:
+
+```
+User: "Change page title to blue"
+
+Model Reasoning:
+1. Don't need get_page_structure (too coarse)
+2. Call grep(query="h1, h2, .title") to find titles
+3. Analyze results, determine target selector
+4. Call apply_styles(selectors, {color: blue})
+5. Done
+
+vs Traditional Preset Workflow:
+1. Get entire page structure (redundant)
+2. Hardcoded logic to find title
+3. Apply styles
+```
+
+### Runtime Environment: Chrome Extension
+
+The Agent kernel needs a runtime carrier. Current implementation is a **Chrome extension**, providing:
+- User interface (Side Panel)
+- Page operation capability (Content Script)
+- Data persistence (Chrome Storage + IndexedDB)
+
+#### Installation
+
+**Available on Chrome Web Store**: https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli
+
+---
+
+**Install from Source**:
+   ```bash
+   git clone https://github.com/yourusername/StyleSwift.git
+   cd StyleSwift
+   ```
+
+Load Extension:
+- Open Chrome, navigate to `chrome://extensions/`
+- Enable "Developer mode"
+- Click "Load unpacked"
+- Select `extension` folder
+
+#### Usage
+
+1. **Configure API**: Enter API Key on first launch (supports OpenAI and Anthropic format)
+2. **Open Panel**: Click extension icon to open Side Panel
+3. **Natural Language Interaction**: Describe your needs
+   - "Give this page a dark mode"
+   - "Make the navigation larger"
+   - "Hide this ad" (click element picker first)
+4. **Style Transfer**: Save successful styles, reuse on other websites
+
+### Interaction Flow
+
+```
+┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+│ User In  │ ──→ │Agent Loop│ ──→ │  Model   │ ──→ │Tool Call │
+└──────────┘     └──────────┘     └──────────┘     └──────────┘
+      ↑                                                    │
+      │                                                    ↓
+      │                                              ┌──────────┐
+      │                                              │Page Ops  │
+      │                                              │Content   │
+      │                                              │Script    │
+      │                                              └──────────┘
+      │                                                    │
+      └──────────────────── Result Feed ←─────────────────┘
+```
+
+**Agent Features**:
+- **Multi-turn Dialogue**: Like talking to a designer, continuous optimization
+- **Undo/Rollback**: Support reverting operation history
+- **Autonomous Learning**: Remembers style preferences, smart recommendations
 
 ### Effect Preview
 
@@ -328,176 +523,68 @@ No matter what website, 数字女娲 creates unique visual experiences for you.
 
 </div>
 
-### Key Features
+### Architecture Design Decisions
 
-| Feature | Description |
-|---------|-------------|
-| **AI-Powered** | Based on LLM, understands natural language commands |
-| **Element Picker** | Click to select page elements for precise targeting |
-| **Image Upload** | Upload reference images for AI to analyze visual style |
-| **Style Skills** | Save successful styles for cross-site reuse |
-| **Multilingual** | Supports Chinese and English interfaces |
-| **Session Management** | Isolated by domain, supports multiple session history |
-| **Privacy First** | Only sends page structure to AI, never page content; API Key stored locally, no data uploaded |
-| **Zero Config** | Install and use, no backend service needed |
+This project uses ADR (Architecture Decision Records) to document important design decisions:
 
-### Quick Start
+| ADR | Topic | Description |
+|-----|-------|-------------|
+| [ADR-001](doc/ADR/001-sidepanel-vs-popup.md) | Side Panel vs Popup | Why Side Panel was chosen |
+| [ADR-002](doc/ADR/002-dual-content-script.md) | Dual Content Script Strategy | Early injection + delayed operations |
+| [ADR-003](doc/ADR/003-dual-storage.md) | Dual Storage Architecture | chrome.storage + IndexedDB |
+| [ADR-004](doc/ADR/004-style-skill.md) | Style Transfer Solution | Cross-site style reuse |
+| [ADR-005](doc/ADR/005-session-isolation.md) | Session Isolation Model | Domain-level isolation |
+| [ADR-006](doc/ADR/006-agent-philosophy.md) | **Agent Design Philosophy** | Model as Agent |
+| [ADR-007](doc/ADR/007-tab-locking.md) | Tab Locking Mechanism | Concurrency control |
 
-#### Installation
+**Core Design Principles**:
 
-**Now available on Chrome Web Store - Install directly:**
-https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli
+| Principle | Description |
+|-----------|-------------|
+| **Model as Agent** | Code provides capabilities, model reasons—no preset workflows |
+| **Atomic Capabilities** | Each tool does one thing, no judgment logic |
+| **Context Efficiency** | Token budget, fetch on demand, history compression |
+| **Session Isolation** | Split by domain, support parallel sessions |
+| **Zero Deployment** | Pure extension, user brings API Key |
 
----
-
-**Or install from source**:
-   ```bash
-   # Clone the repository
-   git clone https://github.com/yourusername/StyleSwift.git
-   cd StyleSwift
-   ```
-
-2. **Load Extension**:
-   - Open Chrome and navigate to `chrome://extensions/`
-   - Enable "Developer mode" in top right
-   - Click "Load unpacked"
-   - Select the `extension` folder
-
-#### Configuration
-
-1. First launch shows onboarding page
-2. Enter your API Key (supports OpenAI and Anthropic API format)
-3. Optional: Configure custom API endpoint and model
-
-#### Usage
-
-1. **Open Sidebar**: Click the extension icon in browser toolbar
-2. **Enter Command**: Describe your desired style in the input box
-   - Example: "Give this page a dark mode"
-   - Example: "Make the title font larger"
-   - Example: "Hide this ad element" (click element picker first)
-3. **Upload Image**: Click image button to upload reference images
-4. **View Results**: Styles are applied immediately
-5. **Confirm or Undo**: Click confirm if satisfied, or undo to revert
-
-### Style Skills
-
-**Save Style**:
-```
-User: "Save this style as 'Cyberpunk'"
-AI extracts current visual features and saves them
-```
-
-**Apply Style**:
-```
-User: "Apply my 'Cyberpunk' style"
-AI automatically adapts it to current website
-```
-
-### Architecture Overview
-
-```
-Chrome Extension (Manifest V3)
-│
-├── Side Panel                    # UI + Agent runtime
-│   ├── Session Management
-│   ├── Agent Loop
-│   └── LLM API Calls
-│
-├── Service Worker                # Extension lifecycle
-│
-├── Content Script × 2
-│   ├── early-inject.js           # Style pre-injection (document_start)
-│   └── content.js                # DOM operations (document_idle)
-│
-└── Storage
-    ├── chrome.storage.local      # Lightweight data (settings, session index)
-    └── IndexedDB                 # Conversation history
-```
-
-**Core Design Philosophy**:
-- **Model as Agent**: Code provides capabilities, model makes decisions
-- **Atomic Capabilities**: Each tool does one thing only
-- **Context Efficiency**: Layered management, fetch on demand
-- **Session Isolation**: Split by domain, support multiple sessions
-
-### Core Functions
-
-| Function | Description | Documentation |
-|----------|-------------|---------------|
-| Page Structure | Get DOM tree as text | [View](doc/features/get-page-structure.md) |
-| Element Search | Search by selector or keyword | [View](doc/features/grep.md) |
-| Apply Styles | Inject CSS with rollback support | [View](doc/features/apply-styles.md) |
-| Edit Styles | Precise modification of applied CSS | [View](doc/features/edit-css.md) |
-| User Profile | Store user preferences | [View](doc/features/user-profile.md) |
-| Style Transfer | Cross-site style application | [View](doc/features/style-skill.md) |
+Full architecture documentation: [ARCHITECTURE.md](doc/ARCHITECTURE.md)
 
 ### Project Structure
 
 ```
 StyleSwift/
-├── extension/                 # Extension source code
-│   ├── sidepanel/            # Sidebar UI and logic
-│   │   ├── panel.js          # Main panel logic
-│   │   ├── agent-loop.js     # Agent loop
-│   │   ├── api.js            # API calls
-│   │   ├── tools.js          # Tool definitions
+├── extension/                 # Runtime carrier implementation
+│   ├── sidepanel/            # Agent host environment
+│   │   ├── panel.js          # UI logic
+│   │   ├── agent-loop.js     # Agent decision loop ⭐
+│   │   ├── api.js            # LLM API calls
+│   │   ├── tools.js          # Tool definitions ⭐
 │   │   ├── session.js        # Session management
-│   │   └── style-skill.js    # Style skill management
-│   ├── content/              # Content scripts
-│   │   ├── early-inject.js   # Early style injection
+│   │   └── style-skill.js    # Style skills
+│   ├── content/              # Page operation layer
+│   │   ├── early-inject.js   # Early injection
 │   │   └── content.js        # DOM operations
-│   ├── background/           # Background service
-│   │   └── service-worker.js # Service Worker
-│   ├── _locales/             # Internationalization
-│   │   ├── en/               # English
-│   │   └── zh_CN/            # Chinese
-│   ├── icons/                # Icon resources
-│   ├── skills/               # Static skill library
-│   └── manifest.json         # Extension config
-├── doc/                      # Documentation
-│   ├── ARCHITECTURE.md       # Architecture docs
-│   ├── ui-design.md          # UI design docs
+│   ├── background/           # Lifecycle management
+│   │   └── service-worker.js
+│   └── skills/               # Preset style templates
+├── doc/                      # Architecture docs
+│   ├── ARCHITECTURE.md       # Architecture overview
 │   ├── ADR/                  # Architecture Decision Records
-│   └── features/             # Feature docs
-└── tests/                    # Test files
+│   └── features/             # Feature design
+└── tests/                    # Tests
 ```
 
 ### Tech Stack
 
-- **Manifest V3**: Latest Chrome extension standard
-- **Side Panel API**: Modern extension UI
-- **JavaScript**: Vanilla JS, no framework dependencies
-- **Chrome Storage API**: Data persistence
-- **IndexedDB**: Large-scale data storage
-- **OpenAI/Anthropic API**: LLM interface
+**Agent Core**:
+- LLM Provider API (OpenAI / Anthropic compatible format)
+- Function Calling (tool invocation protocol)
 
-### Development Guide
-
-#### Local Development
-
-```bash
-# Install dependencies (if needed)
-npm install
-
-# Run tests
-npm test
-
-# Lint code
-npm run lint
-```
-
-#### Architecture Decisions
-
-This project uses ADR (Architecture Decision Records) to document important design decisions:
-
-- [ADR-001: Side Panel vs Popup](doc/ADR/001-sidepanel-vs-popup.md)
-- [ADR-002: Dual Content Script Strategy](doc/ADR/002-dual-content-script.md)
-- [ADR-003: Dual Storage Architecture](doc/ADR/003-dual-storage.md)
-- [ADR-004: Style Transfer Solution](doc/ADR/004-style-skill.md)
-- [ADR-005: Session Isolation Model](doc/ADR/005-session-isolation.md)
-- [ADR-006: Agent Design Philosophy](doc/ADR/006-agent-philosophy.md)
-- [ADR-007: Tab Locking Mechanism](doc/ADR/007-tab-locking.md)
+**Runtime Carrier**:
+- Manifest V3 (Chrome extension standard)
+- Side Panel API (modern extension UI)
+- Content Script (page operation capability)
+- Chrome Storage API + IndexedDB (data persistence)
 
 ### Contributing
 
