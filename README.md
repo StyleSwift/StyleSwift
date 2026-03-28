@@ -6,7 +6,7 @@
 
 **一句话，给常逛的网页换皮肤**
 
-[![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-blue.svg)](https://github.com/zhushen12580/StyleSwift) [![Open Source](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)](https://github.com/zhushen12580/StyleSwift)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-blue.svg)](https://github.com/StyleSwift/StyleSwift) [![Open Source](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)](https://github.com/StyleSwift/StyleSwift) [![PPIO](https://img.shields.io/badge/PPIO-Sponsor-blue.svg)](https://ppio.com/)
 
 [English](#english) | [中文](#中文)
 
@@ -315,7 +315,7 @@ Agent 内核需要一个运行载体。目前实现的载体是 **Chrome 扩展*
 
 **从源码安装**：
    ```bash
-   git clone https://github.com/yourusername/StyleSwift.git
+   git clone https://github.com/StyleSwift/StyleSwift.git
    cd StyleSwift
    ```
 
@@ -420,26 +420,6 @@ StyleSwift/
 - Content Script（页面操作能力）
 - Chrome Storage API + IndexedDB（数据持久化）
 
-### 效果展示
-
-欢迎贡献代码、报告问题或提出建议！
-
-**重要**：提交 Pull Request 前，请先签署 [贡献者许可协议 (CLA)](CONTRIBUTING.md)。这是为了支持项目的双重许可模式（开源 + 商业）。
-
-**贡献流程**：
-1. Fork 本仓库
-2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 创建 Pull Request
-6. 首次贡献需签署 CLA（机器人会自动引导）
-
-**行为准则**：
-- 遵循代码规范
-- 编写必要的测试
-- 更新相关文档
-- 尊重所有贡献者
-
 ### 许可证
 
 数字女娲是开源项目，采用 Server Side Public License (SSPL) 开源许可证，详情请参阅 [LICENSE](LICENSE) 文件。
@@ -452,25 +432,13 @@ StyleSwift/
 - 感谢 [ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 项目，为本项目提供了风格提示词参考
 - 灵感来源于用户对个性化浏览体验的需求
 
-### 赞助
-
-特别感谢 **[PPIO](https://ppio.com/)** 为本项目提供了研发所需的大部分 AI Token 支持。
+### 联系方式
 
 <div align="center">
 
-[![PPIO](https://img.shields.io/badge/PPIO-Sponsor-blue.svg)](https://ppio.com/)
+<img src="images/联系方式.jpg" alt="联系方式" width="300"/>
 
-</div>
-
-PPIO 是一个去中心化的存储与计算平台，致力于为开发者提供高效、安全、低成本的基础设施服务。
-
-### 交流群
-
-<div align="center">
-
-<img src="images/交流群.png" alt="交流群二维码" width="300"/>
-
-**扫码加入交流群**，与其他用户交流使用心得、反馈问题。
+**扫码添加 builder 微信**，交流使用心得、反馈问题。
 
 </div>
 
@@ -777,7 +745,7 @@ The Agent kernel needs a runtime carrier. Current implementation is a **Chrome e
 
 **Install from Source**:
    ```bash
-   git clone https://github.com/yourusername/StyleSwift.git
+   git clone https://github.com/StyleSwift/StyleSwift.git
    cd StyleSwift
    ```
 
@@ -910,26 +878,6 @@ StyleSwift/
 - Content Script (page operation capability)
 - Chrome Storage API + IndexedDB (data persistence)
 
-### Contributing
-
-Contributions are welcome! Feel free to submit issues or pull requests.
-
-**Important**: Before submitting a Pull Request, please sign the [Contributor License Agreement (CLA)](CONTRIBUTING.md). This is required to support the project's dual licensing model (open source + commercial).
-
-**Contribution Process**:
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Create a Pull Request
-6. First-time contributors need to sign the CLA (bot will guide you)
-
-**Code of Conduct**:
-- Follow code standards
-- Write necessary tests
-- Update relevant documentation
-- Respect all contributors
-
 ### License
 
 数字女娲 is an open source project licensed under the Server Side Public License (SSPL). See [LICENSE](LICENSE) file for details.
@@ -942,25 +890,13 @@ Contributions are welcome! Feel free to submit issues or pull requests.
 - Thanks to [ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) project for providing style prompt references
 - Inspired by users' need for personalized browsing experience
 
-### Sponsorship
-
-Special thanks to **[PPIO](https://ppio.com/)** for providing most of the AI tokens used in this project's development.
+### Contact
 
 <div align="center">
 
-[![PPIO](https://img.shields.io/badge/PPIO-Sponsor-blue.svg)](https://ppio.com/)
+<img src="images/联系方式.jpg" alt="Contact" width="300"/>
 
-</div>
-
-PPIO is a decentralized storage and computing platform dedicated to providing developers with efficient, secure, and cost-effective infrastructure services.
-
-### Community
-
-<div align="center">
-
-<img src="images/交流群.png" alt="Community QR Code" width="300"/>
-
-**Scan to join our community group** and connect with other users.
+**Scan to add builder on WeChat** for discussions and feedback.
 
 </div>
 
