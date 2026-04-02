@@ -1765,13 +1765,13 @@ async function callLLMStreamSafe(
 
 // --- Main Loop Constants and State ---
 
-const MAX_ITERATIONS = 30;
+const MAX_ITERATIONS = 50;
 const SUB_MAX_ITERATIONS = 20;
 let currentAbortController = null;
 let isAgentRunning = false;
 let toolCallHistory = [];
 const MAX_RETRIES = 2;
-const DUPLICATE_CALL_THRESHOLD = 3;
+const DUPLICATE_CALL_THRESHOLD = 5;
 
 // --- Pending User Messages Queue ---
 // Stores user messages sent during Agent loop execution

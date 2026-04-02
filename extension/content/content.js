@@ -517,7 +517,7 @@ function buildTree(element, depth, maxDepth) {
   return { selector, text, styles, children };
 }
 
-const TOKEN_LIMIT = 8000;
+const TOKEN_LIMIT = 12000;
 const MAX_BUILD_DEPTH = 32;
 
 // 计算树节点的 token 大小（递归）
