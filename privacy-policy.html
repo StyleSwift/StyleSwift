@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="page-title">隐私权政策 - 数字女娲 (StyleSwift)</title>
+  <style>
+    /* ============================================================
+       CSS Variables — 复用 StyleSwift 品牌设计系统
+       ============================================================ */
+    :root {
+      /* 品牌主色：陶土橙 */
+      --color-primary: oklch(63% 0.12 42);
+      --color-primary-hover: oklch(57% 0.13 42);
+      --color-primary-active: oklch(51% 0.14 42);
+      --color-primary-light: oklch(96% 0.04 42);
+
+      /* 背景：暖奶白 */
+      --color-bg-primary: oklch(98.5% 0.004 80);
+      --color-bg-secondary: oklch(95.5% 0.006 80);
+      --color-bg-tertiary: oklch(91.5% 0.008 80);
+      --color-bg-hover: oklch(93.5% 0.007 80);
+
+      /* 质感辅助 */
+      --color-metal-highlight: rgba(255, 255, 255, 0.65);
+      --color-metal-mid: rgba(0, 0, 0, 0.04);
+      --color-metal-shadow: rgba(0, 0, 0, 0.06);
+
+      /* 文字色 */
+      --color-text-primary: oklch(18% 0.008 60);
+      --color-text-secondary: oklch(50% 0.008 60);
+      --color-text-tertiary: oklch(63% 0.007 60);
+
+      /* 边框 */
+      --color-border: rgba(0, 0, 0, 0.07);
+      --color-border-light: rgba(0, 0, 0, 0.045);
+      --color-border-strong: rgba(0, 0, 0, 0.11);
+
+      /* 状态色 */
+      --color-success: #34c759;
+      --color-info: #3b82f6;
+
+      /* 间距 */
+      --spacing-xs: 4px;
+      --spacing-sm: 8px;
+      --spacing-md: 12px;
+      --spacing-lg: 16px;
+      --spacing-xl: 24px;
+      --spacing-2xl: 32px;
+      --spacing-3xl: 48px;
+
+      /* 字体 */
+      --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+      --font-family-mono: 'SF Mono', 'Cascadia Code', 'Consolas', 'Menlo', monospace;
+
+      --font-size-xs: 11px;
+      --font-size-sm: 12px;
+      --font-size-md: 13px;
+      --font-size-body: 14px;
+      --font-size-lg: 15px;
+      --font-size-xl: 17px;
+      --font-size-2xl: 24px;
+      --font-size-3xl: 32px;
+
+      --font-weight-normal: 400;
+      --font-weight-medium: 500;
+      --font-weight-semibold: 600;
+      --font-weight-bold: 700;
+
+      --line-height-tight: 1.25;
+      --line-height-normal: 1.5;
+      --line-height-relaxed: 1.65;
+
+      /* 圆角 */
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+
+      /* 阴影 */
+      --shadow-sm: 0 2px 8px oklch(18% 0.008 60 / 0.06);
+      --shadow-md: 0 4px 12px oklch(18% 0.008 60 / 0.07);
+      --shadow-lg: 0 8px 24px oklch(18% 0.008 60 / 0.08);
+
+      /* 渐变 */
+      --gradient-metal-surface: linear-gradient(180deg, oklch(99% 0.003 80) 0%, oklch(96.5% 0.005 80) 50%, oklch(93% 0.007 80) 100%);
+    }
+
+    /* 暗色主题 */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-bg-primary: oklch(13% 0.006 80);
+        --color-bg-secondary: oklch(17% 0.007 80);
+        --color-bg-tertiary: oklch(22% 0.008 80);
+        --color-bg-hover: oklch(26% 0.008 80);
+        --color-metal-highlight: rgba(255, 255, 255, 0.05);
+        --color-metal-mid: rgba(0, 0, 0, 0.25);
+        --color-metal-shadow: rgba(0, 0, 0, 0.35);
+        --color-text-primary: oklch(95% 0.005 80);
+        --color-text-secondary: oklch(68% 0.006 80);
+        --color-text-tertiary: oklch(55% 0.005 80);
+        --color-border: rgba(255, 255, 255, 0.07);
+        --color-border-light: rgba(255, 255, 255, 0.045);
+        --color-border-strong: rgba(255, 255, 255, 0.11);
+        --color-primary: oklch(75% 0.11 42);
+        --color-primary-hover: oklch(79% 0.10 42);
+        --color-primary-active: oklch(69% 0.13 42);
+        --color-primary-light: oklch(63% 0.12 42 / 0.18);
+        --gradient-metal-surface: linear-gradient(180deg, oklch(15% 0.007 80) 0%, oklch(13% 0.006 80) 50%, oklch(11% 0.005 80) 100%);
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
+        --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+      }
+    }
+
+    /* ============================================================
+       Base Styles
+       ============================================================ */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-family);
+      font-size: var(--font-size-body);
+      font-weight: var(--font-weight-normal);
+      line-height: var(--line-height-normal);
+      color: var(--color-text-primary);
+      background: var(--gradient-metal-surface);
+      min-height: 100vh;
+    }
+
+    /* 滚动条样式 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, var(--color-bg-tertiary) 0%, var(--color-border-strong) 100%);
+      border-radius: 9999px;
+      border: 1px solid var(--color-border-light);
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--color-border-strong);
+    }
+
+    /* 文本选择 */
+    ::selection {
+      background-color: var(--color-primary-light);
+      color: var(--color-primary-active);
+    }
+
+    /* 链接 */
+    a {
+      color: var(--color-primary);
+      text-decoration: none;
+      transition: color 150ms cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    a:hover {
+      color: var(--color-primary-hover);
+      text-decoration: underline;
+    }
+
+    /* ============================================================
+       Layout
+       ============================================================ */
+    .page-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: var(--spacing-3xl) var(--spacing-xl);
+    }
+
+    /* ============================================================
+       Header
+       ============================================================ */
+    .header {
+      text-align: center;
+      margin-bottom: var(--spacing-3xl);
+      padding-bottom: var(--spacing-2xl);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .logo-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-xl);
+    }
+
+    .logo-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--color-primary-light);
+      border-radius: var(--radius-xl);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-md);
+    }
+
+    .logo-icon svg {
+      width: 40px;
+      height: 40px;
+      color: var(--color-primary);
+    }
+
+    .product-name {
+      font-size: var(--font-size-3xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-text-primary);
+      letter-spacing: -0.02em;
+    }
+
+    .product-name-en {
+      font-size: var(--font-size-lg);
+      color: var(--color-text-tertiary);
+      font-weight: var(--font-weight-medium);
+    }
+
+    .page-title {
+      font-size: var(--font-size-2xl);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-text-primary);
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .last-updated {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-tertiary);
+    }
+
+    /* ============================================================
+       Content
+       ============================================================ */
+    .content {
+      background: var(--color-bg-primary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl);
+      padding: var(--spacing-2xl);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .section {
+      margin-bottom: var(--spacing-2xl);
+    }
+
+    .section:last-child {
+      margin-bottom: 0;
+    }
+
+    .section-title {
+      font-size: var(--font-size-xl);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-text-primary);
+      margin-bottom: var(--spacing-lg);
+      padding-bottom: var(--spacing-sm);
+      border-bottom: 2px solid var(--color-primary-light);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .section-title .icon {
+      width: 20px;
+      height: 20px;
+      color: var(--color-primary);
+    }
+
+    .subsection {
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .subsection-title {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-text-primary);
+      margin-bottom: var(--spacing-sm);
+    }
+
+    p {
+      margin-bottom: var(--spacing-md);
+      line-height: var(--line-height-relaxed);
+      color: var(--color-text-secondary);
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    ul, ol {
+      margin-bottom: var(--spacing-md);
+      padding-left: var(--spacing-xl);
+    }
+
+    li {
+      margin-bottom: var(--spacing-sm);
+      line-height: var(--line-height-relaxed);
+      color: var(--color-text-secondary);
+    }
+
+    li:last-child {
+      margin-bottom: 0;
+    }
+
+    /* 高亮框 */
+    .highlight-box {
+      background: var(--color-primary-light);
+      border: 1px solid color-mix(in oklch, var(--color-primary) 25%, transparent);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .highlight-box p {
+      color: var(--color-primary-active);
+      margin-bottom: 0;
+    }
+
+    /* 信息卡片 */
+    .info-card {
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .info-card-title {
+      font-size: var(--font-size-md);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-text-primary);
+      margin-bottom: var(--spacing-sm);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .info-card-title .badge {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      padding: 2px 8px;
+      border-radius: 9999px;
+      background: var(--color-primary);
+      color: white;
+    }
+
+    .info-card ul {
+      margin-bottom: 0;
+    }
+
+    /* 代码块 */
+    code {
+      font-family: var(--font-family-mono);
+      font-size: var(--font-size-sm);
+      background-color: var(--color-bg-tertiary);
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+    }
+
+    /* 表格 */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: var(--spacing-lg);
+      font-size: var(--font-size-sm);
+    }
+
+    th, td {
+      padding: var(--spacing-sm) var(--spacing-md);
+      text-align: left;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    th {
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-text-primary);
+      background: var(--color-bg-secondary);
+    }
+
+    td {
+      color: var(--color-text-secondary);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* ============================================================
+       Footer
+       ============================================================ */
+    .footer {
+      text-align: center;
+      margin-top: var(--spacing-3xl);
+      padding-top: var(--spacing-2xl);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: var(--spacing-xl);
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .footer-link {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+      transition: color 150ms cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .footer-link:hover {
+      color: var(--color-primary);
+      text-decoration: none;
+    }
+
+    .footer-link svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .copyright {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-tertiary);
+    }
+
+    /* ============================================================
+       Responsive
+       ============================================================ */
+    @media (max-width: 640px) {
+      .page-container {
+        padding: var(--spacing-xl) var(--spacing-lg);
+      }
+
+      .content {
+        padding: var(--spacing-lg);
+      }
+
+      .product-name {
+        font-size: var(--font-size-2xl);
+      }
+
+      .page-title {
+        font-size: var(--font-size-xl);
+      }
+
+      .section-title {
+        font-size: var(--font-size-lg);
+      }
+
+      .footer-links {
+        flex-direction: column;
+        gap: var(--spacing-md);
+      }
+    }
+
+    /* ============================================================
+       Navigation (TOC)
+       ============================================================ */
+    .toc {
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-2xl);
+    }
+
+    .toc-title {
+      font-size: var(--font-size-md);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-text-primary);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .toc-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .toc-list li {
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .toc-list a {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-xs) 0;
+      transition: color 150ms cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .toc-list a:hover {
+      color: var(--color-primary);
+      text-decoration: none;
+    }
+
+    .toc-list a::before {
+      content: '';
+      width: 4px;
+      height: 4px;
+      background: var(--color-text-tertiary);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .toc-list a:hover::before {
+      background: var(--color-primary);
+    }
+
+    /* ============================================================
+       Language Switcher
+       ============================================================ */
+    .lang-switcher {
+      display: flex;
+      justify-content: center;
+      margin-top: var(--spacing-lg);
+    }
+
+    .lang-btn-group {
+      display: inline-flex;
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .lang-btn {
+      padding: var(--spacing-sm) var(--spacing-lg);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-text-secondary);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: all 150ms cubic-bezier(0.25, 1, 0.5, 1);
+      font-family: var(--font-family);
+    }
+
+    .lang-btn:hover {
+      background: var(--color-bg-hover);
+      color: var(--color-text-primary);
+    }
+
+    .lang-btn.active {
+      background: var(--color-primary);
+      color: white;
+    }
+
+    .lang-btn:first-child {
+      border-right: 1px solid var(--color-border);
+    }
+
+    /* 暗色模式下的语言切换按钮 */
+    @media (prefers-color-scheme: dark) {
+      .lang-btn-group {
+        background: var(--color-bg-tertiary);
+      }
+
+      .lang-btn:hover {
+        background: var(--color-bg-hover);
+      }
+
+      .lang-btn.active {
+        background: var(--color-primary);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-area">
+        <div class="logo-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+            <path d="M5 3v4"/>
+            <path d="M19 17v4"/>
+            <path d="M3 5h4"/>
+            <path d="M17 19h4"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="product-name" data-i18n="product-name">数字女娲</h1>
+          <p class="product-name-en">StyleSwift</p>
+        </div>
+      </div>
+      <h2 class="page-title" data-i18n="privacy-policy-title">隐私权政策</h2>
+      <p class="last-updated" data-i18n="last-updated">最后更新日期：2026 年 3 月 31 日</p>
+      
+      <!-- Language Switcher -->
+      <div class="lang-switcher">
+        <div class="lang-btn-group">
+          <button type="button" class="lang-btn active" data-lang="zh" onclick="switchLanguage('zh')">中文</button>
+          <button type="button" class="lang-btn" data-lang="en" onclick="switchLanguage('en')">English</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="content">
+      <!-- 目录 -->
+      <nav class="toc">
+        <h3 class="toc-title" data-i18n="toc-title">目录</h3>
+        <ul class="toc-list">
+          <li><a href="#overview" data-i18n="toc-overview">概述</a></li>
+          <li><a href="#data-collection" data-i18n="toc-data-collection">我们收集的信息</a></li>
+          <li><a href="#extension-permissions" data-i18n="toc-extension-permissions">Chrome扩展权限说明</a></li>
+          <li><a href="#data-usage" data-i18n="toc-data-usage">信息的使用</a></li>
+          <li><a href="#data-storage" data-i18n="toc-data-storage">数据存储与安全</a></li>
+          <li><a href="#data-sharing" data-i18n="toc-data-sharing">信息共享与第三方</a></li>
+          <li><a href="#user-rights" data-i18n="toc-user-rights">您的权利</a></li>
+          <li><a href="#children-privacy" data-i18n="toc-children-privacy">儿童隐私</a></li>
+          <li><a href="#policy-changes" data-i18n="toc-policy-changes">隐私政策的变更</a></li>
+          <li><a href="#contact" data-i18n="toc-contact">联系我们</a></li>
+        </ul>
+      </nav>
+
+      <!-- 1. 概述 -->
+      <section class="section" id="overview">
+        <h2 class="section-title">
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4"/>
+            <path d="M12 8h.01"/>
+          </svg>
+          <span data-i18n="section-overview">概述</span>
+        </h2>
+        <p data-i18n="overview-p1">欢迎使用数字女娲 (StyleSwift)！我们高度重视您的隐私保护。本隐私政策旨在向您说明我们如何收集、使用、存储和保护您的个人信息。</p>
+        
+        <div class="highlight-box">
+          <p data-i18n="overview-highlight"><strong>核心原则：</strong>数字女娲采用"隐私优先"设计理念。您的所有数据均存储在本地设备上，我们不会将您的个人信息传输到任何远程服务器。</p>
+        </div>
+
+        <p data-i18n="overview-p2">数字女娲是一款 Chrome 浏览器扩展，通过 AI 技术帮助您个性化网页样式。在使用我们的服务前，请仔细阅读本隐私政策。</p>
+      </section>
+
+      <!-- 2. 我们收集的信息 -->
+      <section class="section" id="data-collection">
+        <h2 class="section-title">
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
+            <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+            <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>
+          </svg>
+          <span data-i18n="section-data-collection">我们收集的信息</span>
+        </h2>
+
+        <div class="subsection">
+          <h3 class="subsection-title" data-i18n="data-collection-subsection1">2.1 您主动提供的信息</h3>
+          <div class="info-card">
+            <div class="info-card-title">
+              <span data-i18n="api-config-title">API 配置信息</span>
+              <span class="badge" data-i18n="badge-local-storage">本地存储</span>
+            </div>
+            <ul>
+              <li data-i18n="api-config-item1"><strong>API Key：</strong>您输入的 AI 服务 API 密钥（如 OpenAI、Anthropic 等）</li>
+              <li data-i18n="api-config-item2"><strong>API 地址：</strong>自定义的 API 端点 URL</li>
+              <li data-i18n="api-config-item3"><strong>模型名称：</strong>您选择使用的 AI 模型标识</li>
+            </ul>
+          </div>
+          <p data-i18n="api-config-note">这些信息仅存储在您的本地浏览器中，用于与您选择的 AI 服务提供商进行通信。我们不会收集、存储或传输您的 API 密钥到我们的服务器。</p>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title" data-i18n="data-collection-subsection2">2.2 使用过程中产生的数据</h3>
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="table-header-type">数据类型</th>
+                <th data-i18n="table-header-desc">说明</th>
+                <th data-i18n="table-header-location">存储位置</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td data-i18n="data-type-session">会话数据</td>
+                <td data-i18n="data-type-session-desc">您与 AI 的对话历史、应用的样式记录</td>
+                <td>Chrome Storage + IndexedDB</td>
+              </tr>
+              <tr>
+                <td data-i18n="data-type-profile">用户画像</td>
+                <td data-i18n="data-type-profile-desc">您的样式偏好设置</td>
+                <td>Chrome Storage</td>
+              </tr>
+              <tr>
+                <td data-i18n="data-type-skills">风格技能</td>
+                <td data-i18n="data-type-skills-desc">您保存的自定义样式模板</td>
+                <td>Chrome Storage</td>
+              </tr>
+              <tr>
+                <td data-i18n="data-type-domain">域名信息</td>
+                <td data-i18n="data-type-domain-desc">您使用扩展的网站域名（用于会话隔离）</td>
+                <td>Chrome Storage</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title" data-i18n="data-collection-subsection3">2.3 我们不收集的信息</h3>
+          <ul>
+            <li data-i18n="not-collect-1">您的浏览历史记录</li>
+            <li data-i18n="not-collect-2">您的个人身份信息（姓名、邮箱、电话等）</li>
+            <li data-i18n="not-collect-3">您的密码或其他敏感凭据</li>
+            <li data-i18n="not-collect-4">您的支付信息</li>
+            <li data-i18n="not-collect-5">您的位置信息</li>
+          </ul>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title" data-i18n="data-collection-subsection4">2.4 扩展权限数据访问</h3>
+          <p data-i18n="permission-intro">本扩展需要以下浏览器权限才能正常运行。以下是每个权限对应的数据访问详情：</p>
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="permission-header">权限</th>
+                <th data-i18n="permission-purpose-header">用途</th>
+                <th data-i18n="permission-data-header">访问的数据</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>activeTab</code></td>
+                <td data-i18n="permission-activetab-purpose">获取当前标签页的访问权限，用于修改页面样式</td>
+                <td data-i18n="permission-activetab-data">当前标签页的DOM结构、元素样式、页面截图（仅当您主动发起请求时）</td>
+              </tr>
+              <tr>
+                <td><code>storage</code></td>
+                <td data-i18n="permission-storage-purpose">在本地存储您的配置、会话和偏好设置</td>
+                <td data-i18n="permission-storage-data">API密钥、用户配置、会话数据、用户画像、风格技能（仅存储在您的设备）</td>
+              </tr>
+              <tr>
+                <td><code>sidePanel</code></td>
+                <td data-i18n="permission-sidepanel-purpose">显示扩展的用户界面（侧边栏）</td>
+                <td data-i18n="permission-sidepanel-data">不访问任何页面数据，仅用于显示界面</td>
+              </tr>
+              <tr>
+                <td><code>scripting</code></td>
+                <td data-i18n="permission-scripting-purpose">向页面注入CSS样式代码，实现样式修改</td>
+                <td data-i18n="permission-scripting-data">仅向页面注入样式代码，不读取或收集页面内容</td>
+              </tr>
+              <tr>
+                <td><code>&lt;all_urls&gt;</code></td>
+                <td data-i18n="permission-allurls-purpose">在所有网站上运行，提供样式服务</td>
+                <td data-i18n="permission-allurls-data">当前网站的域名、DOM结构（用于分析和修改样式）</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="highlight-box">
+            <p data-i18n="permission-note"><strong>重要声明：</strong>上述权限仅在您主动使用扩展时才会被调用。我们不会在后台自动读取或收集您的任何数据。页面内容仅在您与AI对话时被分析和处理。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Chrome扩展权限说明 -->
+      <section class="section" id="extension-permissions">
+        <h2 class="section-title">
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <span data-i18n="section-extension-permissions">Chrome扩展权限说明</span>
+        </h2>
+        
+        <p data-i18n="extension-permissions-intro">为提供核心功能，本扩展需要以下浏览器权限。我们承诺仅在必要时使用这些权限，且不会滥用或超范围使用。</p>
+
+        <div class="info-card">
+          <div class="info-card-title">
+            <span data-i18n="permission-minimal-title">最小权限原则</span>
+            <span class="badge" data-i18n="badge-commitment">我们的承诺</span>
+          </div>
+          <ul>
+            <li data-i18n="permission-minimal-item1"><strong>按需请求：</strong>仅在用户主动发起操作时才访问页面数据</li>
+            <li data-i18n="permission-minimal-item2"><strong>本地处理：</strong>所有数据处理均在本地完成，不上传到我们的服务器</li>
+            <li data-i18n="permission-minimal-item3"><strong>用户控制：</strong>您可随时在Chrome扩展管理中撤销这些权限</li>
+          </ul>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title" data-i18n="permission-detail-title">权限详细说明</h3>
+          
+          <div class="info-card">
+            <div class="info-card-title">activeTab</div>
+            <p data-i18n="permission-activetab-detail"><strong>用途：</strong>获取当前活跃标签页的临时访问权限，用于分析和修改页面样式。</p>
+            <p data-i18n="permission-activetab-scope"><strong>数据范围：</strong>仅限当前激活的标签页，不包含其他标签页或后台页面。</p>
+            <p data-i18n="permission-activetab-trigger"><strong>触发时机：</strong>仅在您点击扩展图标或发送消息时触发。</p>
+          </div>
+
+          <div class="info-card">
+            <div class="info-card-title">storage</div>
+            <p data-i18n="permission-storage-detail"><strong>用途：</strong>使用Chrome本地存储API保存您的配置、会话历史和偏好设置。</p>
+            <p data-i18n="permission-storage-scope"><strong>数据范围：</strong>所有存储数据均保存在您的本地浏览器中，不与任何远程服务器同步。</p>
+            <p data-i18n="permission-storage-data-list"><strong>存储内容：</strong></p>
+            <ul>
+              <li data-i18n="storage-item1">API密钥（经过混淆处理）</li>
+              <li data-i18n="storage-item2">用户配置（模型选择、API地址等）</li>
+              <li data-i18n="storage-item3">会话数据（对话历史、应用的样式）</li>
+              <li data-i18n="storage-item4">用户画像（您的样式偏好）</li>
+              <li data-i18n="storage-item5">风格技能（您保存的自定义样式）</li>
+            </ul>
+          </div>
+
+          <div class="info-card">
+            <div class="info-card-title">scripting</div>
+            <p data-i18n="permission-scripting-detail"><strong>用途：</strong>向网页注入自定义CSS样式代码，实现您要求的样式修改。</p>
+            <p data-i18n="permission-scripting-scope"><strong>操作范围：</strong>仅注入样式代码（CSS），不执行任何数据收集或跟踪脚本。</p>
+            <p data-i18n="permission-scripting-safety"><strong>安全性：</strong>注入的样式代码完全由本地生成，不包含任何外部脚本。</p>
+          </div>
+
+          <div class="info-card">
+            <div class="info-card-title">&lt;all_urls&gt; 主机权限</div>
+            <p data-i18n="permission-allurls-detail"><strong>用途：</strong>允许扩展在所有网站上运行，为您访问的任何网页提供样式修改服务。</p>
+            <p data-i18n="permission-allurls-scope"><strong>数据访问：</strong>仅当您在某个网站上主动使用扩展时，才会访问该网站的数据。</p>
+            <p data-i18n="permission-allurls-limitation"><strong>限制：</strong>我们不会在您未主动操作时自动访问任何网站数据。</p>
+          </div>
+        </div>
+      </section>
+
+<!-- 4. 信息的使用 -->
+      <section class="section" id="data-usage">
+        <h2 class="section-title">
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+          <span data-i18n="section-data-usage">信息的使用</span>
+        </h2>
+        
+        <p data-i18n="data-usage-intro">我们收集的信息仅用于以下目的：</p>
+        <ol>
+          <li data-i18n="data-usage-item1"><strong>提供核心服务：</strong>使用您的 API 配置与 AI 服务通信，为您生成个性化网页样式</li>
+          <li data-i18n="data-usage-item2"><strong>会话管理：</strong>保存您的对话历史和样式记录，支持撤销/重做操作</li>
+          <li data-i18n="data-usage-item3"><strong>个性化体验：</strong>根据您的偏好设置优化样式生成结果</li>
+          <li data-i18n="data-usage-item4"><strong>风格迁移：</strong>允许您在不同网站间复用已保存的样式</li>
+          <li data-i18n="data-usage-item5"><strong>本地缓存：</strong>提高扩展响应速度，减少重复计算</li>
+        </ol>
+
+        <div class="subsection">
+          <h3 class="subsection-title" data-i18n="data-usage-processing-title">数据处理流程</h3>
+          <p data-i18n="data-usage-processing-intro">当您使用本扩展时，数据处理按以下流程进行：</p>
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="processing-step">步骤</th>
+                <th data-i18n="processing-action">操作</th>
+                <th data-i18n="processing-data">涉及数据</th>
+                <th data-i18n="processing-location">处理位置</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td data-i18n="processing-step1-action">用户输入指令</td>
+                <td data-i18n="processing-step1-data">您输入的文本描述、页面截图（可选）</td>
+                <td data-i18n="processing-local">本地设备</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td data-i18n="processing-step2-action">分析页面结构</td>
+                <td data-i18n="processing-step2-data">当前网页的DOM结构、元素样式</td>
+                <td data-i18n="processing-local">本地设备</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td data-i18n="processing-step3-action">构建AI请求</td>
+                <td data-i18n="processing-step3-data">用户指令+页面上下文+用户画像</td>
+                <td data-i18n="processing-local">本地设备</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td data-i18n="processing-step4-action">发送至AI服务</td>
+                <td data-i18n="processing-step4-data">加密的API请求（经HTTPS）</td>
+                <td data-i18n="processing-third-party">第三方AI服务</td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td data-i18n="processing-step5-action">生成样式代码</td>
+                <td data-i18n="processing-step5-data">AI返回的CSS样式指令</td>
+                <td data-i18n="processing-third-party">第三方AI服务</td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td data-i18n="processing-step6-action">应用到网页</td>
+                <td data-i18n="processing-step6-data">CSS样式被注入到当前页面</td>
+                <td data-i18n="processing-local">本地设备</td>
+              </tr>
+              <tr>
+                <td>7</td>
+                <td data-i18n="processing-step7-action">保存会话记录</td>
+                <td data-i18n="processing-step7-data">对话历史、应用的样式</td>
+                <td data-i18n="processing-local">本地存储</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="highlight-box">
+          <p data-i18n="data-usage-highlight"><strong>重要说明：</strong>所有数据处理均在您的本地设备上完成。我们不会将您的数据用于广告投放、用户画像分析或任何商业目的。</p>
+        </div>
+      </section>
+
+      <!-- 5. 数据存储与安全 -->
+      <section class="section" id="data-storage">
+        <h2 class="section-title">
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <span data-i18n="section-data-storage">数据存储与安全</span>
+        </h2>
+
+        <div class="subsection">
+          <h3 class="subsection-title" data-i18n="data-storage-subsection1">5.1 存储位置</h3>
+          <p data-i18n="data-storage-location-note">您的所有数据均存储在本地设备上，使用 Chrome 浏览器提供的存储 API：</p>
+          <ul>
+            <li data-i18n="data-storage-item1"><strong>Chrome Storage API：</strong>存储会话索引、用户画像、风格技能等结构化数据</li>
+            <li data-i18n="data-storage-item2"><strong>IndexedDB：</strong>存储对话历史等较大数据</li>
+          </ul>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title" data-i18n="data-storage-subsection2">5.2 数据安全措施</h3>
+          <ul>
+            <li data-i18n="security-item1"><strong>本地隔离：</strong>数据按域名隔离存储，不同网站的会话互不干扰</li>
+            <li data-i18n="security-item2"><strong>自动清理：</strong>超过 90 天未访问的会话会自动清理</li>
+            <li data-i18n="security-item3"><strong>会话限制：</strong>每个域名最多保存 20 个会话，防止存储滥用</li>
+            <li data-i18n="security-item4"><strong>手动清除：</strong>您可以随时在设置中清除所有历史数据</li>
+          </ul>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title" data-i18n="data-storage-subsection3">5.3 API 通信安全</h3>
+          <p data-i18n="api-security-note">当您使用 AI 功能时，您的请求会发送到您配置的 AI 服务提供商：</p>
+          <ul>
+            <li data-i18n="api-security-item1">通信通过 HTTPS 加密传输</li>
+            <li data-i18n="api-security-item2">我们不会拦截、存储或分析您的 API 请求内容</li>
+            <li data-i18n="api-security-item3">请参阅您使用的 AI 服务提供商的隐私政策（如 OpenAI、Anthropic 等）</li>
+          </ul>
+        </div>
+      </section>
+
+ <!-- 6. 信息共享与第三方 -->
+      <section class="section" id="data-sharing">
+        <h2 class="section-title">
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+            <polyline points="16,6 12,2 8,6"/>
+            <line x1="12" x2="12" y1="2" y2="15"/>
+          </svg>
+          <span data-i18n="section-data-sharing">信息共享与第三方</span>
+        </h2>
+
+        <div class="highlight-box">
+          <p data-i18n="data-sharing-highlight"><strong>我们不会出售、出租或以其他方式商业化您的个人信息。</strong></p>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title" data-i18n="data-sharing-overview-title">6.1 数据共享概述</h3>
+          <p data-i18n="data-sharing-overview">数字女娲采用"隐私优先"架构，这意味着：</p>
+          <ul>
+            <li data-i18n="sharing-no-server"><strong>无中心服务器：</strong>我们不运营任何收集用户数据的服务器</li>
+            <li data-i18n="sharing-no-tracking"><strong>无跟踪代码：</strong>扩展不包含任何分析或跟踪代码</li>
+            <li data-i18n="sharing-local-first"><strong>本地优先：</strong>您的所有敏感数据（API密钥、对话历史）仅存储在本地</li>
+          </ul>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title" data-i18n="third-party-providers-title">6.2 第三方AI服务提供商</h3>
+          <p data-i18n="third-party-providers-intro">当您使用AI功能时，以下数据会发送给您选择的AI服务提供商：</p>
+          <div class="info-card">
+            <div class="info-card-title" data-i18n="third-party-data-title">发送的数据类型</div>
+            <ul>
+              <li data-i18n="third-party-data-1"><strong>您的指令：</strong>您输入的自然语言描述（例如："把标题改成红色"）</li>
+              <li data-i18n="third-party-data-2"><strong>页面上下文：</strong>当前网页的DOM结构摘要（用于AI理解页面结构）</li>
+              <li data-i18n="third-party-data-3"><strong>用户画像：</strong>您的样式偏好设置（用于个性化生成）</li>
+              <li data-i18n="third-party-data-4"><strong>截图（可选）：</strong>如果您上传了参考图片，图片会一并发送</li>
+            </ul>
+          </div>
+          
+          <p data-i18n="third-party-providers-list">我们支持以下AI服务提供商，点击查看其隐私政策：</p>
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="provider-name">服务提供商</th>
+                <th data-i18n="provider-service">服务名称</th>
+                <th data-i18n="provider-privacy">隐私政策链接</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>OpenAI</td>
+                <td>GPT-4o, GPT-4o-mini</td>
+                <td><a href="https://openai.com/privacy/" target="_blank" rel="noopener noreferrer">openai.com/privacy</a></td>
+              </tr>
+              <tr>
+                <td>Anthropic</td>
+                <td>Claude 3.5 Sonnet, Claude 3 Opus</td>
+                <td><a href="https://www.anthropic.com/privacy" target="_blank" rel="noopener noreferrer">anthropic.com/privacy</a></td>
+              </tr>
+              <tr>
+                <td>Google</td>
+                <td>Gemini 2.0, Gemini 1.5 Pro</td>
+                <td><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">policies.google.com/privacy</a></td>
+              </tr>
+              <tr>
+                <td>DeepSeek</td>
+                <td>DeepSeek-V3, DeepSeek-R1</td>
+                <td><a href="https://www.deepseek.com/privacy" target="_blank" rel="noopener noreferrer">deepseek.com/privacy</a></td>
+              </tr>
+              <tr>
+                <td>月之暗面 (Moonshot)</td>
+                <td>Kimi</td>
+                <td><a href="https://kimi.moonshot.cn/privacy" target="_blank" rel="noopener noreferrer">kimi.moonshot.cn/privacy</a></td>
+              </tr>
+              <tr>
+                <td>智谱AI</td>
+                <td>GLM-4</td>
+                <td><a href="https://open.bigmodel.cn/policy/privacy" target="_blank" rel="noopener noreferrer">open.bigmodel.cn/policy/privacy</a></td>
+              </tr>
+              <tr>
+                <td>阿里云</td>
+                <td>通义千问</td>
+                <td><a href="https://terms.alicdn.com/legal-agreement/terms/suit_browsing1/68249_68269.html" target="_blank" rel="noopener noreferrer">阿里云隐私政策</a></td>
+              </tr>
+              <tr>
+                <td>百度</td>
+                <td>文心一言</td>
+                <td><a href="https://www.baidu.com/duty/yinsi.htm" target="_blank" rel="noopener noreferrer">baidu.com/duty/yinsi.htm</a></td>
+              </tr>
+              <tr>
+                <td>SiliconFlow</td>
+                <td>SiliconFlow API</td>
+                <td><a href="https://siliconflow.cn/privacy-policy" target="_blank" rel="noopener noreferrer">siliconflow.cn/privacy-policy</a></td>
+              </tr>
+              <tr>
+                <td>Groq</td>
+                <td>Llama 3, Mixtral</td>
+                <td><a href="https://groq.com/privacy/" target="_blank" rel="noopener noreferrer">groq.com/privacy</a></td>
+              </tr>
+              <tr>
+                <td>PPIO</td>
+                <td>PPIO Model API</td>
+                <td><a href="https://ppio.com/privacy" target="_blank" rel="noopener noreferrer">ppio.com/privacy</a></td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <div class="info-card">
+            <div class="info-card-title" data-i18n="third-party-other-title">其他兼容服务</div>
+            <p data-i18n="third-party-other-desc">数字女娲还支持任何兼容 OpenAI API 格式的第三方服务。如果您使用自定义 API 端点，请查阅该服务提供商的隐私政策。我们不对第三方服务的隐私实践负责。</p>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title" data-i18n="data-sharing-other-title">6.3 其他披露情形</h3>
+          <p data-i18n="data-sharing-other-intro">除上述AI服务通信外，我们仅在以下情况下可能披露信息：</p>
+          <ol>
+            <li data-i18n="data-sharing-item2"><strong>法律要求：</strong>如遇法律法规强制要求，我们可能需要披露相关信息。</li>
+            <li data-i18n="data-sharing-item3"><strong>安全保护：</strong>为保护我们或用户的合法权益，在必要时可能披露信息。</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- 7. 您的权利 -->
+      <section class="section" id="user-rights">
+        <h2 class="section-title">
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span data-i18n="section-user-rights">您的权利</span>
+        </h2>
+        <p data-i18n="user-rights-intro">作为用户，您享有以下权利：</p>
+
+        <div class="info-card">
+          <div class="info-card-title" data-i18n="right-access">7.1 访问权</div>
+          <p data-i18n="right-access-desc">您可以随时在扩展设置中查看存储的所有数据，包括会话历史、用户画像和风格技能。</p>
+        </div>
+
+        <div class="info-card">
+          <div class="info-card-title" data-i18n="right-delete">7.2 删除权</div>
+          <p data-i18n="right-delete-intro">您可以通过以下方式删除数据：</p>
+          <ul>
+            <li data-i18n="right-delete-item1">删除单个会话：在会话列表中删除特定会话</li>
+            <li data-i18n="right-delete-item2">清除历史数据：在设置中点击"清除历史"按钮</li>
+            <li data-i18n="right-delete-item3">卸载扩展：卸载扩展将删除所有相关数据</li>
+          </ul>
+        </div>
+
+        <div class="info-card">
+          <div class="info-card-title" data-i18n="right-modify">7.3 修改权</div>
+          <p data-i18n="right-modify-desc">您可以随时修改您的 API 配置、用户画像和风格技能设置。</p>
+        </div>
+
+        <div class="info-card">
+          <div class="info-card-title" data-i18n="right-portability">7.4 数据可携带权</div>
+          <p data-i18n="right-portability-desc">您可以导出保存的风格技能，在其他设备或浏览器中使用。</p>
+        </div>
+
+        <div class="info-card">
+          <div class="info-card-title" data-i18n="right-withdraw">7.5 撤回同意权</div>
+          <p data-i18n="right-withdraw-desc">您可以随时停止使用本扩展，Chrome浏览器会自动删除扩展存储的所有数据。</p>
+        </div>
+      </section>
+
+      <!-- 8. 儿童隐私 -->
+      <section class="section" id="children-privacy">
+        <h2 class="section-title">
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 12h.01"/>
+            <path d="M15 12h.01"/>
+            <path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/>
+            <path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/>
+          </svg>
+          <span data-i18n="section-children-privacy">儿童隐私</span>
+        </h2>
+        <p data-i18n="children-privacy-p1">数字女娲并非针对 13 岁以下的儿童设计。我们不会故意收集 13 岁以下儿童的个人信息。如果我们发现误收集了儿童的个人信息，会立即采取措施删除。</p>
+        <p data-i18n="children-privacy-p2">如果您是家长或监护人，发现您的孩子未经您同意使用了本扩展，请联系我们，我们将协助处理。</p>
+      </section>
+
+      <!-- 8. 隐私政策的变更 -->
+      <section class="section" id="policy-changes">
+        <h2 class="section-title">
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+            <polyline points="14,2 14,8 20,8"/>
+            <line x1="16" x2="8" y1="13" y2="13"/>
+            <line x1="16" x2="8" y1="17" y2="17"/>
+            <line x1="10" x2="8" y1="9" y2="9"/>
+          </svg>
+          <span data-i18n="section-policy-changes">隐私政策的变更</span>
+        </h2>
+        <p data-i18n="policy-changes-intro">我们可能会不时更新本隐私政策。当我们对隐私政策进行重大变更时，我们会通过以下方式通知您：</p>
+        <ul>
+          <li data-i18n="policy-changes-item1">在扩展更新日志中说明</li>
+          <li data-i18n="policy-changes-item2">在 GitHub 仓库发布更新公告</li>
+          <li data-i18n="policy-changes-item3">更新本页面的"最后更新日期"</li>
+        </ul>
+        <p data-i18n="policy-changes-note">我们建议您定期查阅本隐私政策，以了解我们如何保护您的信息。继续使用本扩展即表示您同意受更新后的隐私政策约束。</p>
+      </section>
+
+      <!-- 9. 联系我们 -->
+      <section class="section" id="contact">
+        <h2 class="section-title">
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span data-i18n="section-contact">联系我们</span>
+        </h2>
+        <p data-i18n="contact-intro">如果您对本隐私政策有任何疑问、意见或建议，或希望行使您的数据权利，请通过以下方式联系我们：</p>
+        <ul>
+          <li><strong>GitHub Issues：</strong><a href="https://github.com/StyleSwift/StyleSwift/issues" target="_blank">https://github.com/StyleSwift/StyleSwift/issues</a></li>
+          <li><strong data-i18n="contact-email">电子邮件：</strong><a href="mailto:2270364052@qq.com">2270364052@qq.com</a></li>
+        </ul>
+        <p data-i18n="contact-response">我们会在收到您的请求后 30 天内予以回复。</p>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="https://github.com/StyleSwift/StyleSwift" target="_blank" class="footer-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/>
+            <path d="M9 18c-4.51 2-5-2-7-2"/>
+          </svg>
+          GitHub
+        </a>
+        <a href="https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli" target="_blank" class="footer-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="4"/>
+            <line x1="21.17" x2="12" y1="8" y2="8"/>
+            <line x1="3.95" x2="8.54" y1="6.06" y2="14"/>
+            <line x1="10.88" x2="15.46" y1="21.94" y2="14"/>
+          </svg>
+          <span data-i18n="footer-chrome-store">Chrome 应用商店</span>
+        </a>
+        <a href="README.md" class="footer-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
+          </svg>
+          <span data-i18n="footer-docs">使用文档</span>
+        </a>
+      </div>
+      <p class="copyright" data-i18n="copyright">© 2025 数字女娲 (StyleSwift). 保留所有权利。</p>
+    </footer>
+  </div>
+
+  <script>
+    // ============================================================
+    // Internationalization System
+    // ============================================================
+    const translations = {
+      zh: {
+        // Page title
+        'page-title': '隐私权政策 - 数字女娲 (StyleSwift)',
+        
+        // Header
+        'product-name': '数字女娲',
+        'privacy-policy-title': '隐私权政策',
+        'last-updated': '最后更新日期：2026 年 3 月 31 日',
+        
+        // TOC
+        'toc-title': '目录',
+        'toc-overview': '概述',
+        'toc-data-collection': '我们收集的信息',
+        'toc-extension-permissions': 'Chrome扩展权限说明',
+        'toc-data-usage': '信息的使用',
+        'toc-data-storage': '数据存储与安全',
+        'toc-data-sharing': '信息共享与第三方',
+        'toc-user-rights': '您的权利',
+        'toc-children-privacy': '儿童隐私',
+        'toc-policy-changes': '隐私政策的变更',
+        'toc-contact': '联系我们',
+        
+        // Overview
+        'section-overview': '概述',
+        'overview-p1': '欢迎使用数字女娲 (StyleSwift)！我们高度重视您的隐私保护。本隐私政策旨在向您说明我们如何收集、使用、存储和保护您的个人信息。',
+        'overview-highlight': '<strong>核心原则：</strong>数字女娲采用"隐私优先"设计理念。您的所有数据均存储在本地设备上，我们不会将您的个人信息传输到任何远程服务器。',
+        'overview-p2': '数字女娲是一款 Chrome 浏览器扩展，通过 AI 技术帮助您个性化网页样式。在使用我们的服务前，请仔细阅读本隐私政策。',
+        
+        // Data Collection
+        'section-data-collection': '我们收集的信息',
+        'data-collection-subsection1': '2.1 您主动提供的信息',
+        'api-config-title': 'API 配置信息',
+        'badge-local-storage': '本地存储',
+        'api-config-item1': '<strong>API Key：</strong>您输入的 AI 服务 API 密钥（如 OpenAI、Anthropic 等）',
+        'api-config-item2': '<strong>API 地址：</strong>自定义的 API 端点 URL',
+        'api-config-item3': '<strong>模型名称：</strong>您选择使用的 AI 模型标识',
+        'api-config-note': '这些信息仅存储在您的本地浏览器中，用于与您选择的 AI 服务提供商进行通信。我们不会收集、存储或传输您的 API 密钥到我们的服务器。',
+        'data-collection-subsection2': '2.2 使用过程中产生的数据',
+        'table-header-type': '数据类型',
+        'table-header-desc': '说明',
+        'table-header-location': '存储位置',
+        'data-type-session': '会话数据',
+        'data-type-session-desc': '您与 AI 的对话历史、应用的样式记录',
+        'data-type-profile': '用户画像',
+        'data-type-profile-desc': '您的样式偏好设置',
+        'data-type-skills': '风格技能',
+        'data-type-skills-desc': '您保存的自定义样式模板',
+        'data-type-domain': '域名信息',
+        'data-type-domain-desc': '您使用扩展的网站域名（用于会话隔离）',
+        'data-collection-subsection3': '2.3 我们不收集的信息',
+        'not-collect-1': '您的浏览历史记录',
+        'not-collect-2': '您的个人身份信息（姓名、邮箱、电话等）',
+        'not-collect-3': '您的密码或其他敏感凭据',
+        'not-collect-4': '您的支付信息',
+        'not-collect-5': '您的位置信息',
+        
+        'data-collection-subsection4': '2.4 扩展权限数据访问',
+        'permission-intro': '本扩展需要以下浏览器权限才能正常运行。以下是每个权限对应的数据访问详情：',
+        'permission-header': '权限',
+        'permission-purpose-header': '用途',
+        'permission-data-header': '访问的数据',
+        'permission-activetab-purpose': '获取当前标签页的访问权限，用于修改页面样式',
+        'permission-activetab-data': '当前标签页的DOM结构、元素样式、页面截图（仅当您主动发起请求时）',
+        'permission-storage-purpose': '在本地存储您的配置、会话和偏好设置',
+        'permission-storage-data': 'API密钥、用户配置、会话数据、用户画像、风格技能（仅存储在您的设备）',
+        'permission-sidepanel-purpose': '显示扩展的用户界面（侧边栏）',
+        'permission-sidepanel-data': '不访问任何页面数据，仅用于显示界面',
+        'permission-scripting-purpose': '向页面注入CSS样式代码，实现样式修改',
+        'permission-scripting-data': '仅向页面注入样式代码，不读取或收集页面内容',
+        'permission-allurls-purpose': '在所有网站上运行，提供样式服务',
+        'permission-allurls-data': '当前网站的域名、DOM结构（用于分析和修改样式）',
+        'permission-note': '<strong>重要声明：</strong>上述权限仅在您主动使用扩展时才会被调用。我们不会在后台自动读取或收集您的任何数据。页面内容仅在您与AI对话时被分析和处理。',
+        
+        // Extension Permissions
+        'section-extension-permissions': 'Chrome扩展权限说明',
+        'extension-permissions-intro': '为提供核心功能，本扩展需要以下浏览器权限。我们承诺仅在必要时使用这些权限，且不会滥用或超范围使用。',
+        'permission-minimal-title': '最小权限原则',
+        'badge-commitment': '我们的承诺',
+        'permission-minimal-item1': '<strong>按需请求：</strong>仅在用户主动发起操作时才访问页面数据',
+        'permission-minimal-item2': '<strong>本地处理：</strong>所有数据处理均在本地完成，不上传到我们的服务器',
+        'permission-minimal-item3': '<strong>用户控制：</strong>您可随时在Chrome扩展管理中撤销这些权限',
+        'permission-detail-title': '权限详细说明',
+        'permission-activetab-detail': '<strong>用途：</strong>获取当前活跃标签页的临时访问权限，用于分析和修改页面样式。',
+        'permission-activetab-scope': '<strong>数据范围：</strong>仅限当前激活的标签页，不包含其他标签页或后台页面。',
+        'permission-activetab-trigger': '<strong>触发时机：</strong>仅在您点击扩展图标或发送消息时触发。',
+        'permission-storage-detail': '<strong>用途：</strong>使用Chrome本地存储API保存您的配置、会话历史和偏好设置。',
+        'permission-storage-scope': '<strong>数据范围：</strong>所有存储数据均保存在您的本地浏览器中，不与任何远程服务器同步。',
+        'permission-storage-data-list': '<strong>存储内容：</strong>',
+        'storage-item1': 'API密钥（经过混淆处理）',
+        'storage-item2': '用户配置（模型选择、API地址等）',
+        'storage-item3': '会话数据（对话历史、应用的样式）',
+        'storage-item4': '用户画像（您的样式偏好）',
+        'storage-item5': '风格技能（您保存的自定义样式）',
+        'permission-scripting-detail': '<strong>用途：</strong>向网页注入自定义CSS样式代码，实现您要求的样式修改。',
+        'permission-scripting-scope': '<strong>操作范围：</strong>仅注入样式代码（CSS），不执行任何数据收集或跟踪脚本。',
+        'permission-scripting-safety': '<strong>安全性：</strong>注入的样式代码完全由本地生成，不包含任何外部脚本。',
+        'permission-allurls-detail': '<strong>用途：</strong>允许扩展在所有网站上运行，为您访问的任何网页提供样式修改服务。',
+        'permission-allurls-scope': '<strong>数据访问：</strong>仅当您在某个网站上主动使用扩展时，才会访问该网站的数据。',
+        'permission-allurls-limitation': '<strong>限制：</strong>我们不会在您未主动操作时自动访问任何网站数据。',
+        
+        // Data Usage Processing
+        'data-usage-processing-title': '数据处理流程',
+        'data-usage-processing-intro': '当您使用本扩展时，数据处理按以下流程进行：',
+        'processing-step': '步骤',
+        'processing-action': '操作',
+        'processing-data': '涉及数据',
+        'processing-location': '处理位置',
+        'processing-local': '本地设备',
+        'processing-third-party': '第三方AI服务',
+        'processing-step1-action': '用户输入指令',
+        'processing-step1-data': '您输入的文本描述、页面截图（可选）',
+        'processing-step2-action': '分析页面结构',
+        'processing-step2-data': '当前网页的DOM结构、元素样式',
+        'processing-step3-action': '构建AI请求',
+        'processing-step3-data': '用户指令+页面上下文+用户画像',
+        'processing-step4-action': '发送至AI服务',
+        'processing-step4-data': '加密的API请求（经HTTPS）',
+        'processing-step5-action': '生成样式代码',
+        'processing-step5-data': 'AI返回的CSS样式指令',
+        'processing-step6-action': '应用到网页',
+        'processing-step6-data': 'CSS样式被注入到当前页面',
+        'processing-step7-action': '保存会话记录',
+        'processing-step7-data': '对话历史、应用的样式',
+        
+        // Data Storage
+        'section-data-storage': '数据存储与安全',
+        'data-storage-subsection1': '5.1 存储位置',
+        'data-storage-location-note': '您的所有数据均存储在本地设备上，使用 Chrome 浏览器提供的存储 API：',
+        'data-storage-item1': '<strong>Chrome Storage API：</strong>存储会话索引、用户画像、风格技能等结构化数据',
+        'data-storage-item2': '<strong>IndexedDB：</strong>存储对话历史等较大数据',
+        'data-storage-subsection2': '5.2 数据安全措施',
+        'security-item1': '<strong>本地隔离：</strong>数据按域名隔离存储，不同网站的会话互不干扰',
+        'security-item2': '<strong>自动清理：</strong>超过 90 天未访问的会话会自动清理',
+        'security-item3': '<strong>会话限制：</strong>每个域名最多保存 20 个会话，防止存储滥用',
+        'security-item4': '<strong>手动清除：</strong>您可以随时在设置中清除所有历史数据',
+        'data-storage-subsection3': '5.3 API 通信安全',
+        'api-security-note': '当您使用 AI 功能时，您的请求会发送到您配置的 AI 服务提供商：',
+        'api-security-item1': '通信通过 HTTPS 加密传输',
+        'api-security-item2': '我们不会拦截、存储或分析您的 API 请求内容',
+        'api-security-item3': '请参阅您使用的 AI 服务提供商的隐私政策（如 OpenAI、Anthropic 等）',
+        
+        // Data Sharing
+        'section-data-sharing': '信息共享与第三方',
+        'data-sharing-highlight': '<strong>我们不会出售、出租或以其他方式商业化您的个人信息。</strong>',
+        'data-sharing-overview-title': '6.1 数据共享概述',
+        'data-sharing-overview': '数字女娲采用"隐私优先"架构，这意味着：',
+        'sharing-no-server': '<strong>无中心服务器：</strong>我们不运营任何收集用户数据的服务器',
+        'sharing-no-tracking': '<strong>无跟踪代码：</strong>扩展不包含任何分析或跟踪代码',
+        'sharing-local-first': '<strong>本地优先：</strong>您的所有敏感数据（API密钥、对话历史）仅存储在本地',
+        'third-party-providers-title': '6.2 第三方AI服务提供商',
+        'third-party-providers-intro': '当您使用AI功能时，以下数据会发送给您选择的AI服务提供商：',
+        'third-party-data-title': '发送的数据类型',
+        'third-party-data-1': '<strong>您的指令：</strong>您输入的自然语言描述（例如："把标题改成红色"）',
+        'third-party-data-2': '<strong>页面上下文：</strong>当前网页的DOM结构摘要（用于AI理解页面结构）',
+        'third-party-data-3': '<strong>用户画像：</strong>您的样式偏好设置（用于个性化生成）',
+        'third-party-data-4': '<strong>截图（可选）：</strong>如果您上传了参考图片，图片会一并发送',
+        'third-party-providers-list': '我们支持以下AI服务提供商，点击查看其隐私政策：',
+        'provider-name': '服务提供商',
+        'provider-service': '服务名称',
+        'provider-privacy': '隐私政策链接',
+        'third-party-other-title': '其他兼容服务',
+        'third-party-other-desc': '数字女娲还支持任何兼容 OpenAI API 格式的第三方服务。如果您使用自定义 API 端点，请查阅该服务提供商的隐私政策。我们不对第三方服务的隐私实践负责。',
+        'data-sharing-other-title': '6.3 其他披露情形',
+        'data-sharing-other-intro': '除上述AI服务通信外，我们仅在以下情况下可能披露信息：',
+        'data-sharing-item2': '<strong>法律要求：</strong>如遇法律法规强制要求，我们可能需要披露相关信息。',
+        'data-sharing-item3': '<strong>安全保护：</strong>为保护我们或用户的合法权益，在必要时可能披露信息。',
+        
+        // User Rights
+        'section-user-rights': '您的权利',
+        'user-rights-intro': '作为用户，您享有以下权利：',
+        'right-access': '7.1 访问权',
+        'right-access-desc': '您可以随时在扩展设置中查看存储的所有数据，包括会话历史、用户画像和风格技能。',
+        'right-delete': '7.2 删除权',
+        'right-delete-intro': '您可以通过以下方式删除数据：',
+        'right-delete-item1': '删除单个会话：在会话列表中删除特定会话',
+        'right-delete-item2': '清除历史数据：在设置中点击"清除历史"按钮',
+        'right-delete-item3': '卸载扩展：卸载扩展将删除所有相关数据',
+        'right-modify': '7.3 修改权',
+        'right-modify-desc': '您可以随时修改您的 API 配置、用户画像和风格技能设置。',
+        'right-portability': '7.4 数据可携带权',
+        'right-portability-desc': '您可以导出保存的风格技能，在其他设备或浏览器中使用。',
+        'right-withdraw': '7.5 撤回同意权',
+        'right-withdraw-desc': '您可以随时停止使用本扩展，Chrome浏览器会自动删除扩展存储的所有数据。',
+        
+        // Children Privacy
+        'section-children-privacy': '儿童隐私',
+        'children-privacy-p1': '数字女娲并非针对 13 岁以下的儿童设计。我们不会故意收集 13 岁以下儿童的个人信息。如果我们发现误收集了儿童的个人信息，会立即采取措施删除。',
+        'children-privacy-p2': '如果您是家长或监护人，发现您的孩子未经您同意使用了本扩展，请联系我们，我们将协助处理。',
+        
+        // Policy Changes
+        'section-policy-changes': '隐私政策的变更',
+        'policy-changes-intro': '我们可能会不时更新本隐私政策。当我们对隐私政策进行重大变更时，我们会通过以下方式通知您：',
+        'policy-changes-item1': '在扩展更新日志中说明',
+        'policy-changes-item2': '在 GitHub 仓库发布更新公告',
+        'policy-changes-item3': '更新本页面的"最后更新日期"',
+        'policy-changes-note': '我们建议您定期查阅本隐私政策，以了解我们如何保护您的信息。继续使用本扩展即表示您同意受更新后的隐私政策约束。',
+        
+        // Contact
+        'section-contact': '联系我们',
+        'contact-intro': '如果您对本隐私政策有任何疑问、意见或建议，或希望行使您的数据权利，请通过以下方式联系我们：',
+        'contact-email': '电子邮件：',
+        'contact-response': '我们会在收到您的请求后 30 天内予以回复。',
+        
+        // Footer
+        'footer-chrome-store': 'Chrome 应用商店',
+        'footer-docs': '使用文档',
+        'copyright': '© 2026 数字女娲 (StyleSwift). 保留所有权利。'
+      },
+      en: {
+        // Page title
+        'page-title': 'Privacy Policy - StyleSwift',
+        
+        // Header
+        'product-name': 'StyleSwift',
+        'privacy-policy-title': 'Privacy Policy',
+        'last-updated': 'Last Updated: March 31, 2026',
+        
+        // TOC
+        'toc-title': 'Table of Contents',
+        'toc-overview': 'Overview',
+        'toc-data-collection': 'Information We Collect',
+        'toc-extension-permissions': 'Chrome Extension Permissions',
+        'toc-data-usage': 'How We Use Information',
+        'toc-data-storage': 'Data Storage & Security',
+        'toc-data-sharing': 'Information Sharing & Third Parties',
+        'toc-user-rights': 'Your Rights',
+        'toc-children-privacy': 'Children\'s Privacy',
+        'toc-policy-changes': 'Changes to Privacy Policy',
+        'toc-contact': 'Contact Us',
+        
+        // Overview
+        'section-overview': 'Overview',
+        'overview-p1': 'Welcome to StyleSwift! We take your privacy seriously. This privacy policy explains how we collect, use, store, and protect your personal information.',
+        'overview-highlight': '<strong>Core Principle:</strong> StyleSwift follows a "privacy-first" design philosophy. All your data is stored locally on your device, and we do not transmit your personal information to any remote servers.',
+        'overview-p2': 'StyleSwift is a Chrome browser extension that uses AI technology to help you personalize web page styles. Please read this privacy policy carefully before using our service.',
+        
+        // Data Collection
+        'section-data-collection': 'Information We Collect',
+        'data-collection-subsection1': '2.1 Information You Provide',
+        'api-config-title': 'API Configuration',
+        'badge-local-storage': 'Local Storage',
+        'api-config-item1': '<strong>API Key:</strong> Your AI service API keys (e.g., OpenAI, Anthropic)',
+        'api-config-item2': '<strong>API Endpoint:</strong> Custom API endpoint URLs',
+        'api-config-item3': '<strong>Model Name:</strong> The AI model identifier you choose to use',
+        'api-config-note': 'This information is stored only in your local browser and is used to communicate with your chosen AI service provider. We do not collect, store, or transmit your API keys to our servers.',
+        'data-collection-subsection2': '2.2 Data Generated During Use',
+        'table-header-type': 'Data Type',
+        'table-header-desc': 'Description',
+        'table-header-location': 'Storage Location',
+        'data-type-session': 'Session Data',
+        'data-type-session-desc': 'Your conversation history with AI, applied style records',
+        'data-type-profile': 'User Profile',
+        'data-type-profile-desc': 'Your style preference settings',
+        'data-type-skills': 'Style Skills',
+        'data-type-skills-desc': 'Your saved custom style templates',
+        'data-type-domain': 'Domain Info',
+        'data-type-domain-desc': 'Website domains where you use the extension (for session isolation)',
+        'data-collection-subsection3': '2.3 Information We Do NOT Collect',
+        'not-collect-1': 'Your browsing history',
+        'not-collect-2': 'Your personal identity information (name, email, phone, etc.)',
+        'not-collect-3': 'Your passwords or other sensitive credentials',
+        'not-collect-4': 'Your payment information',
+        'not-collect-5': 'Your location information',
+        
+        'data-collection-subsection4': '2.4 Extension Permission Data Access',
+        'permission-intro': 'This extension requires the following browser permissions to function properly. Below are the data access details for each permission:',
+        'permission-header': 'Permission',
+        'permission-purpose-header': 'Purpose',
+        'permission-data-header': 'Data Accessed',
+        'permission-activetab-purpose': 'Get access to the current tab to modify page styles',
+        'permission-activetab-data': 'Current tab DOM structure, element styles, page screenshots (only when you initiate a request)',
+        'permission-storage-purpose': 'Store your configuration, sessions, and preferences locally',
+        'permission-storage-data': 'API keys, user configuration, session data, user profile, style skills (stored only on your device)',
+        'permission-sidepanel-purpose': 'Display the extension user interface (side panel)',
+        'permission-sidepanel-data': 'Does not access any page data, only used for displaying the interface',
+        'permission-scripting-purpose': 'Inject CSS style code into pages to implement style modifications',
+        'permission-scripting-data': 'Only injects style code, does not read or collect page content',
+        'permission-allurls-purpose': 'Run on all websites to provide style services',
+        'permission-allurls-data': 'Current website domain, DOM structure (for analyzing and modifying styles)',
+        'permission-note': '<strong>Important:</strong> The above permissions are only invoked when you actively use the extension. We do not automatically read or collect any of your data in the background. Page content is only analyzed and processed when you interact with the AI.',
+        
+        // Extension Permissions
+        'section-extension-permissions': 'Chrome Extension Permissions',
+        'extension-permissions-intro': 'To provide core functionality, this extension requires the following browser permissions. We commit to using these permissions only when necessary and will not abuse them.',
+        'permission-minimal-title': 'Minimum Permission Principle',
+        'badge-commitment': 'Our Commitment',
+        'permission-minimal-item1': '<strong>On-Demand:</strong> Page data is accessed only when users actively initiate actions',
+        'permission-minimal-item2': '<strong>Local Processing:</strong> All data processing is done locally, not uploaded to our servers',
+        'permission-minimal-item3': '<strong>User Control:</strong> You can revoke these permissions at any time in Chrome extension management',
+        'permission-detail-title': 'Permission Details',
+        'permission-activetab-detail': '<strong>Purpose:</strong> Get temporary access to the currently active tab for analyzing and modifying page styles.',
+        'permission-activetab-scope': '<strong>Scope:</strong> Limited to the currently active tab only, excluding other tabs or background pages.',
+        'permission-activetab-trigger': '<strong>Trigger:</strong> Only triggered when you click the extension icon or send a message.',
+        'permission-storage-detail': '<strong>Purpose:</strong> Use Chrome local storage API to save your configuration, session history, and preference settings.',
+        'permission-storage-scope': '<strong>Scope:</strong> All stored data is saved locally in your browser and is not synchronized with any remote servers.',
+        'permission-storage-data-list': '<strong>Stored Content:</strong>',
+        'storage-item1': 'API keys (obfuscated)',
+        'storage-item2': 'User configuration (model selection, API address, etc.)',
+        'storage-item3': 'Session data (conversation history, applied styles)',
+        'storage-item4': 'User profile (your style preferences)',
+        'storage-item5': 'Style skills (your saved custom styles)',
+        'permission-scripting-detail': '<strong>Purpose:</strong> Inject custom CSS style code into webpages to implement your requested style modifications.',
+        'permission-scripting-scope': '<strong>Scope:</strong> Only style code (CSS) is injected, no data collection or tracking scripts are executed.',
+        'permission-scripting-safety': '<strong>Safety:</strong> Injected style code is entirely generated locally and contains no external scripts.',
+        'permission-allurls-detail': '<strong>Purpose:</strong> Allow the extension to run on all websites to provide style modification services for any webpage you visit.',
+        'permission-allurls-scope': '<strong>Data Access:</strong> Website data is only accessed when you actively use the extension on that site.',
+        'permission-allurls-limitation': '<strong>Limitation:</strong> We do not automatically access any website data without your active operation.',
+        
+        // Data Usage Processing
+        'data-usage-processing-title': 'Data Processing Flow',
+        'data-usage-processing-intro': 'When you use this extension, data processing follows this flow:',
+        'processing-step': 'Step',
+        'processing-action': 'Action',
+        'processing-data': 'Data Involved',
+        'processing-location': 'Processing Location',
+        'processing-local': 'Local Device',
+        'processing-third-party': 'Third-Party AI Service',
+        'processing-step1-action': 'User Input',
+        'processing-step1-data': 'Your text description, page screenshot (optional)',
+        'processing-step2-action': 'Analyze Page Structure',
+        'processing-step2-data': 'Current webpage DOM structure, element styles',
+        'processing-step3-action': 'Build AI Request',
+        'processing-step3-data': 'User instruction + page context + user profile',
+        'processing-step4-action': 'Send to AI Service',
+        'processing-step4-data': 'Encrypted API request (via HTTPS)',
+        'processing-step5-action': 'Generate Style Code',
+        'processing-step5-data': 'CSS style instructions returned by AI',
+        'processing-step6-action': 'Apply to Webpage',
+        'processing-step6-data': 'CSS styles injected into current page',
+        'processing-step7-action': 'Save Session Record',
+        'processing-step7-data': 'Conversation history, applied styles',
+        
+        // Data Storage
+        'section-data-storage': 'Data Storage & Security',
+        'data-storage-subsection1': '5.1 Storage Location',
+        'data-storage-location-note': 'All your data is stored locally on your device using Chrome browser storage APIs:',
+        'data-storage-item1': '<strong>Chrome Storage API:</strong> Stores session indices, user profiles, style skills, and other structured data',
+        'data-storage-item2': '<strong>IndexedDB:</strong> Stores larger data such as conversation history',
+        'data-storage-subsection2': '5.2 Data Security Measures',
+        'security-item1': '<strong>Local Isolation:</strong> Data is isolated by domain, sessions from different websites do not interfere with each other',
+        'security-item2': '<strong>Auto Cleanup:</strong> Sessions not accessed for over 90 days are automatically cleaned up',
+        'security-item3': '<strong>Session Limit:</strong> Maximum 20 sessions per domain to prevent storage abuse',
+        'security-item4': '<strong>Manual Clearing:</strong> You can clear all history data in settings at any time',
+        'data-storage-subsection3': '5.3 API Communication Security',
+        'api-security-note': 'When you use AI features, your requests are sent to your configured AI service provider:',
+        'api-security-item1': 'Communication is encrypted via HTTPS',
+        'api-security-item2': 'We do not intercept, store, or analyze your API request content',
+        'api-security-item3': 'Please refer to the privacy policies of the AI service providers you use (e.g., OpenAI, Anthropic)',
+        
+        // Data Sharing
+        'section-data-sharing': 'Information Sharing & Third Parties',
+        'data-sharing-highlight': '<strong>We do not sell, rent, or otherwise commercialize your personal information.</strong>',
+        'data-sharing-overview-title': '6.1 Data Sharing Overview',
+        'data-sharing-overview': 'StyleSwift follows a "privacy-first" architecture, which means:',
+        'sharing-no-server': '<strong>No Central Server:</strong> We do not operate any servers that collect user data',
+        'sharing-no-tracking': '<strong>No Tracking Code:</strong> The extension contains no analytics or tracking code',
+        'sharing-local-first': '<strong>Local First:</strong> All your sensitive data (API keys, conversation history) is stored only locally',
+        'third-party-providers-title': '6.2 Third-Party AI Service Providers',
+        'third-party-providers-intro': 'When you use AI features, the following data is sent to your chosen AI service provider:',
+        'third-party-data-title': 'Data Types Sent',
+        'third-party-data-1': '<strong>Your Instructions:</strong> Natural language descriptions you input (e.g., "change the title to red")',
+        'third-party-data-2': '<strong>Page Context:</strong> Summary of the current webpage DOM structure (for AI to understand page structure)',
+        'third-party-data-3': '<strong>User Profile:</strong> Your style preference settings (for personalized generation)',
+        'third-party-data-4': '<strong>Screenshots (Optional):</strong> If you upload reference images, they are also sent',
+        'third-party-providers-list': 'We support the following AI service providers. Click to view their privacy policies:',
+        'provider-name': 'Provider',
+        'provider-service': 'Service Name',
+        'provider-privacy': 'Privacy Policy Link',
+        'third-party-other-title': 'Other Compatible Services',
+        'third-party-other-desc': 'StyleSwift also supports any third-party service compatible with the OpenAI API format. If you use a custom API endpoint, please review that service provider\'s privacy policy. We are not responsible for the privacy practices of third-party services.',
+        'data-sharing-other-title': '6.3 Other Disclosure Circumstances',
+        'data-sharing-other-intro': 'Apart from the AI service communication described above, we may disclose information only in the following circumstances:',
+        'data-sharing-item2': '<strong>Legal Requirements:</strong> We may need to disclose information if required by law.',
+        'data-sharing-item3': '<strong>Security Protection:</strong> We may disclose information to protect our or users\' legitimate rights when necessary.',
+        
+        // User Rights
+        'section-user-rights': 'Your Rights',
+        'user-rights-intro': 'As a user, you have the following rights:',
+        'right-access': '7.1 Right to Access',
+        'right-access-desc': 'You can view all stored data in the extension settings at any time, including session history, user profile, and style skills.',
+        'right-delete': '7.2 Right to Delete',
+        'right-delete-intro': 'You can delete data through the following methods:',
+        'right-delete-item1': 'Delete single session: Remove specific sessions from the session list',
+        'right-delete-item2': 'Clear history: Click the "Clear History" button in settings',
+        'right-delete-item3': 'Uninstall extension: Uninstalling the extension will delete all related data',
+        'right-modify': '7.3 Right to Modify',
+        'right-modify-desc': 'You can modify your API configuration, user profile, and style skill settings at any time.',
+        'right-portability': '7.4 Right to Data Portability',
+        'right-portability-desc': 'You can export saved style skills and use them on other devices or browsers.',
+        'right-withdraw': '7.5 Right to Withdraw Consent',
+        'right-withdraw-desc': 'You can stop using this extension at any time. Chrome browser will automatically delete all data stored by the extension.',
+        
+        // Children Privacy
+        'section-children-privacy': 'Children\'s Privacy',
+        'children-privacy-p1': 'StyleSwift is not designed for children under 13. We do not knowingly collect personal information from children under 13. If we discover that we have inadvertently collected personal information from a child, we will take immediate steps to delete it.',
+        'children-privacy-p2': 'If you are a parent or guardian and discover that your child has used this extension without your consent, please contact us and we will assist you.',
+        
+        // Policy Changes
+        'section-policy-changes': 'Changes to Privacy Policy',
+        'policy-changes-intro': 'We may update this privacy policy from time to time. When we make significant changes to the privacy policy, we will notify you through:',
+        'policy-changes-item1': 'Notes in extension update logs',
+        'policy-changes-item2': 'Announcements in the GitHub repository',
+        'policy-changes-item3': 'Updating the "Last Updated" date on this page',
+        'policy-changes-note': 'We recommend that you review this privacy policy periodically to understand how we protect your information. Continued use of this extension indicates your acceptance of the updated privacy policy.',
+        
+        // Contact
+        'section-contact': 'Contact Us',
+        'contact-intro': 'If you have any questions, comments, or suggestions about this privacy policy, or wish to exercise your data rights, please contact us through:',
+        'contact-email': 'Email:',
+        'contact-response': 'We will respond within 30 days of receiving your request.',
+        
+        // Footer
+        'footer-chrome-store': 'Chrome Web Store',
+        'footer-docs': 'Documentation',
+        'copyright': '© 2026 StyleSwift. All rights reserved.'
+      }
+    };
+
+    // Current language
+    let currentLang = 'zh';
+
+    // Switch language
+    function switchLanguage(lang) {
+      currentLang = lang;
+      localStorage.setItem('privacy-policy-lang', lang);
+      
+      // Update button states
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === lang);
+      });
+      
+      // Update HTML lang attribute
+      document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+      
+      // Update all translatable elements
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[lang] && translations[lang][key]) {
+          el.innerHTML = translations[lang][key];
+        }
+      });
+      
+      // Update page title
+      document.title = translations[lang]['page-title'] || document.title;
+    }
+
+    // Initialize language from localStorage or default to Chinese
+    function initLanguage() {
+      const savedLang = localStorage.getItem('privacy-policy-lang');
+      const lang = savedLang && (savedLang === 'zh' || savedLang === 'en') ? savedLang : 'zh';
+      switchLanguage(lang);
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', initLanguage);
+  </script>
+</body>
+</html>
