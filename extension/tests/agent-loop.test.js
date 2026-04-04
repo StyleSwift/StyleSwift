@@ -50,16 +50,16 @@ describe("SYSTEM_BASE 常量", () => {
 
   test("包含身份定义", () => {
     expect(SYSTEM_BASE).toContain("StyleSwift");
-    expect(SYSTEM_BASE).toContain("网页样式个性化");
+    expect(SYSTEM_BASE).toContain("web styling personalization");
   });
 
   test("包含工作方式指引", () => {
-    expect(SYSTEM_BASE).toContain("意图澄清");
-    expect(SYSTEM_BASE).toContain("任务规划");
+    expect(SYSTEM_BASE).toContain("Intent Classification");
+    expect(SYSTEM_BASE).toContain("Task Planning");
   });
 
   test("包含 CSS 生成规则", () => {
-    expect(SYSTEM_BASE).toContain("具体类/ID选择器");
+    expect(SYSTEM_BASE).toContain("Specific class/ID selectors");
     expect(SYSTEM_BASE).toContain("!important");
   });
 
@@ -70,7 +70,7 @@ describe("SYSTEM_BASE 常量", () => {
   });
 
   test("包含风格技能指引", () => {
-    expect(SYSTEM_BASE).toContain("风格技能");
+    expect(SYSTEM_BASE).toContain("load_skill");
   });
 });
 
@@ -96,21 +96,21 @@ describe("buildSessionContext 函数", () => {
   test("输出包含域名和会话标题", () => {
     const ctx = buildSessionContext("github.com", { title: "深色模式" }, "");
 
-    expect(ctx).toContain("[会话上下文]");
-    expect(ctx).toContain("域名: github.com");
-    expect(ctx).toContain("会话: 深色模式");
+    expect(ctx).toContain("[Session Context]");
+    expect(ctx).toContain("Domain: github.com");
+    expect(ctx).toContain("Session: 深色模式");
   });
 
-  test('无标题时显示"新会话"', () => {
+  test('无标题时显示"New Session"', () => {
     const ctx = buildSessionContext("example.com", { title: null }, "");
 
-    expect(ctx).toContain("会话: 新会话");
+    expect(ctx).toContain("Session: New Session");
   });
 
   test("不包含 CSS 样式（改为工具按需获取）", () => {
-    const ctx = buildSessionContext("github.com", { title: "新会话" }, "");
+    const ctx = buildSessionContext("github.com", { title: "New Session" }, "");
 
-    expect(ctx).not.toContain("已应用样式");
+    expect(ctx).not.toContain("Applied Styles");
     expect(ctx).not.toContain("```css");
   });
 
@@ -121,14 +121,14 @@ describe("buildSessionContext 函数", () => {
       "偏好深色模式、圆角设计",
     );
 
-    expect(ctx).toContain("用户风格偏好: 偏好深色模式、圆角设计");
-    expect(ctx).toContain("(详情可通过 get_user_profile 获取)");
+    expect(ctx).toContain("User Style Preference: 偏好深色模式、圆角设计");
+    expect(ctx).toContain("(details available via get_user_profile)");
   });
 
   test("无画像时不包含偏好提示", () => {
     const ctx = buildSessionContext("github.com", { title: "调整" }, "");
 
-    expect(ctx).not.toContain("用户风格偏好");
+    expect(ctx).not.toContain("User Style Preference");
   });
 
   test("完整上下文包含所有信息", () => {
@@ -140,10 +140,10 @@ describe("buildSessionContext 函数", () => {
       "偏好深色模式",
     );
 
-    expect(ctx).toContain("[会话上下文]");
-    expect(ctx).toContain("域名: github.com");
-    expect(ctx).toContain("会话: 深色模式调整");
-    expect(ctx).toContain("用户风格偏好: 偏好深色模式");
+    expect(ctx).toContain("[Session Context]");
+    expect(ctx).toContain("Domain: github.com");
+    expect(ctx).toContain("Session: 深色模式调整");
+    expect(ctx).toContain("User Style Preference: 偏好深色模式");
   });
 
   test("返回的上下文以换行符开始", () => {
@@ -213,13 +213,14 @@ describe("estimateTokenCount 函数", () => {
 
   test("计算字符串内容的 token", () => {
     const messages = [{ role: "user", content: "abc" }];
-    // 3 chars / 1.5 = 2, ceil(2) + 4000 = 4002
-    expect(estimateTokenCount(messages)).toBe(4002);
+    // 3 ASCII chars * 0.25 = 0.75, ceil = 1, + 4000 = 4001
+    expect(estimateTokenCount(messages)).toBe(4001);
   });
 
   test("自定义 systemOverhead", () => {
     const messages = [{ role: "user", content: "abc" }];
-    expect(estimateTokenCount(messages, 0)).toBe(2);
+    // 3 ASCII chars * 0.25 = 0.75, ceil = 1
+    expect(estimateTokenCount(messages, 0)).toBe(1);
   });
 });
 
@@ -239,7 +240,7 @@ describe("truncateLargeToolResults 函数", () => {
     ];
     const result = truncateLargeToolResults(messages);
     expect(result[0].content[0].content.length).toBeLessThan(bigContent.length);
-    expect(result[0].content[0].content).toContain("已截断");
+    expect(result[0].content[0].content).toContain("truncated");
   });
 
   test("不修改非 user 消息", () => {
@@ -543,7 +544,7 @@ describe("summarizeOldTurns 函数", () => {
 
   test("空历史返回默认消息", async () => {
     const summary = await summarizeOldTurns([]);
-    expect(summary).toBe("(无历史记录)");
+    expect(summary).toBe("(No history)");
   });
 
   test("API 错误时返回失败消息", async () => {
@@ -555,7 +556,7 @@ describe("summarizeOldTurns 函数", () => {
     ];
 
     const summary = await summarizeOldTurns(history);
-    expect(summary).toBe("(历史摘要生成失败)");
+    expect(summary).toBe("(History summary generation failed)");
   });
 });
 
@@ -633,8 +634,8 @@ describe("§11.4 死循环保护常量", () => {
     expect(MAX_RETRIES).toBe(2);
   });
 
-  test("DUPLICATE_CALL_THRESHOLD 定义为 3（连续 3 次相同调用视为死循环）", () => {
-    expect(DUPLICATE_CALL_THRESHOLD).toBe(3);
+  test("DUPLICATE_CALL_THRESHOLD 定义为 5（连续 5 次相同调用视为死循环）", () => {
+    expect(DUPLICATE_CALL_THRESHOLD).toBe(5);
   });
 });
 
@@ -727,7 +728,9 @@ describe("detectDeadLoop 函数", () => {
     expect(isDeadLoop).toBe(false);
   });
 
-  test("连续 3 次相同调用检测为死循环", () => {
+  test("连续 5 次相同调用检测为死循环", () => {
+    detectDeadLoop("test_tool", { arg: "value" });
+    detectDeadLoop("test_tool", { arg: "value" });
     detectDeadLoop("test_tool", { arg: "value" });
     detectDeadLoop("test_tool", { arg: "value" });
     const isDeadLoop = detectDeadLoop("test_tool", { arg: "value" });
@@ -753,7 +756,9 @@ describe("detectDeadLoop 函数", () => {
     expect(isDeadLoop).toBe(false);
   });
 
-  test("连续 4 次相同调用第 4 次也检测为死循环", () => {
+  test("连续 6 次相同调用第 6 次也检测为死循环", () => {
+    detectDeadLoop("test_tool", { arg: "value" });
+    detectDeadLoop("test_tool", { arg: "value" });
     detectDeadLoop("test_tool", { arg: "value" });
     detectDeadLoop("test_tool", { arg: "value" });
     detectDeadLoop("test_tool", { arg: "value" });
@@ -806,9 +811,9 @@ describe("executeToolWithRetry 函数", () => {
       mockExecutor,
     );
 
-    expect(result).toContain("执行失败");
+    expect(result).toContain("failed");
     expect(result).toContain("持续失败");
-    expect(result).toContain("已重试 2 次");
+    expect(result).toContain("Retried 2 times");
     expect(mockExecutor).toHaveBeenCalledTimes(MAX_RETRIES + 1); // 初始 + 2 次重试
   });
 
@@ -838,7 +843,7 @@ describe("executeToolWithRetry 函数", () => {
       mockExecutor,
     );
 
-    expect(result).toContain("执行失败");
+    expect(result).toContain("failed");
     expect(mockExecutor).toHaveBeenCalledTimes(MAX_RETRIES + 1);
   });
 });
@@ -859,8 +864,10 @@ describe("工具调用历史记录集成测试", () => {
     expect(isDeadLoop).toBe(false); // 第二次，不是死循环
 
     detectDeadLoop(toolName, args);
+    detectDeadLoop(toolName, args);
+    detectDeadLoop(toolName, args);
     const isDeadLoopAgain = detectDeadLoop(toolName, args);
-    expect(isDeadLoopAgain).toBe(true); // 第三次，是死循环
+    expect(isDeadLoopAgain).toBe(true); // 第五次，是死循环
   });
 
   test("重试逻辑和死循环检测协同工作", async () => {
@@ -880,7 +887,7 @@ describe("工具调用历史记录集成测试", () => {
     expect(mockExecutor).toHaveBeenCalledTimes(MAX_RETRIES + 1);
 
     // 结果应该包含错误信息
-    expect(result).toContain("执行失败");
+    expect(result).toContain("failed");
 
     // 应该有重试日志
     expect(consoleSpy).toHaveBeenCalled();
