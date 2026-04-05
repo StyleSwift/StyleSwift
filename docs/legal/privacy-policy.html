@@ -767,9 +767,14 @@
                 <td data-i18n="permission-scripting-data">仅向页面注入样式代码，不读取或收集页面内容</td>
               </tr>
               <tr>
-                <td><code>&lt;all_urls&gt;</code></td>
-                <td data-i18n="permission-allurls-purpose">在所有网站上运行，提供样式服务</td>
-                <td data-i18n="permission-allurls-data">当前网站的域名、DOM结构（用于分析和修改样式）</td>
+                <td><code>host_permissions</code></td>
+                <td data-i18n="permission-host-purpose">向指定域名发起 API 请求（AI 服务通信）</td>
+                <td data-i18n="permission-host-data">仅与配置的 AI 服务提供商通信（api.anthropic.com、anthropic.com、api.ppio.com），不访问其他网站数据</td>
+              </tr>
+              <tr>
+                <td><code>content_scripts</code><br><code>(https://*/*, http://*/*)</code></td>
+                <td data-i18n="permission-content-purpose">在所有网页上运行，提供样式分析和修改服务</td>
+                <td data-i18n="permission-content-data">当前网站的域名、DOM结构（仅当您主动使用扩展时）</td>
               </tr>
             </tbody>
           </table>
@@ -834,10 +839,17 @@
           </div>
 
           <div class="info-card">
-            <div class="info-card-title">&lt;all_urls&gt; 主机权限</div>
-            <p data-i18n="permission-allurls-detail"><strong>用途：</strong>允许扩展在所有网站上运行，为您访问的任何网页提供样式修改服务。</p>
-            <p data-i18n="permission-allurls-scope"><strong>数据访问：</strong>仅当您在某个网站上主动使用扩展时，才会访问该网站的数据。</p>
-            <p data-i18n="permission-allurls-limitation"><strong>限制：</strong>我们不会在您未主动操作时自动访问任何网站数据。</p>
+            <div class="info-card-title">主机权限 (host_permissions)</div>
+            <p data-i18n="permission-host-detail"><strong>用途：</strong>允许扩展向指定的 AI 服务提供商发起 API 请求，用于样式生成。</p>
+            <p data-i18n="permission-host-scope"><strong>数据范围：</strong>仅限于配置的 API 域名（api.anthropic.com、anthropic.com、api.ppio.com），不会访问其他网站。</p>
+            <p data-i18n="permission-host-custom"><strong>自定义 API：</strong>当用户配置自定义 API 端点时，通过 <code>optional_host_permissions</code> 运行时动态申请对应域名的访问权限。</p>
+          </div>
+
+          <div class="info-card">
+            <div class="info-card-title">Content Script 匹配 (https://*/*, http://*/*)</div>
+            <p data-i18n="permission-content-detail"><strong>用途：</strong>允许扩展在所有 HTTP/HTTPS 网页上运行，为您访问的任何网页提供样式修改服务。</p>
+            <p data-i18n="permission-content-scope"><strong>数据访问：</strong>仅当您在某个网站上主动使用扩展时，才会访问该网站的数据。排除了 chrome://、file:// 等内部协议页面。</p>
+            <p data-i18n="permission-content-limitation"><strong>限制：</strong>我们不会在您未主动操作时自动访问任何网站数据。</p>
           </div>
         </div>
       </section>
@@ -1227,7 +1239,7 @@
         // Header
         'product-name': '数字女娲',
         'privacy-policy-title': '隐私权政策',
-        'last-updated': '最后更新日期：2026 年 3 月 31 日',
+        'last-updated': '最后更新日期：2026 年 4 月 5 日',
         
         // TOC
         'toc-title': '目录',
@@ -1289,8 +1301,10 @@
         'permission-sidepanel-data': '不访问任何页面数据，仅用于显示界面',
         'permission-scripting-purpose': '向页面注入CSS样式代码，实现样式修改',
         'permission-scripting-data': '仅向页面注入样式代码，不读取或收集页面内容',
-        'permission-allurls-purpose': '在所有网站上运行，提供样式服务',
-        'permission-allurls-data': '当前网站的域名、DOM结构（用于分析和修改样式）',
+        'permission-host-purpose': '向指定域名发起 API 请求（AI 服务通信）',
+        'permission-host-data': '仅与配置的 AI 服务提供商通信，不访问其他网站数据',
+        'permission-content-purpose': '在所有网页上运行，提供样式分析和修改服务',
+        'permission-content-data': '当前网站的域名、DOM结构（仅当您主动使用扩展时）',
         'permission-note': '<strong>重要声明：</strong>上述权限仅在您主动使用扩展时才会被调用。我们不会在后台自动读取或收集您的任何数据。页面内容仅在您与AI对话时被分析和处理。',
         
         // Extension Permissions
@@ -1316,9 +1330,12 @@
         'permission-scripting-detail': '<strong>用途：</strong>向网页注入自定义CSS样式代码，实现您要求的样式修改。',
         'permission-scripting-scope': '<strong>操作范围：</strong>仅注入样式代码（CSS），不执行任何数据收集或跟踪脚本。',
         'permission-scripting-safety': '<strong>安全性：</strong>注入的样式代码完全由本地生成，不包含任何外部脚本。',
-        'permission-allurls-detail': '<strong>用途：</strong>允许扩展在所有网站上运行，为您访问的任何网页提供样式修改服务。',
-        'permission-allurls-scope': '<strong>数据访问：</strong>仅当您在某个网站上主动使用扩展时，才会访问该网站的数据。',
-        'permission-allurls-limitation': '<strong>限制：</strong>我们不会在您未主动操作时自动访问任何网站数据。',
+        'permission-host-detail': '<strong>用途：</strong>允许扩展向指定的 AI 服务提供商发起 API 请求，用于样式生成。',
+        'permission-host-scope': '<strong>数据范围：</strong>仅限于配置的 API 域名（api.anthropic.com、anthropic.com、api.ppio.com），不会访问其他网站。',
+        'permission-host-custom': '<strong>自定义 API：</strong>当用户配置自定义 API 端点时，通过 <code>optional_host_permissions</code> 运行时动态申请对应域名的访问权限。',
+        'permission-content-detail': '<strong>用途：</strong>允许扩展在所有 HTTP/HTTPS 网页上运行，为您访问的任何网页提供样式修改服务。',
+        'permission-content-scope': '<strong>数据访问：</strong>仅当您在某个网站上主动使用扩展时，才会访问该网站的数据。排除了 chrome://、file:// 等内部协议页面。',
+        'permission-content-limitation': '<strong>限制：</strong>我们不会在您未主动操作时自动访问任何网站数据。',
         
         // Data Usage Processing
         'data-usage-processing-title': '数据处理流程',
@@ -1435,7 +1452,7 @@
         // Header
         'product-name': 'StyleSwift',
         'privacy-policy-title': 'Privacy Policy',
-        'last-updated': 'Last Updated: March 31, 2026',
+        'last-updated': 'Last Updated: April 5, 2026',
         
         // TOC
         'toc-title': 'Table of Contents',
@@ -1497,8 +1514,10 @@
         'permission-sidepanel-data': 'Does not access any page data, only used for displaying the interface',
         'permission-scripting-purpose': 'Inject CSS style code into pages to implement style modifications',
         'permission-scripting-data': 'Only injects style code, does not read or collect page content',
-        'permission-allurls-purpose': 'Run on all websites to provide style services',
-        'permission-allurls-data': 'Current website domain, DOM structure (for analyzing and modifying styles)',
+        'permission-host-purpose': 'Make API requests to specified domains (AI service communication)',
+        'permission-host-data': 'Only communicates with configured AI service providers, does not access other website data',
+        'permission-content-purpose': 'Run on all web pages to provide style analysis and modification services',
+        'permission-content-data': 'Current website domain, DOM structure (only when you actively use the extension)',
         'permission-note': '<strong>Important:</strong> The above permissions are only invoked when you actively use the extension. We do not automatically read or collect any of your data in the background. Page content is only analyzed and processed when you interact with the AI.',
         
         // Extension Permissions
@@ -1524,9 +1543,12 @@
         'permission-scripting-detail': '<strong>Purpose:</strong> Inject custom CSS style code into webpages to implement your requested style modifications.',
         'permission-scripting-scope': '<strong>Scope:</strong> Only style code (CSS) is injected, no data collection or tracking scripts are executed.',
         'permission-scripting-safety': '<strong>Safety:</strong> Injected style code is entirely generated locally and contains no external scripts.',
-        'permission-allurls-detail': '<strong>Purpose:</strong> Allow the extension to run on all websites to provide style modification services for any webpage you visit.',
-        'permission-allurls-scope': '<strong>Data Access:</strong> Website data is only accessed when you actively use the extension on that site.',
-        'permission-allurls-limitation': '<strong>Limitation:</strong> We do not automatically access any website data without your active operation.',
+        'permission-host-detail': '<strong>Purpose:</strong> Allow the extension to make API requests to specified AI service providers for style generation.',
+        'permission-host-scope': '<strong>Scope:</strong> Limited to configured API domains (api.anthropic.com, anthropic.com, api.ppio.com). Does not access other websites.',
+        'permission-host-custom': '<strong>Custom API:</strong> When users configure a custom API endpoint, access is dynamically requested via <code>optional_host_permissions</code> at runtime.',
+        'permission-content-detail': '<strong>Purpose:</strong> Allow the extension to run on all HTTP/HTTPS webpages to provide style modification services for any website you visit.',
+        'permission-content-scope': '<strong>Data Access:</strong> Website data is only accessed when you actively use the extension on that site. Excludes chrome://, file://, and other internal protocol pages.',
+        'permission-content-limitation': '<strong>Limitation:</strong> We do not automatically access any website data without your active operation.',
         
         // Data Usage Processing
         'data-usage-processing-title': 'Data Processing Flow',

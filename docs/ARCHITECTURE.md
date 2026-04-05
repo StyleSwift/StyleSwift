@@ -1,7 +1,7 @@
 # StyleSwift 架构概览
 
-> 版本：extension v1.0.0（以 `extension/manifest.json` 为准）
-> 更新日期：2026-03-18
+> 版本：extension v1.0.2（以 `extension/manifest.json` 为准）
+> 更新日期：2026-04-05
 
 ---
 
@@ -140,7 +140,7 @@ Chrome Extension (Manifest V3)
 
 **安全措施**（与实现对齐）：
 - **API Key 本地存储**：使用 `chrome.storage.local` 保存设置，不做后端中转。
-- **API 访问权限**：默认 API 地址通过 `host_permissions` 覆盖；当用户配置为其他域名时，通过 `chrome.permissions.request()` 动态申请对应 origin 访问权限（避免无权限导致请求失败）。
+- **API 访问权限**：默认 API 地址通过 `host_permissions` 覆盖（api.anthropic.com、anthropic.com、api.ppio.com）；当用户配置为其他域名时，通过 `optional_host_permissions` + `chrome.permissions.request()` 动态申请对应 origin 访问权限（避免无权限导致请求失败）。
 - **受限页面保护**：对 `chrome://`、`edge://`、`about:`、`file://` 等页面直接判定不可注入，并在 UI 侧提示。
 - **Content Script 隔离**：页面 DOM 操作与注入逻辑在 Content Script；Side Panel 仅通过 message/工具调用触达。
 - **CSP 降级**：Content Script 注入 CSS 若被 CSP 阻止，会返回 fallback；Side Panel 使用 `chrome.scripting.insertCSS` 进行降级注入（绕过 CSP 限制）。
