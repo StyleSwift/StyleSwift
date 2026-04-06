@@ -5290,17 +5290,20 @@ class StreamingTextRenderer {
 	}
 
 	/**
-	 * 滚动到底部
+	 * 滚动到底部（仅在用户位于底部附近时）
 	 * @private
 	 */
 	_scrollToBottom() {
 		// 默认使用 chatArea 作为滚动容器
 		const scrollContainer = this.options.scrollContainer || DOM.chatArea;
 		if (scrollContainer) {
-			// 使用 requestAnimationFrame 确保平滑滚动
-			requestAnimationFrame(() => {
-				scrollContainer.scrollTop = scrollContainer.scrollHeight;
-			});
+			// 只有当用户已经在底部附近时才自动滚动
+			// 否则让用户继续阅读历史内容
+			if (isNearBottom()) {
+				requestAnimationFrame(() => {
+					scrollContainer.scrollTop = scrollContainer.scrollHeight;
+				});
+			}
 		}
 	}
 }
@@ -5330,13 +5333,19 @@ function clearMessages() {
  * 滚动对话区到底部（平滑滚动）
  * @param {Object} options - 配置选项
  * @param {boolean} options.instant - 是否使用即时滚动（用于历史消息加载）
+ * @param {boolean} options.force - 是否强制滚动（忽略用户是否在底部）
  */
 function scrollToBottom(options = {}) {
 	// 注意：滚动容器是 #chat-area，而不是 #messages-container
 	const scrollContainer = DOM.chatArea;
 	if (!scrollContainer) return;
 
-	const { instant = false } = options;
+	const { instant = false, force = false } = options;
+
+	// 如果不是强制滚动，只有当用户在底部附近时才滚动
+	if (!force && !isNearBottom()) {
+		return;
+	}
 
 	// 使用双重 requestAnimationFrame 确保 DOM 完全渲染和布局完成
 	requestAnimationFrame(() => {
@@ -7207,7 +7216,7 @@ function initScrollToBottomButton() {
  * 处理滚动到底部按钮点击
  */
 function handleScrollToBottomClick() {
-	scrollToBottom({ instant: false }); // 平滑滚动
+	scrollToBottom({ instant: false, force: true }); // 强制平滑滚动到底部
 	hideScrollToBottomButton();
 }
 
