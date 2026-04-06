@@ -745,9 +745,10 @@ Please provide specific observations based on the above dimensions (with issue l
               const lastResult = results[results.length - 1];
               if (confirmation.confirmed) {
                 const planText = confirmation.todos
-                  .map((t, i) => `${i + 1}. ${t.content}`)
+                  .map((t, i) => `${i + 1}. [id:${t.id}] ${t.content}`)
                   .join("\n");
-                lastResult.content = `User confirmed the task plan. Please execute according to the following steps:\n${planText}`;
+                const firstTodoId = confirmation.todos[0]?.id;
+                lastResult.content = `User confirmed the task plan. Tasks have been assigned IDs. To update status, use TodoWrite with incremental mode (include id field):\n\n${planText}\n\nExample to start first task:\nTodoWrite([{id: "${firstTodoId}", status: "in_progress"}])`;
               } else {
                 lastResult.content = "User cancelled the task plan. Please ask what adjustments the user needs.";
                 planCancelled = true;

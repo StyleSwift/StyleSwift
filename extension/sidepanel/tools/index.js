@@ -64,3 +64,7 @@ export {
 export {
   CAPTURE_SCREENSHOT_TOOL,
 } from "./screenshot-tools.js";
+
+export {
+  THINK_TOOL,
+} from "./think-tools.js";

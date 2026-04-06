@@ -5732,6 +5732,7 @@ async function handleRewindClick(targetTurn) {
  * 工具名称映射表（友好的显示名称）
  */
 const TOOL_DISPLAY_NAMES = {
+	think: "结构思考",
 	get_page_structure: "查看页面结构",
 	grep: "搜索页面元素",
 	apply_styles: "应用样式",
@@ -5839,6 +5840,7 @@ class ToolCardManager {
 
 		const displayName = getToolDisplayName(toolName);
 		const isTask = toolName === "Task";
+		const isThink = toolName === "think";
 
 		// 更新卡片状态
 		card.classList.remove("processing");
@@ -5868,6 +5870,24 @@ class ToolCardManager {
         </div>
         <div class="tool-card-body">
           ${summaryHtml}
+        </div>
+      `;
+		} else if (isThink) {
+			// Think 工具专属渲染 - 显示思考内容摘要
+			card.classList.add("think-card");
+			const thoughtContent = input?.thought || "";
+			const thoughtPreview = this.formatThinkOutput(thoughtContent);
+
+			card.innerHTML = `
+        <div class="tool-card-header">
+          <div class="tool-card-title">
+            <span class="tool-card-icon">${iconHtml("sparkles", 14)}</span>
+            <span class="tool-card-name">${displayName}</span>
+          </div>
+          <div class="tool-card-expand">${iconHtml("chevron-right", 12)}</div>
+        </div>
+        <div class="tool-card-body">
+          ${thoughtPreview}
         </div>
       `;
 		} else {
@@ -6006,6 +6026,29 @@ class ToolCardManager {
 		const formatted = escaped.replace(/\n/g, "<br>");
 
 		return `<span class="tool-card-text">${formatted}</span>`;
+	}
+
+	/**
+	 * 格式化 think 工具的思考内容显示
+	 * @param {string} thought - 思考内容
+	 * @returns {string} - 格式化后的HTML
+	 */
+	formatThinkOutput(thought) {
+		if (!thought) {
+			return '<span class="tool-card-empty">(无思考内容)</span>';
+		}
+
+		// 转义 HTML 并将换行转换为 <br>
+		const escaped = this.escapeHtml(thought);
+		// 预览最多显示 200 字符
+		const preview = escaped.length > 200
+			? escaped.slice(0, 200) + '...'
+			: escaped;
+
+		// 将换行符转为 <br> 以保持格式
+		const formatted = preview.replace(/\n/g, '<br>');
+
+		return `<div class="think-content-preview">${formatted}</div>`;
 	}
 
 	/**

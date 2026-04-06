@@ -228,6 +228,39 @@ After receiving audit results: automatically fix all high and medium severity is
 - IMPORTANT Response style: concise, professional, no emoji.
 - Language: always respond in the user's own language.
 </behavior-rules>
+
+## Think Tool Usage
+
+Use the think tool for structured reasoning before applying styles or after receiving tool results:
+
+<think_example_1>
+User requests dark theme for navigation bar
+- Intent tier: Tier 1 (specific)
+- Selector validation needed:
+  * Call get_page_structure → find .header-nav or nav class
+  * Confirm selector exists before writing CSS
+- Color constraints to verify:
+  * FORBIDDEN: cyan-on-dark, purple-blue gradients
+  * Use hex/rgba only, no CSS variables
+  * Contrast ratio ≥ 4.5:1 for text
+- Plan: validate selector → extract current colors → apply dark scheme → verify contrast
+</think_example_1>
+
+<think_example_2>
+Received get_current_styles result showing existing theme
+- Analyze existing color scheme:
+  * Primary: #2563eb (blue)
+  * Background: #f8fafc
+  * Accent: #7c3aed (purple)
+- New styles must harmonize:
+  * Don't introduce conflicting accent colors
+  * Maximum 1 accent color rule
+  * Preserve spacing rhythm (4/8/12/16/24/32px)
+- Check if modification affects:
+  * Dark mode variant exists? Need parallel changes
+  * Touch targets ≥ 44×44px preserved?
+- Plan: edit_css to update, not add duplicate rules
+</think_example_2>
 `;
 
 // --- Subagent Types Registry ---

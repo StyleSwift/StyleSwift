@@ -38,6 +38,10 @@ import {
   captureScreenshot as doCaptureScreenshot,
   createScreenshotToolHandlers,
 } from "./screenshot-tools.js";
+import {
+  THINK_TOOL,
+  createThinkToolHandlers,
+} from "./think-tools.js";
 
 import { mergeCSS, checkBraceBalance, repairBraces } from "../css-merge.js";
 import { StyleSkillStore } from "../style-skill.js";
@@ -52,6 +56,7 @@ export { captureScreenshot } from "./screenshot-tools.js";
 // =============================================================================
 
 const BASE_TOOLS = [
+  THINK_TOOL,
   GET_PAGE_STRUCTURE_TOOL,
   GREP_TOOL,
   APPLY_STYLES_TOOL,
@@ -471,6 +476,8 @@ function buildToolHandlers() {
     doCaptureScreenshot(tabId, getTargetTabId)
   );
 
+  const thinkHandlers = createThinkToolHandlers();
+
   return {
     ...pageHandlers,
     ...styleHandlers,
@@ -478,6 +485,7 @@ function buildToolHandlers() {
     ...skillHandlers,
     ...taskHandlers,
     ...screenshotHandlers,
+    ...thinkHandlers,
   };
 }
 

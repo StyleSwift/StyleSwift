@@ -2273,6 +2273,52 @@ pre code {
 }
 
 /* ============================================================
+   Think 工具卡片样式
+   ============================================================ */
+
+.tool-card.think-card {
+  border-color: color-mix(in srgb, #a855f7 60%, transparent);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, #a855f7 4%, var(--color-bg-secondary)) 0%,
+    var(--color-bg-secondary) 100%
+  );
+}
+
+.tool-card.think-card .tool-card-header {
+  border-bottom: none;
+}
+
+.tool-card.think-card:hover {
+  border-color: #a855f7;
+  box-shadow: 0 0 0 1px color-mix(in srgb, #a855f7 25%, transparent);
+}
+
+.tool-card.think-card .tool-card-icon {
+  color: #a855f7;
+}
+
+/* Think 内容预览区域 */
+.think-content-preview {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  padding: var(--spacing-xs) 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 处理中：think 卡片紫色脉动 */
+.tool-card.processing.think-card {
+  border-color: #a855f7;
+  background-color: color-mix(in srgb, #a855f7 6%, var(--color-bg-secondary));
+}
+
+.tool-card.processing.think-card .tool-card-status {
+  color: #a855f7;
+}
+
+/* ============================================================
    子智能体活动面板
    ============================================================ */
 
