@@ -100,14 +100,14 @@ function buildApiUrl(apiBase, endpoint) {
  * OpenAI 兼容 API 的默认端点
  * @type {string}
  */
-const DEFAULT_API_BASE = "https://api.ppio.com/openai";
+const DEFAULT_API_BASE = "https://api.anthropic.com";
 
 /**
  * 默认模型
  * 当前使用的默认模型
  * @type {string}
  */
-const DEFAULT_MODEL = "deepseek/deepseek-r1";
+const DEFAULT_MODEL = "claude-opus-4-6";
 
 /**
  * 默认视觉模型

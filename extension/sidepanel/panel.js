@@ -1169,6 +1169,13 @@ function initOnboarding() {
 
 	// 初始验证表单
 	validateOnboardingForm();
+
+	// 动态设置 API 供应商指南链接
+	const apiGuideLink = document.getElementById("api-guide-link");
+	if (apiGuideLink) {
+		apiGuideLink.href = `chrome-extension://${chrome.runtime.id}/api-guide/api-guide.html`;
+		apiGuideLink.setAttribute("target", "_blank");
+	}
 }
 
 /**
@@ -5821,7 +5828,7 @@ class ToolCardManager {
           <span class="tool-card-name">${displayName}</span>
         </div>
         <div class="tool-card-status processing">
-          <span class="status-indicator">${iconHtml("loader", 12, "spin")}</span>
+          <span class="status-indicator">${isTask ? "" : iconHtml("loader", 12, "spin")}</span>
           <span class="status-text">${isTask ? "子智能体运行中…" : "进行中"}</span>
         </div>
       </div>
@@ -6049,13 +6056,8 @@ class ToolCardManager {
 
 		// 转义 HTML 并将换行转换为 <br>
 		const escaped = this.escapeHtml(thought);
-		// 预览最多显示 200 字符
-		const preview = escaped.length > 200
-			? escaped.slice(0, 200) + '...'
-			: escaped;
-
-		// 将换行符转为 <br> 以保持格式
-		const formatted = preview.replace(/\n/g, '<br>');
+		// 将换行符转为 <br> 以保持格式（完整显示，不截断）
+		const formatted = escaped.replace(/\n/g, '<br>');
 
 		return `<div class="think-content-preview">${formatted}</div>`;
 	}

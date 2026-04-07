@@ -3086,7 +3086,6 @@ pre code {
   line-height: var(--line-height-relaxed);
   color: var(--color-text-secondary);
   font-style: italic;
-  max-height: 220px;
   overflow-y: auto;
   word-break: break-word;
   transition: max-height var(--duration-normal) var(--easing-default),
@@ -3098,7 +3097,6 @@ pre code {
   max-height: 0;
   padding-top: 0;
   padding-bottom: 0;
-  overflow: hidden;
   opacity: 0;
 }
 

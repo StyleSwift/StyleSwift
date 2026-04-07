@@ -57,13 +57,11 @@ export function createThinkToolHandlers() {
     think: async (args) => {
       // Thought is recorded in conversation history via tool_result mechanism
       // No actual action performed - this is a "scratchpad" tool
-      const thoughtPreview = args.thought?.slice(0, 100) || "";
       const fullLength = args.thought?.length || 0;
-      const truncatedPreview =
-        fullLength > 100 ? `${thoughtPreview}... (${fullLength} chars)` : thoughtPreview;
 
-      // Log for debugging
-      console.log("[Think Tool] Recorded thought:", truncatedPreview);
+      // Log for debugging (show full thought, no truncation)
+      console.log("[Think Tool] Recorded thought:", args.thought || "(empty)");
+      console.log("[Think Tool] Length:", fullLength, "chars");
 
       // Return simple confirmation - the thought content is preserved in history
       return `(思考已记录)`;

@@ -1,0 +1,470 @@
+/* ============================================================
+   API 供应商指南样式
+   继承产品品牌设计系统（陶土橙 + 暖奶白）
+   ============================================================ */
+
+/* 设计系统变量 — 与 panel.css 保持一致 */
+:root {
+  /* ---------- 品牌主色：陶土橙 ---------- */
+  --color-primary: oklch(63% 0.12 42);
+  --color-primary-hover: oklch(57% 0.13 42);
+  --color-primary-active: oklch(51% 0.14 42);
+  --color-primary-light: oklch(96% 0.04 42);
+
+  /* ---------- 背景：暖奶白 ---------- */
+  --color-bg-primary: oklch(98.5% 0.004 80);
+  --color-bg-secondary: oklch(95.5% 0.006 80);
+  --color-bg-tertiary: oklch(91.5% 0.008 80);
+
+  /* ---------- 文字色（暖调） ---------- */
+  --color-text-primary: oklch(18% 0.008 60);
+  --color-text-secondary: oklch(50% 0.008 60);
+  --color-text-tertiary: oklch(63% 0.007 60);
+
+  /* ---------- 边框 ---------- */
+  --color-border: rgba(0, 0, 0, 0.07);
+  --color-border-light: rgba(0, 0, 0, 0.045);
+
+  /* ---------- 间距 ---------- */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+
+  /* ---------- 圆角 ---------- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* ---------- 阴影 ---------- */
+  --shadow-sm: 0 2px 8px oklch(18% 0.008 60 / 0.06);
+  --shadow-md: 0 4px 12px oklch(18% 0.008 60 / 0.07);
+
+  /* ---------- 字体 ---------- */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-family-display: Georgia, 'Times New Roman', serif;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-md: 13px;
+  --font-size-lg: 15px;
+  --font-size-xl: 17px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 32px;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.65;
+
+  /* ---------- 动画 ---------- */
+  --duration-fast: 150ms;
+  --duration-normal: 220ms;
+  --easing-default: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* 暗色模式 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg-primary: oklch(13% 0.006 80);
+    --color-bg-secondary: oklch(17% 0.007 80);
+    --color-bg-tertiary: oklch(21% 0.008 80);
+
+    --color-text-primary: oklch(92% 0.005 80);
+    --color-text-secondary: oklch(72% 0.007 80);
+    --color-text-tertiary: oklch(55% 0.006 80);
+
+    --color-border: rgba(255, 255, 255, 0.08);
+    --color-border-light: rgba(255, 255, 255, 0.05);
+
+    --color-primary-light: oklch(25% 0.08 42);
+
+    --shadow-sm: 0 2px 8px oklch(0% 0 0 / 0.2);
+    --shadow-md: 0 4px 12px oklch(0% 0 0 / 0.25);
+  }
+}
+
+/* ============================================================
+   基础样式
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-body, 14px);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  min-height: 100vh;
+}
+
+/* ============================================================
+   主容器
+   ============================================================ */
+
+#api-guide-app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ============================================================
+   Header
+   ============================================================ */
+
+.guide-header {
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--spacing-xl) var(--spacing-2xl);
+}
+
+.header-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.logo-icon {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
+
+.logo-text h1 {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.logo-text .tagline {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-xs);
+  line-height: var(--line-height-relaxed);
+}
+
+/* ============================================================
+   Main Content
+   ============================================================ */
+
+.guide-main {
+  flex: 1;
+  padding: var(--spacing-2xl);
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ============================================================
+   Section
+   ============================================================ */
+
+.provider-section {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.section-title .icon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+}
+
+/* ============================================================
+   Provider Grid
+   ============================================================ */
+
+.provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--spacing-md);
+}
+
+/* ============================================================
+   Provider Card
+   ============================================================ */
+
+.provider-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  text-decoration: none;
+  color: inherit;
+  transition: all var(--duration-fast) var(--easing-default);
+  cursor: pointer;
+}
+
+.provider-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  background: var(--color-bg-tertiary);
+}
+
+.provider-card:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.provider-logo {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary-light);
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.provider-icon {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+}
+
+.provider-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.provider-name {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.provider-desc {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.external-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  transition: color var(--duration-fast) var(--easing-default);
+}
+
+.provider-card:hover .external-icon {
+  color: var(--color-primary);
+}
+
+.external-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ============================================================
+   Tips Section
+   ============================================================ */
+
+.tips-section {
+  margin-top: var(--spacing-xl);
+}
+
+.tips-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+.tips-card:last-child {
+  margin-bottom: 0;
+}
+
+/* Security Card 样式 */
+.security-card {
+  background: oklch(94% 0.02 140);
+  border-color: oklch(85% 0.03 140);
+}
+
+@media (prefers-color-scheme: dark) {
+  .security-card {
+    background: oklch(22% 0.02 140);
+    border-color: oklch(32% 0.03 140);
+  }
+}
+
+.tips-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.tips-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.tips-content h3 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.tips-content p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+/* Security List */
+.security-list {
+  list-style: none;
+  margin: var(--spacing-sm) 0 0;
+  padding: 0;
+}
+
+.security-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.security-list li:last-child {
+  margin-bottom: 0;
+}
+
+.security-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-sm);
+  background: oklch(85% 0.03 42);
+  color: oklch(45% 0.12 42);
+  white-space: nowrap;
+}
+
+.security-badge.verified {
+  background: oklch(85% 0.03 140);
+  color: oklch(45% 0.12 140);
+}
+
+.security-badge.local {
+  background: oklch(85% 0.03 200);
+  color: oklch(45% 0.12 200);
+}
+
+@media (prefers-color-scheme: dark) {
+  .security-badge {
+    background: oklch(35% 0.04 42);
+    color: oklch(75% 0.08 42);
+  }
+
+  .security-badge.verified {
+    background: oklch(35% 0.04 140);
+    color: oklch(75% 0.08 140);
+  }
+
+  .security-badge.local {
+    background: oklch(35% 0.04 200);
+    color: oklch(75% 0.08 200);
+  }
+}
+
+/* ============================================================
+   Footer
+   ============================================================ */
+
+.guide-footer {
+  background: var(--color-bg-secondary);
+  border-top: 1px solid var(--color-border);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  text-align: center;
+}
+
+.guide-footer p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* ============================================================
+   响应式设计
+   ============================================================ */
+
+@media (max-width: 640px) {
+  .guide-header {
+    padding: var(--spacing-lg);
+  }
+
+  .logo-text h1 {
+    font-size: var(--font-size-lg);
+  }
+
+  .guide-main {
+    padding: var(--spacing-lg);
+  }
+
+  .provider-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-title {
+    font-size: var(--font-size-md);
+  }
+}

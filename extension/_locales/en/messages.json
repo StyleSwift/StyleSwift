@@ -116,7 +116,7 @@
     "description": "Model input label"
   },
   "modelPlaceholder": {
-    "message": "Use deepseek/deepseek-r1 by default",
+    "message": "Use claude-opus-4-6 by default",
     "description": "Model input hint"
   },
   "apiConfigTitle": {
@@ -698,5 +698,9 @@
   "compressingToolResults": {
     "message": "Compressing tool results...",
     "description": "Status message when compressing large tool results"
+  },
+  "apiProviderGuide": {
+    "message": "API Provider Guide",
+    "description": "Link to API provider guide"
   }
 }

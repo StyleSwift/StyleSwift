@@ -5,6 +5,14 @@
 
 "use strict";
 
+// 防止脚本重复注入导致的重复声明错误
+(function () {
+  if (window.__StyleSwiftContentLoaded) {
+    console.log("[StyleSwift] content.js already loaded, skipping");
+    return;
+  }
+  window.__StyleSwiftContentLoaded = true;
+
 // === 常量定义 ===
 
 // 需要跳过的无意义标签（黑名单）
@@ -1365,3 +1373,5 @@ if (document.body) {
 }
 
 window.addEventListener("popstate", notifyNavigation);
+
+})();

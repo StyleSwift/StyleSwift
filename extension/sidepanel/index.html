@@ -24,20 +24,20 @@
         <div class="setup-form">
           <div class="form-group">
             <label for="api-key-input" data-i18n="apiKeyLabel">API Key</label>
-            <input type="password" id="api-key-input" data-testid="api-key-input" placeholder="sk-ant-..." autocomplete="off">
+            <input type="password" id="api-key-input" data-testid="api-key-input" autocomplete="off">
             <p class="hint" data-i18n="apiKeyPlaceholder">Enter your API Key</p>
           </div>
-          
+
           <div class="form-group">
             <label for="api-base-input" data-i18n="apiAddressLabel">API Address (optional)</label>
-            <input type="text" id="api-base-input" data-testid="api-base-input" data-i18n-placeholder="defaultApiUrl" autocomplete="off">
+            <input type="text" id="api-base-input" data-testid="api-base-input" autocomplete="off">
             <p class="hint" data-i18n="apiAddressPlaceholder">Use Anthropic official address by default</p>
           </div>
 
           <div class="form-group">
             <label for="model-input" data-i18n="modelLabel">Model (optional)</label>
-            <input type="text" id="model-input" data-testid="model-input" data-i18n-placeholder="defaultModel" autocomplete="off">
-            <p class="hint" data-i18n="modelPlaceholder">Use deepseek/deepseek-r1 by default</p>
+            <input type="text" id="model-input" data-testid="model-input" autocomplete="off">
+            <p class="hint" data-i18n="modelPlaceholder">Use claude-opus-4-6 by default</p>
           </div>
 
           <button id="start-btn" class="btn-primary" data-testid="start-btn" disabled data-i18n="startUsing">Get Started</button>
@@ -45,7 +45,7 @@
           <div id="setup-error" class="error-message hidden"></div>
           
           <div class="help-links">
-            <a href="https://ppio.com/model-api/console" target="_blank" data-i18n="getApiKey">Get API Key</a>
+            <a id="api-guide-link" href="#" data-i18n="apiProviderGuide">API Provider Guide</a>
           </div>
         </div>
       </div>

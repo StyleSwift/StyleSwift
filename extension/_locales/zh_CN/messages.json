@@ -100,7 +100,7 @@
     "description": "API Key input label"
   },
   "apiKeyPlaceholder": {
-    "message": "输入你的API Key",
+    "message": "输入你的 API Key",
     "description": "API Key input placeholder hint"
   },
   "apiAddressLabel": {
@@ -116,7 +116,7 @@
     "description": "Model input label"
   },
   "modelPlaceholder": {
-    "message": "默认使用 deepseek/deepseek-r1",
+    "message": "默认使用 claude-opus-4-6",
     "description": "Model input hint"
   },
   "apiConfigTitle": {
@@ -698,5 +698,9 @@
   "compressingToolResults": {
     "message": "正在压缩工具结果...",
     "description": "Status message when compressing large tool results"
+  },
+  "apiProviderGuide": {
+    "message": "API 供应商指南",
+    "description": "Link to API provider guide"
   }
 }
