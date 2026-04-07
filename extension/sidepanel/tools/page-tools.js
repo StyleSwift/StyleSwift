@@ -43,7 +43,7 @@ export const GREP_TOOL = {
         type: "string",
         enum: ["self", "children", "subtree"],
         description:
-          "返回详情范围：self=仅匹配元素本身，children=含直接子元素（默认），subtree=含完整子树（慎用）",
+          "返回详情范围：self=仅匹配元素本身（0层），children=含直接子元素（1层），subtree=含深层子树（最多5层，推荐）",
       },
       max_results: {
         type: "integer",

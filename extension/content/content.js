@@ -831,7 +831,7 @@ function formatUsefulAttrs(el) {
 
 // 格式化子元素列表
 function formatChildren(el, scope) {
-  const maxDepth = scope === "subtree" ? 3 : 1;
+  const maxDepth = scope === "subtree" ? 5 : 1;
 
   function walk(parent, depth, indent) {
     if (depth > maxDepth) return [];
@@ -892,11 +892,11 @@ function formatGrepOutput(groups, scope, maxResults) {
   }
 
   const result = lines.join("\n");
-  if (estimateTokens(result) > 800 && scope === "subtree")
+  if (estimateTokens(result) > 1000 && scope === "subtree")
     return formatGrepOutput(groups, "children", maxResults);
-  if (estimateTokens(result) > 800 && scope === "children")
+  if (estimateTokens(result) > 1000 && scope === "children")
     return formatGrepOutput(groups, "self", maxResults);
-  if (estimateTokens(result) > 800 && scope === "self")
+  if (estimateTokens(result) > 1000 && scope === "self")
     return formatGrepOutput(
       groups,
       "self",
