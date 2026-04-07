@@ -11,10 +11,6 @@
 	},
 	"permissions": ["activeTab", "storage", "sidePanel", "scripting"],
 
-	"optional_host_permissions": [
-		"https://*/*"
-	],
-
 	"host_permissions": ["<all_urls>"],
 
 	"background": {
