@@ -203,19 +203,23 @@ function normalizeToolResult(value) {
 // =============================================================================
 
 // Import session functions dynamically to avoid circular deps
-let currentSession = null;
+let sessionModule = null;
 let updateStylesSummary = null;
 let loadStylesHistory = null;
 let saveStylesHistory = null;
 let checkQuotaAndMigrate = null;
 
 async function initSessionDeps() {
-  const session = await import("../session.js");
-  currentSession = session.currentSession;
-  updateStylesSummary = session.updateStylesSummary;
-  loadStylesHistory = session.loadStylesHistory;
-  saveStylesHistory = session.saveStylesHistory;
-  checkQuotaAndMigrate = session.checkQuotaAndMigrate;
+  sessionModule = await import("../session.js");
+  updateStylesSummary = sessionModule.updateStylesSummary;
+  loadStylesHistory = sessionModule.loadStylesHistory;
+  saveStylesHistory = sessionModule.saveStylesHistory;
+  checkQuotaAndMigrate = sessionModule.checkQuotaAndMigrate;
+}
+
+// 动态获取当前会话，确保每次调用都获取最新值
+function getCurrentSessionDynamic() {
+  return sessionModule?.currentSession ?? null;
 }
 
 /**
@@ -233,8 +237,9 @@ async function injectCSSViaScriptingAPI(css, tabId) {
  * 将当前会话的样式同步到 active_styles:{domain}
  */
 async function syncActiveStyles() {
-  const aKey = currentSession.activeStylesKey;
-  const sKey = currentSession.stylesKey;
+  const session = getCurrentSessionDynamic();
+  const aKey = session.activeStylesKey;
+  const sKey = session.stylesKey;
   const { [sKey]: sessionCSS = "" } = await chrome.storage.local.get(sKey);
   if (sessionCSS.trim()) {
     await chrome.storage.local.set({ [aKey]: sessionCSS });
@@ -249,14 +254,15 @@ async function syncActiveStyles() {
 async function runApplyStyles(css, mode, tabId) {
   await initSessionDeps();
 
-  if (!currentSession) {
+  const session = getCurrentSessionDynamic();
+  if (!session) {
     throw new Error("[runApplyStyles] 没有活动的会话");
   }
 
   try {
-    const sKey = currentSession.stylesKey;
-    const domain = currentSession.domain;
-    const sessionId = currentSession.sessionId;
+    const sKey = session.stylesKey;
+    const domain = session.domain;
+    const sessionId = session.sessionId;
     const MAX_HISTORY = 20;
 
     // === rollback_last 模式 ===
@@ -362,11 +368,12 @@ async function runApplyStyles(css, mode, tabId) {
 async function runEditCSS(oldCSS, newCSS, tabId) {
   await initSessionDeps();
 
-  if (!currentSession) {
+  const session = getCurrentSessionDynamic();
+  if (!session) {
     throw new Error("[runEditCSS] 没有活动的会话");
   }
 
-  const sKey = currentSession.stylesKey;
+  const sKey = session.stylesKey;
   const { [sKey]: stored = "" } = await chrome.storage.local.get(sKey);
 
   if (!stored || !stored.includes(oldCSS)) {
@@ -405,7 +412,8 @@ async function runSaveStyleSkill(name, mood, skillContent) {
   await initSessionDeps();
 
   const id = crypto.randomUUID().slice(0, 8);
-  const sourceDomain = currentSession?.domain || "unknown";
+  const session = getCurrentSessionDynamic();
+  const sourceDomain = session?.domain || "unknown";
   const header = `# ${name}\n\n> 来源: ${sourceDomain} | 创建: ${new Date().toLocaleDateString()}\n> 风格: ${mood || ""}\n\n`;
   const fullContent = skillContent.startsWith("# ")
     ? skillContent
@@ -458,7 +466,8 @@ function buildToolHandlers() {
     runApplyStyles,
     runEditCSS,
     sendToContentScript,
-    getCurrentSession: () => currentSession,
+    getCurrentSession: getCurrentSessionDynamic,
+    initSessionDeps,
   });
 
   const profileHandlers = createProfileToolHandlers();

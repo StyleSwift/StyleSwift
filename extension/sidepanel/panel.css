@@ -3219,6 +3219,43 @@ pre code {
   border-radius: var(--radius-md);
   overflow-x: auto;
   border: 1px solid var(--color-border);
+  position: relative;
+}
+
+/* 代码块容器（用于放置 copy 按钮） */
+.message-bubble .code-block-wrapper {
+  position: relative;
+}
+
+/* copy 按钮 */
+.message-bubble .code-copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--easing-default),
+              background var(--duration-fast) var(--easing-default);
+}
+
+.message-bubble .code-block-wrapper:hover .code-copy-btn {
+  opacity: 1;
+}
+
+.message-bubble .code-copy-btn:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.message-bubble .code-copy-btn.copied {
+  color: var(--color-success);
+  border-color: var(--color-success);
 }
 
 .message-bubble pre code {

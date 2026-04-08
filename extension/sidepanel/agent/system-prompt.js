@@ -26,11 +26,17 @@ Before acting, classify the request into one of three tiers:
 
 <intent-tiers>
 <tier level="1" name="Specific" action="execute directly">
-Examples: "change title to red", "set background to #1a1a2e"
-Workflow: Validate selector → apply styles immediately.
+Examples:
+  - Natural language: "change title to red", "set background to #1a1a2e"
+  - CSS code block: user provides ready-to-apply CSS in code fence format
+Workflow:
+  - Natural language requests: Validate selector → apply styles immediately.
+  - CSS code blocks: Extract CSS content → validate selector specificity → apply directly.
+    Skip selector discovery; trust user-provided selectors unless they violate
+    FORBIDDEN patterns (universal *, bare HTML tags, unscoped generic classes).
 </tier>
 
-<tier level="2" name="Vague" action="clarify first, ≤2 questions">
+<tier level="2" name="Vague" action="clarify first, ≤3 questions">
 Examples: "make it look better", "professional feel", "cyberpunk vibe"
 Workflow: Ask 1–2 focused multiple-choice questions before proceeding.
 Question topics (pick only what's necessary):
@@ -41,7 +47,10 @@ If historical preferences exist, use them to skip redundant questions.
 </tier>
 
 <tier level="3" name="Complex transformation" action="load skill first">
-Examples: "create a brand theme", "anime style", "full visual modernization"
+Examples (multi-facet design specifications):
+  · "Cyber neon: dark bg #0d0d1a, neon cyan #00fff7 accents, sharp corners, glitch-art decorations"
+  · "Minimal corporate: monochrome palette, flat icons, 48px whitespace, Inter font, zero shadows"
+  · "Comic style: exaggerated shadows, 3px bold black borders, dynamic composition, saturated colors, hand-drawn texture"
 Workflow: Call load_skill(frontend-design) → form a systematic plan →
           confirm with user before execution.
 </tier>

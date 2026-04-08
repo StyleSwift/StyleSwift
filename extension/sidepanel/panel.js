@@ -1621,6 +1621,11 @@ function initInputArea() {
 
 	// 初始化为空闲态
 	updateInputAreaState("idle");
+
+	// 代码块复制按钮事件委托
+	if (DOM.messagesContainer) {
+		DOM.messagesContainer.addEventListener("click", handleCodeCopyClick);
+	}
 }
 
 /**
@@ -1685,6 +1690,37 @@ function updateInputAreaState(state) {
 	}
 
 	console.log("[Panel] Input area state changed to:", state);
+}
+
+/**
+ * 处理代码块复制按钮点击
+ * @param {Event} e - 点击事件
+ */
+function handleCodeCopyClick(e) {
+	const copyBtn = e.target.closest(".code-copy-btn");
+	if (!copyBtn) return;
+
+	const code = decodeURIComponent(copyBtn.dataset.code || "");
+	if (!code) return;
+
+	// 复制到剪贴板
+	navigator.clipboard.writeText(code).then(() => {
+		// 显示复制成功状态
+		copyBtn.textContent = "Copied!";
+		copyBtn.classList.add("copied");
+
+		// 2秒后恢复原状态
+		setTimeout(() => {
+			copyBtn.textContent = "Copy";
+			copyBtn.classList.remove("copied");
+		}, 2000);
+	}).catch((err) => {
+		console.error("[Panel] Failed to copy code:", err);
+		copyBtn.textContent = "Failed";
+		setTimeout(() => {
+			copyBtn.textContent = "Copy";
+		}, 2000);
+	});
 }
 
 /**
@@ -5192,20 +5228,73 @@ class StreamingTextRenderer {
 	_renderMarkdown(text) {
 		if (!text) return "";
 
-		// 先保护代码块，避免内部内容被其他规则处理
-		const codeBlocks = [];
-		let html = text.replace(
-			/```(\w*)\n?([\s\S]*?)```/g,
-			(match, lang, code) => {
-				const langAttr = lang ? ` class="language-${lang}"` : "";
-				const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
-				codeBlocks.push(`<pre><code${langAttr}>${code.trim()}</code></pre>`);
-				return placeholder;
-			},
-		);
+		// 将文本按代码块分割，直接处理而不使用占位符
+		const parts = [];
+		const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
+		let lastIndex = 0;
+		let match;
 
-		// 转义 HTML（但保留占位符）
-		html = this._escapeHtml(html);
+		while ((match = codeBlockRegex.exec(text)) !== null) {
+			// 添加代码块之前的普通文本
+			if (match.index > lastIndex) {
+				parts.push({
+					type: "text",
+					content: text.slice(lastIndex, match.index),
+				});
+			}
+			// 添加代码块
+			const lang = match[1];
+			const code = match[2].trim();
+			const langAttr = lang ? ` class="language-${lang}"` : "";
+			const escapedCode = this._escapeHtml(code);
+			parts.push({
+				type: "code",
+				html: `<div class="code-block-wrapper"><pre><code${langAttr}>${escapedCode}</code></pre><button class="code-copy-btn" data-code="${encodeURIComponent(code)}">Copy</button></div>`,
+			});
+			lastIndex = match.index + match[0].length;
+		}
+		// 添加最后的普通文本
+		if (lastIndex < text.length) {
+			parts.push({
+				type: "text",
+				content: text.slice(lastIndex),
+			});
+		}
+
+		// 处理每个普通文本片段
+		const processedParts = parts.map((part) => {
+			if (part.type === "code") {
+				return part.html;
+			}
+			return this._renderMarkdownText(part.content);
+		});
+
+		// 合并所有片段
+		let html = processedParts.join("");
+
+		// 包裹段落（如果不是块级元素开头）
+		const blockStart =
+			html.startsWith("<pre>") ||
+			html.startsWith("<h") ||
+			html.startsWith("<ul>") ||
+			html.startsWith("<ol>") ||
+			html.startsWith("<blockquote>") ||
+			html.startsWith("<hr>");
+		if (!blockStart) {
+			html = `<p>${html}</p>`;
+		}
+
+		return html;
+	}
+
+	/**
+	 * 渲染普通 Markdown 文本（不含代码块）
+	 * @param {string} text - 原始文本
+	 * @returns {string} - 渲染后的 HTML
+	 * @private
+	 */
+	_renderMarkdownText(text) {
+		let html = this._escapeHtml(text);
 
 		// 水平线（--- 或 ***）
 		html = html.replace(/^[-]{3,}$/gm, "<hr>");
@@ -5263,23 +5352,6 @@ class StreamingTextRenderer {
 		// 换行处理
 		html = html.replace(/\n\n/g, "</p><p>");
 		html = html.replace(/\n/g, "<br>");
-
-		// 恢复代码块
-		codeBlocks.forEach((block, index) => {
-			html = html.replace(`__CODE_BLOCK_${index}__`, block);
-		});
-
-		// 包裹段落（如果不是块级元素开头）
-		const blockStart =
-			html.startsWith("<pre>") ||
-			html.startsWith("<h") ||
-			html.startsWith("<ul>") ||
-			html.startsWith("<ol>") ||
-			html.startsWith("<blockquote>") ||
-			html.startsWith("<hr>");
-		if (!blockStart) {
-			html = `<p>${html}</p>`;
-		}
 
 		return html;
 	}

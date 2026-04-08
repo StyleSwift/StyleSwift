@@ -94,15 +94,17 @@ export const EDIT_CSS_TOOL = {
  * @param {function} deps.runApplyStyles - Apply styles function
  * @param {function} deps.runEditCSS - Edit CSS function
  * @param {function} deps.sendToContentScript - Send to content script function
- * @param {function} deps.currentSession - Current session getter
+ * @param {function} deps.getCurrentSession - Current session getter
+ * @param {function} deps.initSessionDeps - Initialize session dependencies
  * @returns {object} Handlers for style tools
  */
-export function createStyleToolHandlers({ runApplyStyles, runEditCSS, sendToContentScript, getCurrentSession }) {
+export function createStyleToolHandlers({ runApplyStyles, runEditCSS, sendToContentScript, getCurrentSession, initSessionDeps }) {
   return {
     apply_styles: async (args, context) =>
       await runApplyStyles(args.css || "", args.mode, context?.tabId),
 
     get_current_styles: async () => {
+      await initSessionDeps();
       const currentSession = getCurrentSession();
       if (!currentSession) return "(无活动会话)";
       const sKey = currentSession.stylesKey;
