@@ -4,7 +4,7 @@
 
 ![StyleSwift Logo](images/banner.png)
 
-**一句话，给你喜爱的网站换上新皮肤**
+**Give your favorite websites a fresh look with a single sentence**
 
 [![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-blue.svg)](https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli) [![OpenAI](https://img.shields.io/badge/OpenAI-GPT‑4o-412991?logo=openai&logoColor=white)](https://openai.com/) [![Anthropic](https://img.shields.io/badge/Anthropic-Claude‑3.5‑Sonnet-d4a57b?logo=anthropic&logoColor=white)](https://www.anthropic.com/) [![Google](https://img.shields.io/badge/Google-Gemini‑2.0-4285F4?logo=google&logoColor=white)](https://ai.google.dev/) [![DeepSeek](https://img.shields.io/badge/DeepSeek-V3/R1-5B5FC7?logo=deepseek&logoColor=white)](https://www.deepseek.com/)
 
