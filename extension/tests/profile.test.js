@@ -4,14 +4,18 @@
  * 测试 runGetUserProfile、runUpdateUserProfile、getProfileOneLiner
  * 
  * 测试标准：
- * - runGetUserProfile: 有画像返回内容，无画像返回默认提示
- * - runUpdateUserProfile: 写入后读取一致
+ * - runGetUserProfile: 有画像返回内容，无画像返回本地化默认提示
+ * - runUpdateUserProfile: 写入后读取一致，返回本地化成功消息
  * - getProfileOneLiner: 返回第一行内容且不超过 100 字
+ * - isDefaultProfile: 正确判断默认提示文本
  */
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 
+// ============================================================================
 // Mock chrome.storage.local
+// ============================================================================
+
 const mockStorage = {
   data: {},
   
@@ -52,25 +56,50 @@ const mockStorage = {
   }
 };
 
+// ============================================================================
+// Mock chrome.i18n.getMessage
+// ============================================================================
+
+const MOCK_MESSAGES = {
+  newUserProfile: '新用户，暂无风格偏好记录',
+  profileUpdated: '已更新用户画像',
+  profileUpdateFailed: '更新用户画像失败: {error}',
+};
+
 // Setup mocks before importing the module
 vi.stubGlobal('chrome', {
   storage: {
     local: mockStorage
+  },
+  i18n: {
+    getMessage: vi.fn((key, substitutions) => {
+      const entry = MOCK_MESSAGES[key];
+      if (!entry) return key;
+      // Handle simple substitution for {error} placeholder
+      if (substitutions && typeof entry === 'string') {
+        return entry.replace('{error}', substitutions);
+      }
+      return entry;
+    }),
+    getUILanguage: vi.fn(() => 'zh-CN'),
   }
 });
 
 // Import functions under test
-const { runGetUserProfile, runUpdateUserProfile, getProfileOneLiner } = await import('../sidepanel/profile.js');
+const { runGetUserProfile, runUpdateUserProfile, getProfileOneLiner, isDefaultProfile } = await import('../sidepanel/profile.js');
+
+// Expected localized default text
+const DEFAULT_PROFILE_TEXT = '(' + MOCK_MESSAGES.newUserProfile + ')';
 
 describe('runGetUserProfile', () => {
   beforeEach(() => {
     mockStorage.clear();
   });
   
-  test('无画像时返回默认提示', async () => {
+  test('无画像时返回本地化默认提示', async () => {
     const profile = await runGetUserProfile();
     
-    expect(profile).toBe('(新用户，暂无风格偏好记录)');
+    expect(profile).toBe(DEFAULT_PROFILE_TEXT);
   });
   
   test('有画像时返回内容', async () => {
@@ -82,20 +111,20 @@ describe('runGetUserProfile', () => {
     expect(profile).toBe(testProfile);
   });
   
-  test('空字符串画像返回默认提示', async () => {
+  test('空字符串画像返回本地化默认提示', async () => {
     await mockStorage.set({ userProfile: '' });
     
     const profile = await runGetUserProfile();
     
-    expect(profile).toBe('(新用户，暂无风格偏好记录)');
+    expect(profile).toBe(DEFAULT_PROFILE_TEXT);
   });
   
-  test('只有空白字符的画像返回默认提示', async () => {
+  test('只有空白字符的画像返回本地化默认提示', async () => {
     await mockStorage.set({ userProfile: '   \n\t  ' });
     
     const profile = await runGetUserProfile();
     
-    expect(profile).toBe('(新用户，暂无风格偏好记录)');
+    expect(profile).toBe(DEFAULT_PROFILE_TEXT);
   });
   
   test('多行画像内容正确返回', async () => {
@@ -111,14 +140,14 @@ describe('runGetUserProfile', () => {
     expect(profile).toBe(multiLineProfile);
   });
   
-  test('错误时返回默认提示', async () => {
+  test('错误时返回本地化默认提示', async () => {
     // 模拟 get 方法抛出错误
     const originalGet = mockStorage.get;
     mockStorage.get = vi.fn().mockRejectedValue(new Error('Storage error'));
     
-    // 应返回默认值而不抛出错误
+    // 应返回本地化默认值而不抛出错误
     const profile = await runGetUserProfile();
-    expect(profile).toBe('(新用户，暂无风格偏好记录)');
+    expect(profile).toBe(DEFAULT_PROFILE_TEXT);
     
     // 恢复原方法
     mockStorage.get = originalGet;
@@ -130,12 +159,12 @@ describe('runUpdateUserProfile', () => {
     mockStorage.clear();
   });
   
-  test('写入画像成功', async () => {
+  test('写入画像成功并返回本地化消息', async () => {
     const content = '用户偏好：深色模式、圆角设计';
     
     const result = await runUpdateUserProfile(content);
     
-    expect(result).toBe('已更新用户画像');
+    expect(result).toBe(MOCK_MESSAGES.profileUpdated);
     
     // 验证写入成功
     const { userProfile } = await mockStorage.get('userProfile');
@@ -197,14 +226,14 @@ describe('runUpdateUserProfile', () => {
     expect(userProfile).toBe(specialContent);
   });
   
-  test('错误时抛出异常', async () => {
+  test('错误时抛出本地化异常消息', async () => {
     const content = '测试内容';
     
     // 模拟 set 方法抛出错误
     const originalSet = mockStorage.set;
     mockStorage.set = vi.fn().mockRejectedValue(new Error('Write failed'));
     
-    // 应抛出错误
+    // 应抛出带本地化消息的错误
     await expect(runUpdateUserProfile(content)).rejects.toThrow('更新用户画像失败: Write failed');
     
     // 恢复原方法
@@ -303,5 +332,29 @@ describe('getProfileOneLiner', () => {
     const oneLiner = await getProfileOneLiner();
     
     expect(oneLiner).toBe('');
+  });
+});
+
+describe('isDefaultProfile', () => {
+  test('默认提示文本返回 true', () => {
+    expect(isDefaultProfile(DEFAULT_PROFILE_TEXT)).toBe(true);
+  });
+  
+  test('用户自定义画像返回 false', () => {
+    expect(isDefaultProfile('用户偏好：深色模式、圆角设计')).toBe(false);
+  });
+  
+  test('空字符串返回 false', () => {
+    expect(isDefaultProfile('')).toBe(false);
+  });
+  
+  test('与默认文本不同的括号内容返回 false', () => {
+    expect(isDefaultProfile('(其他内容)')).toBe(false);
+  });
+  
+  test('使用 chrome.i18n.getMessage 来判断', () => {
+    // 验证 isDefaultProfile 是通过 getMessage 动态比较，而非硬编码
+    isDefaultProfile(DEFAULT_PROFILE_TEXT);
+    expect(chrome.i18n.getMessage).toHaveBeenCalledWith('newUserProfile');
   });
 });

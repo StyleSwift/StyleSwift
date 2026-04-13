@@ -683,6 +683,14 @@
     "message": "New user, no style preferences recorded",
     "description": "New user default profile message"
   },
+  "profileUpdated": {
+    "message": "User profile updated",
+    "description": "Message returned when user profile is successfully updated"
+  },
+  "profileUpdateFailed": {
+    "message": "Failed to update user profile: {error}",
+    "description": "Error message when user profile update fails"
+  },
   "scrollToBottom": {
     "message": "Scroll to latest message",
     "description": "Scroll to bottom button tooltip"
@@ -702,5 +710,69 @@
   "apiProviderGuide": {
     "message": "API Provider Guide",
     "description": "Link to API provider guide"
+  },
+  "toolNameThink": {
+    "message": "Structured Thinking",
+    "description": "Display name for the think tool"
+  },
+  "toolNameGetPageStructure": {
+    "message": "View Page Structure",
+    "description": "Display name for the get_page_structure tool"
+  },
+  "toolNameGrep": {
+    "message": "Search Page Elements",
+    "description": "Display name for the grep tool"
+  },
+  "toolNameApplyStyles": {
+    "message": "Apply Styles",
+    "description": "Display name for the apply_styles tool"
+  },
+  "toolNameGetUserProfile": {
+    "message": "Get User Profile",
+    "description": "Display name for the get_user_profile tool"
+  },
+  "toolNameUpdateUserProfile": {
+    "message": "Update User Profile",
+    "description": "Display name for the update_user_profile tool"
+  },
+  "toolNameLoadSkill": {
+    "message": "Load Knowledge",
+    "description": "Display name for the load_skill tool"
+  },
+  "toolNameSaveStyleSkill": {
+    "message": "Save Style Skill",
+    "description": "Display name for the save_style_skill tool"
+  },
+  "toolNameListStyleSkills": {
+    "message": "List Style Skills",
+    "description": "Display name for the list_style_skills tool"
+  },
+  "toolNameDeleteStyleSkill": {
+    "message": "Delete Style Skill",
+    "description": "Display name for the delete_style_skill tool"
+  },
+  "toolNameTodoWrite": {
+    "message": "Task Planning",
+    "description": "Display name for the TodoWrite tool"
+  },
+  "toolNameTask": {
+    "message": "Subtask",
+    "description": "Display name for the Task tool"
+  },
+  "toolStatusProcessing": {
+    "message": "Processing...",
+    "description": "Status text for a tool call that is in progress"
+  },
+  "toolStatusSubAgentRunning": {
+    "message": "Sub-agent running...",
+    "description": "Status text when a sub-agent (Task) is running"
+  },
+  "toolLabelInput": {
+    "message": "Input:",
+    "description": "Label for tool input section in tool card"
+  },
+  "toolLabelOutput": {
+    "message": "Output:",
+    "description": "Label for tool output section in tool card"
   }
 }

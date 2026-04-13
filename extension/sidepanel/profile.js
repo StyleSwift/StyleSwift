@@ -5,6 +5,14 @@
  * 画像存储在 chrome.storage.local 的 userProfile key 中
  */
 
+import { getMessage, formatMessage } from './i18n.js';
+
+/**
+ * 用户画像默认提示的 i18n key
+ * 用于标识"无画像"状态，避免硬编码本地化字符串做比较
+ */
+const NEW_USER_PROFILE_KEY = 'newUserProfile';
+
 /**
  * 获取用户风格偏好画像
  * 
@@ -13,7 +21,7 @@
  * @example
  * const profile = await runGetUserProfile();
  * // 有画像：返回画像内容
- * // 无画像：返回 '(新用户，暂无风格偏好记录)'
+ * // 无画像：返回 '(New user, no style preferences recorded)' 等本地化提示
  */
 async function runGetUserProfile() {
   try {
@@ -21,14 +29,14 @@ async function runGetUserProfile() {
     
     // 检查画像是否存在且非空
     if (!userProfile?.trim()) {
-      return '(新用户，暂无风格偏好记录)';
+      return '(' + getMessage(NEW_USER_PROFILE_KEY) + ')';
     }
     
     return userProfile;
   } catch (error) {
     console.error('[Profile] Failed to get user profile:', error);
     // 出错时返回默认提示，不中断流程
-    return '(新用户，暂无风格偏好记录)';
+    return '(' + getMessage(NEW_USER_PROFILE_KEY) + ')';
   }
 }
 
@@ -40,16 +48,26 @@ async function runGetUserProfile() {
  * 
  * @example
  * await runUpdateUserProfile('用户偏好：深色模式、圆角设计、现代简约风格');
- * // 返回: '已更新用户画像'
+ * // 返回: '已更新用户画像' (本地化消息)
  */
 async function runUpdateUserProfile(content) {
   try {
     await chrome.storage.local.set({ userProfile: content });
-    return '已更新用户画像';
+    return getMessage('profileUpdated');
   } catch (error) {
     console.error('[Profile] Failed to update user profile:', error);
-    throw new Error(`更新用户画像失败: ${error.message}`);
+    throw new Error(formatMessage('profileUpdateFailed', { error: error.message }));
   }
+}
+
+/**
+ * 判断画像内容是否为默认提示（即"无画像"状态）
+ * 
+ * @param {string} profile - 画像内容
+ * @returns {boolean} 是否为默认提示
+ */
+function isDefaultProfile(profile) {
+  return profile === '(' + getMessage(NEW_USER_PROFILE_KEY) + ')';
 }
 
 /**
@@ -67,7 +85,7 @@ async function getProfileOneLiner() {
     const profile = await runGetUserProfile();
     
     // 无画像或默认提示时返回空字符串
-    if (!profile || profile === '(新用户，暂无风格偏好记录)') {
+    if (!profile || isDefaultProfile(profile)) {
       return '';
     }
     
@@ -81,4 +99,4 @@ async function getProfileOneLiner() {
 }
 
 // 导出函数供其他模块使用
-export { runGetUserProfile, runUpdateUserProfile, getProfileOneLiner };
+export { runGetUserProfile, runUpdateUserProfile, getProfileOneLiner, isDefaultProfile };

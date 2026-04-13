@@ -683,6 +683,14 @@
     "message": "新用户，暂无风格偏好记录",
     "description": "New user default profile message"
   },
+  "profileUpdated": {
+    "message": "已更新用户画像",
+    "description": "Message returned when user profile is successfully updated"
+  },
+  "profileUpdateFailed": {
+    "message": "更新用户画像失败: {error}",
+    "description": "Error message when user profile update fails"
+  },
   "scrollToBottom": {
     "message": "滚动到最新消息",
     "description": "Scroll to bottom button tooltip"
@@ -702,5 +710,69 @@
   "apiProviderGuide": {
     "message": "API 供应商指南",
     "description": "Link to API provider guide"
+  },
+  "toolNameThink": {
+    "message": "结构思考",
+    "description": "Display name for the think tool"
+  },
+  "toolNameGetPageStructure": {
+    "message": "查看页面结构",
+    "description": "Display name for the get_page_structure tool"
+  },
+  "toolNameGrep": {
+    "message": "搜索页面元素",
+    "description": "Display name for the grep tool"
+  },
+  "toolNameApplyStyles": {
+    "message": "应用样式",
+    "description": "Display name for the apply_styles tool"
+  },
+  "toolNameGetUserProfile": {
+    "message": "获取用户画像",
+    "description": "Display name for the get_user_profile tool"
+  },
+  "toolNameUpdateUserProfile": {
+    "message": "更新用户画像",
+    "description": "Display name for the update_user_profile tool"
+  },
+  "toolNameLoadSkill": {
+    "message": "加载知识",
+    "description": "Display name for the load_skill tool"
+  },
+  "toolNameSaveStyleSkill": {
+    "message": "保存风格技能",
+    "description": "Display name for the save_style_skill tool"
+  },
+  "toolNameListStyleSkills": {
+    "message": "列出风格技能",
+    "description": "Display name for the list_style_skills tool"
+  },
+  "toolNameDeleteStyleSkill": {
+    "message": "删除风格技能",
+    "description": "Display name for the delete_style_skill tool"
+  },
+  "toolNameTodoWrite": {
+    "message": "任务规划",
+    "description": "Display name for the TodoWrite tool"
+  },
+  "toolNameTask": {
+    "message": "子任务",
+    "description": "Display name for the Task tool"
+  },
+  "toolStatusProcessing": {
+    "message": "进行中",
+    "description": "Status text for a tool call that is in progress"
+  },
+  "toolStatusSubAgentRunning": {
+    "message": "子智能体运行中…",
+    "description": "Status text when a sub-agent (Task) is running"
+  },
+  "toolLabelInput": {
+    "message": "输入:",
+    "description": "Label for tool input section in tool card"
+  },
+  "toolLabelOutput": {
+    "message": "输出:",
+    "description": "Label for tool output section in tool card"
   }
 }

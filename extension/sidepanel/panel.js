@@ -4392,10 +4392,11 @@ async function loadCurrentSettings() {
  */
 async function loadUserProfile() {
 	try {
+		const { isDefaultProfile } = await import("./profile.js");
 		const profile = await runGetUserProfile();
 		if (DOM.settingsUserProfile) {
 			// 如果是默认提示，显示空
-			if (profile === "(" + getMessage("newUserProfile") + ")") {
+			if (isDefaultProfile(profile)) {
 				DOM.settingsUserProfile.value = "";
 			} else {
 				DOM.settingsUserProfile.value = profile;
@@ -5819,28 +5820,38 @@ async function handleRewindClick(targetTurn) {
 /**
  * 工具名称映射表（友好的显示名称）
  */
-const TOOL_DISPLAY_NAMES = {
-	think: "结构思考",
-	get_page_structure: "查看页面结构",
-	grep: "搜索页面元素",
-	apply_styles: "应用样式",
-	get_user_profile: "获取用户画像",
-	update_user_profile: "更新用户画像",
-	load_skill: "加载知识",
-	save_style_skill: "保存风格技能",
-	list_style_skills: "列出风格技能",
-	delete_style_skill: "删除风格技能",
-	TodoWrite: "任务规划",
-	Task: "子任务",
+/**
+ * 工具标识符到 i18n 消息键的映射
+ * 用于将工具内部名称转换为用户友好的本地化显示名称
+ */
+const TOOL_I18N_KEYS = {
+	think: "toolNameThink",
+	get_page_structure: "toolNameGetPageStructure",
+	grep: "toolNameGrep",
+	apply_styles: "toolNameApplyStyles",
+	get_user_profile: "toolNameGetUserProfile",
+	update_user_profile: "toolNameUpdateUserProfile",
+	load_skill: "toolNameLoadSkill",
+	save_style_skill: "toolNameSaveStyleSkill",
+	list_style_skills: "toolNameListStyleSkills",
+	delete_style_skill: "toolNameDeleteStyleSkill",
+	TodoWrite: "toolNameTodoWrite",
+	Task: "toolNameTask",
 };
 
 /**
- * 获取工具友好显示名称
+ * 获取工具友好显示名称（国际化）
  * @param {string} toolName - 工具名称
- * @returns {string} - 友好显示名称
+ * @returns {string} - 本地化的友好显示名称
  */
 function getToolDisplayName(toolName) {
-	return TOOL_DISPLAY_NAMES[toolName] || toolName;
+	const i18nKey = TOOL_I18N_KEYS[toolName];
+	if (i18nKey) {
+		const localized = getMessage(i18nKey);
+		// 如果 i18n 未找到则回退到 key 本身，再回退到原始 toolName
+		if (localized !== i18nKey) return localized;
+	}
+	return toolName;
 }
 
 /**
@@ -5901,7 +5912,7 @@ class ToolCardManager {
         </div>
         <div class="tool-card-status processing">
           <span class="status-indicator">${isTask ? "" : iconHtml("loader", 12, "spin")}</span>
-          <span class="status-text">${isTask ? "子智能体运行中…" : "进行中"}</span>
+          <span class="status-text">${isTask ? getMessage("toolStatusSubAgentRunning") : getMessage("toolStatusProcessing")}</span>
         </div>
       </div>
     `;
@@ -5993,11 +6004,11 @@ class ToolCardManager {
         </div>
         <div class="tool-card-body">
           <div class="tool-card-section">
-            <div class="tool-card-label">输入:</div>
+            <div class="tool-card-label">${getMessage("toolLabelInput")}</div>
             <div class="tool-card-content">${inputDisplay}</div>
           </div>
           <div class="tool-card-section">
-            <div class="tool-card-label">输出:</div>
+            <div class="tool-card-label">${getMessage("toolLabelOutput")}</div>
             <div class="tool-card-content tool-card-output">${outputDisplay}</div>
           </div>
         </div>
