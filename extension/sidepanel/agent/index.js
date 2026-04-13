@@ -50,7 +50,7 @@ export {
 } from "./token-manager.js";
 
 // System prompt
-export { SYSTEM_BASE, AGENT_TYPES } from "./system-prompt.js";
+export { SYSTEM_BASE, AGENT_TYPES, SCREENSHOT_ANALYSIS_HINT } from "./system-prompt.js";
 
 // Model context
 export { calculateTokenBudget } from "./model-context.js";

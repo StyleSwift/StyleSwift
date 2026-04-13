@@ -367,8 +367,6 @@ export async function summarizeOldTurns(oldHistory, existingSummary = null) {
   if (!condensed.trim() && !existingSummary) return "(No history)";
 
   let userContent;
-  let systemPrompt;
-
   if (existingSummary) {
     systemPrompt = `You are a conversation history compression assistant. Integrate the existing summary with new conversation content.
 
@@ -389,10 +387,11 @@ OUTPUT FORMAT (strict structure):
 
 RULES:
 1. Merge new Applied Styles with existing ones; remove reverted/overwritten ones
-2. Accumulate User Preferences; note conflicting preferences
-3. Clear Pending Requests if completed in new content
-4. Keep Context Notes concise (relevant for recent context only)
-5. Total output under 400 words`;
+2. Applied Styles section has NO word limit — preserve every selector and property value exactly
+3. Accumulate User Preferences; note conflicting preferences
+4. Clear Pending Requests if completed in new content
+5. Keep Context Notes concise (relevant for recent context only)
+6. Total output under 800 words (Applied Styles section excluded from word count)`;
     userContent = `[Existing Summary]\n${existingSummary}\n\n[New Conversation]\n${condensed || "(No new content)"}`;
   } else {
     systemPrompt = `You are a conversation history compression assistant. Compress conversation into structured summary.
@@ -413,11 +412,11 @@ OUTPUT FORMAT (strict structure):
 - [important context for understanding recent requests]
 
 RULES:
-1. Applied Styles: Extract exact CSS selectors and properties. Skip intermediate attempts, keep final state.
+1. Applied Styles: Extract exact CSS selectors and properties. Skip intermediate attempts, keep final state. This section has NO word limit — every selector and value must be preserved exactly.
 2. User Preferences: Extract explicit preferences (colors, fonts, spacing, etc.). Skip procedural exchanges.
 3. Pending Requests: Only include explicitly stated but not yet fulfilled requests.
 4. Context Notes: Only include context needed for recent request understanding.
-5. Total output under 400 words.`;
+5. Total output under 800 words (Applied Styles section excluded from word count).`;
     userContent = condensed;
   }
 
@@ -439,7 +438,7 @@ RULES:
           model,
           system: systemPrompt,
           messages: [{ role: "user", content: [{ type: "text", text: userContent }] }],
-          max_tokens: 800,
+          max_tokens: 1500,
         }),
       });
     } else {
@@ -455,7 +454,7 @@ RULES:
             { role: "system", content: systemPrompt },
             { role: "user", content: userContent },
           ],
-          max_tokens: 800,
+          max_tokens: 1500,
         }),
       });
     }
@@ -667,7 +666,7 @@ export function deduplicateToolResults(messages) {
         const toolName = key.includes(":") ? key.split(":")[0] : "unknown";
         return {
           ...block,
-          content: `[此工具调用结果已去重：${toolName} 相同参数的更早调用，仅保留最新结果]`,
+          content: `[Deduplicated: earlier call to ${toolName} with same parameters — only the latest result is kept]`,
         };
       }
       return block;

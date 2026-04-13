@@ -11,7 +11,12 @@
 export const GET_PAGE_STRUCTURE_TOOL = {
   name: "get_page_structure",
   description:
-    "获取当前页面的结构概览。返回树形结构，包含标签、选择器、关键样式。",
+    "Get the structural overview of the current page (regions, key elements, layout skeleton). " +
+    "Returns a tree showing tags, selectors, and key styles at the REGION level. " +
+    "This is Step 1 of the two-step exploration pipeline — use it to understand the page layout, " +
+    "then call grep to drill into specific elements for full detail (exact styles, attributes, children). " +
+    "IMPORTANT: get_page_structure provides an OVERVIEW only, not detailed CSS properties or leaf elements. " +
+    "Always follow up with grep before writing CSS to confirm selectors and get precise style values.",
   input_schema: {
     type: "object",
     properties: {},
@@ -25,29 +30,36 @@ export const GET_PAGE_STRUCTURE_TOOL = {
 
 export const GREP_TOOL = {
   name: "grep",
-  description: `在当前页面中搜索元素，返回匹配元素的详细信息（完整样式、属性、子元素）。
+  description: `Search for elements on the current page and return detailed information (full styles, attributes, children).
 
-搜索方式（自动检测）：
-- CSS 选择器：".sidebar", "nav > a.active", "#main h2"
-- 关键词：在标签名、class、id、文本内容、样式值中匹配
+Search modes (auto-detected):
+- CSS selector: ".sidebar", "nav > a.active", "#main h2"
+- Keyword: matches in tag names, classes, IDs, text content, style values
 
-典型用途：
-- 看完 get_page_structure 概览后，深入查看某个区域的详情
-- 查找具有特定样式值的元素
-- 确认某个选择器是否存在、有多少匹配`,
+This is the PRIMARY tool for leaf-level element inspection. Use it AFTER get_page_structure
+to drill into specific regions, or proactively to verify selectors before writing CSS.
+
+Typical uses:
+- After get_page_structure overview: grep each region you plan to style to confirm
+  exact selectors, computed styles, and inherited properties
+- Find elements with specific style values (e.g., grep "font-size" to locate typography)
+- Confirm a selector exists and count its matches before targeting it with CSS
+- Discover leaf elements: regions from get_page_structure contain buttons, links,
+  and text nodes that grep reveals with full detail
+- Check pseudo-class states: grep for :hover styles, focus rings, or active states`,
   input_schema: {
     type: "object",
     properties: {
-      query: { type: "string", description: "CSS 选择器或关键词" },
+      query: { type: "string", description: "CSS selector or keyword to search for" },
       scope: {
         type: "string",
         enum: ["self", "children", "subtree"],
         description:
-          "返回详情范围：self=仅匹配元素本身（0层），children=含直接子元素（1层），subtree=含深层子树（最多5层，推荐）",
+          "Detail depth: self=matched element only (0 levels), children=with direct children (1 level), subtree=with deep children (up to 5 levels, recommended for styling)",
       },
       max_results: {
         type: "integer",
-        description: "最多返回几个匹配元素，默认 5，最大 20",
+        description: "Maximum number of matching elements to return (default 5, max 20)",
       },
     },
     required: ["query"],

@@ -5,53 +5,54 @@
  */
 
 // =============================================================================
-// TodoWrite - 任务列表管理
+// TodoWrite - Task list management
 // =============================================================================
 
 export const TODO_WRITE_TOOL = {
   name: "TodoWrite",
-  description: `更新任务列表。用于规划和追踪复杂任务的进度。
+  description: `Update the task list. Used for planning and tracking progress of complex tasks.
 
-使用场景：
-- 用户请求涉及多个步骤的复杂任务
-- 需要将大任务分解为子任务
-- 需要追踪任务完成进度
+Use cases:
+- Multi-step tasks requested by the user
+- Breaking down a large task into sub-tasks
+- Tracking task completion progress
 
-工作模式：
-1. 规划模式（首次调用）：传入完整任务数组，设置所有任务状态为 pending。
-   计划会展示给用户确认，用户可以编辑、增删步骤。确认后才开始执行。
-   例：todos: [{content: "获取页面结构", status: "pending"}, {content: "修改导航样式", status: "pending"}]
+Working modes:
+1. Planning mode (first call): Pass a complete task array with all tasks set to status: pending.
+   The plan is presented to the user for confirmation. User can edit, add, or remove steps.
+   Execution begins only after confirmation.
+   Example: todos: [{content: "Get page structure", status: "pending"}, {content: "Modify navigation styles", status: "pending"}]
 
-2. 更新模式（后续调用）：传入任务 id 和新状态，更新单个任务进度（无需确认）
-   例：todos: [{id: "todo_1", status: "in_progress"}] 或 [{id: "todo_1", status: "completed"}]
+2. Update mode (subsequent calls): Pass task id and new status to update individual task progress (no confirmation needed).
+   Example: todos: [{id: "todo_1", status: "in_progress"}] or [{id: "todo_1", status: "completed"}]
 
-状态流转：pending → in_progress → completed
-- 开始任务时标记为 in_progress
-- 完成任务后标记为 completed
+Status flow: pending → in_progress → completed
+- Mark as in_progress when starting a task
+- Mark as completed when finished
 
-简单任务（单步操作）不需要使用此工具。`,
+Simple tasks (single-step operations) do not need this tool.`,
   input_schema: {
     type: "object",
     properties: {
       todos: {
         type: "array",
         description:
-          "任务数组。规划模式：每项包含 content 和 status；更新模式：每项包含 id 和要更新的字段",
+          "Task array. Planning mode: each item contains content and status. Update mode: each item contains id and fields to update.",
         items: {
           type: "object",
           properties: {
             id: {
               type: "string",
-              description: "任务 ID（更新模式必填，由首次调用返回）",
+              description: "Task ID (required in update mode, returned by first call)",
             },
             content: {
               type: "string",
-              description: "任务描述（规划模式必填）",
+              description: "Task description (required in planning mode)",
             },
             status: {
               type: "string",
               enum: ["pending", "in_progress", "completed"],
-              description: "任务状态",
+              description: "Task status",
             },
           },
         },
@@ -62,30 +63,30 @@ export const TODO_WRITE_TOOL = {
 };
 
 // =============================================================================
-// Task Tool - 子智能体调用
+// Task Tool - Sub-agent invocation
 // =============================================================================
 
 export const TASK_TOOL = {
   name: "Task",
-  description: `调用子智能体处理复杂任务。
-子智能体在隔离上下文中运行，不会污染主对话历史。
+  description: `Invoke a sub-agent to handle complex tasks.
+Sub-agents run in isolated context and do not pollute the main conversation history.
 
-可用的子智能体：
-- QualityAudit: 样式质检专家，验证已应用CSS的视觉效果、可访问性和一致性
+Available sub-agents:
+- QualityAudit: Style quality inspector. Validates visual effects, accessibility, and consistency of applied CSS.
 
-使用场景：
-- 应用了较多样式（8+条规则）后需要质检
-- 全局色彩/主题变更后验证效果
-- 用户反馈样式有问题，需要系统性排查`,
+Use cases:
+- Quality inspection after applying 8+ CSS rules
+- Verifying effects after global color/theme changes
+- Systematic investigation when user reports visual issues`,
   input_schema: {
     type: "object",
     properties: {
-      description: { type: "string", description: "任务简短描述（3-5字）" },
-      prompt: { type: "string", description: "详细的任务指令" },
+      description: { type: "string", description: "Brief task description (3-5 words)" },
+      prompt: { type: "string", description: "Detailed task instructions" },
       agent_type: {
         type: "string",
         enum: ["QualityAudit"],
-        description: "子智能体类型",
+        description: "Sub-agent type",
       },
     },
     required: ["description", "prompt", "agent_type"],
@@ -117,7 +118,7 @@ export function createTaskToolHandlers() {
           context?.uiCallbacks,
         );
       }
-      return "(子智能体功能尚未实现)";
+      return "(Sub-agent functionality not yet implemented)";
     },
   };
 }
