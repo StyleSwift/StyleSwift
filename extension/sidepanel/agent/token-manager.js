@@ -569,5 +569,113 @@ export function truncateLargeToolResults(messages) {
   });
 }
 
+// --- Tool Result Deduplication ---
+// For identical tool calls (same name + same parameters), only keep the latest result.
+// Earlier identical calls have their results replaced with a short dedup notice,
+// saving context window tokens while preserving conversation integrity.
+
+/**
+ * Sort object keys recursively for stable JSON serialization
+ * @param {*} obj - Value to sort
+ * @returns {*} - Sorted value
+ */
+function sortObjectKeys(obj) {
+  if (obj === null || typeof obj !== "object") return obj;
+  if (Array.isArray(obj)) return obj.map(sortObjectKeys);
+  const sorted = {};
+  for (const key of Object.keys(obj).sort()) {
+    sorted[key] = sortObjectKeys(obj[key]);
+  }
+  return sorted;
+}
+
+/**
+ * Generate a stable deduplication key from tool name and arguments
+ * @param {string} toolName - Tool name (e.g., "grep", "apply_style")
+ * @param {Object} args - Tool arguments
+ * @returns {string} - Stable key for deduplication
+ */
+function generateToolDedupKey(toolName, args) {
+  try {
+    const sortedArgs = sortObjectKeys(args);
+    return `${toolName}:${JSON.stringify(sortedArgs)}`;
+  } catch (error) {
+    console.warn("[Tool Dedup] Failed to generate key:", error);
+    return `${toolName}:${Date.now()}`;
+  }
+}
+
+/**
+ * Deduplicate tool call results in conversation history.
+ * For identical tool calls (same name + same parameters), only the latest
+ * result is kept in full. Earlier identical calls have their tool_result
+ * content replaced with a short deduplication notice.
+ *
+ * This significantly reduces token usage when the LLM repeatedly calls
+ * the same tool with the same arguments during a session.
+ *
+ * @param {Array} messages - ICF message array
+ * @returns {Array} - Messages with deduplicated tool results
+ */
+export function deduplicateToolResults(messages) {
+  if (!Array.isArray(messages)) return [];
+  if (messages.length === 0) return messages;
+
+  // Step 1: Scan all assistant messages for tool_use blocks.
+  // Build mapping: tool_use_id -> dedup_key, and track order per key.
+  const toolUseIdToKey = new Map(); // tool_use_id -> dedup_key
+  const keyOrder = new Map(); // dedup_key -> [tool_use_id, ...] (in message order)
+
+  for (const msg of messages) {
+    if (msg.role !== "assistant" || !Array.isArray(msg.content)) continue;
+    for (const block of msg.content) {
+      if (block.type !== "tool_use" || !block.id) continue;
+      const key = generateToolDedupKey(block.name, block.input);
+      toolUseIdToKey.set(block.id, key);
+      if (!keyOrder.has(key)) keyOrder.set(key, []);
+      keyOrder.get(key).push(block.id);
+    }
+  }
+
+  // Step 2: Determine which tool_use_ids are duplicates (not the latest).
+  const dedupedToolUseIds = new Set();
+  for (const [, ids] of keyOrder) {
+    if (ids.length <= 1) continue; // No duplicates
+    // Keep only the last (latest) occurrence, mark all earlier ones
+    for (let i = 0; i < ids.length - 1; i++) {
+      dedupedToolUseIds.add(ids[i]);
+    }
+  }
+
+  if (dedupedToolUseIds.size === 0) return messages; // Nothing to dedup
+
+  const dupCount = dedupedToolUseIds.size;
+  console.log(`[Tool Dedup] Deduplicating ${dupCount} earlier tool result(s)`);
+
+  // Step 3: Replace tool_result content for deduped tool_use_ids
+  return messages.map((msg) => {
+    if (msg.role !== "user" || !Array.isArray(msg.content)) return msg;
+
+    let changed = false;
+    const newContent = msg.content.map((block) => {
+      if (
+        block.type === "tool_result" &&
+        dedupedToolUseIds.has(block.tool_use_id)
+      ) {
+        changed = true;
+        const key = toolUseIdToKey.get(block.tool_use_id) || "";
+        const toolName = key.includes(":") ? key.split(":")[0] : "unknown";
+        return {
+          ...block,
+          content: `[此工具调用结果已去重：${toolName} 相同参数的更早调用，仅保留最新结果]`,
+        };
+      }
+      return block;
+    });
+
+    return changed ? { ...msg, content: newContent } : msg;
+  });
+}
+
 // Export internal functions for reuse in agent-loop
 export { estimateTextTokens, msgTokenEstimate };

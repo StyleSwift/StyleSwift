@@ -21,6 +21,7 @@ import {
   estimateTokenCount,
   truncateLargeToolResults,
   msgTokenEstimate,
+  deduplicateToolResults,
 } from "./token-manager.js";
 import {
   AgentError,
@@ -346,6 +347,9 @@ export async function runTask(description, prompt, agentType, abortSignal, tabId
         currentSubMessages = truncateLargeToolResults(currentSubMessages);
       }
 
+      // Deduplicate identical tool calls (same name + same params) to save context
+      currentSubMessages = deduplicateToolResults(currentSubMessages);
+
       const response = await callLLMStreamSafe(
         subSystem,
         currentSubMessages,
@@ -536,6 +540,7 @@ export async function agentLoop(prompt, uiCallbacks) {
     const userMsg = { role: "user", content: textOnlyContent };
     fullHistory.push(userMsg);
     let llmHistory = extractEffectiveHistory(fullHistory);
+    llmHistory = deduplicateToolResults(llmHistory);
 
     let lastInputTokens = 0;
     let response;
@@ -859,6 +864,7 @@ export {
   summarizeOldTurns,
   estimateTokenCount,
   truncateLargeToolResults,
+  deduplicateToolResults,
 };
 
 // Re-export from llm-client.js

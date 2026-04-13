@@ -30,6 +30,7 @@ import {
   summarizeOldTurns,
   estimateTokenCount,
   truncateLargeToolResults,
+  deduplicateToolResults,
   cancelAgentLoop,
   getIsAgentRunning,
   getCurrentAbortController,
@@ -59,8 +60,8 @@ describe("SYSTEM_BASE 常量", () => {
   });
 
   test("包含 CSS 生成规则", () => {
-    expect(SYSTEM_BASE).toContain("Specific class/ID selectors");
-    expect(SYSTEM_BASE).toContain("!important");
+    expect(SYSTEM_BASE).toContain("Specific class/ID");
+    expect(SYSTEM_BASE).toContain("FORBIDDEN patterns");
   });
 
   test("包含样式编辑策略（引用 get_current_styles）", () => {
@@ -893,5 +894,405 @@ describe("工具调用历史记录集成测试", () => {
     expect(consoleSpy).toHaveBeenCalled();
 
     consoleSpy.mockRestore();
+  });
+});
+
+// =============================================================================
+// deduplicateToolResults 工具调用结果去重 测试
+// =============================================================================
+
+describe("deduplicateToolResults 函数", () => {
+  test("空数组返回空数组", () => {
+    const result = deduplicateToolResults([]);
+    expect(result).toEqual([]);
+  });
+
+  test("非数组输入返回空数组", () => {
+    const result = deduplicateToolResults(null);
+    expect(result).toEqual([]);
+  });
+
+  test("无工具调用的消息原样返回", () => {
+    const messages = [
+      { role: "user", content: "你好" },
+      { role: "assistant", content: [{ type: "text", text: "你好！" }] },
+      { role: "user", content: "再见" },
+    ];
+    const result = deduplicateToolResults(messages);
+    expect(result).toEqual(messages);
+    // 确保返回的是原引用（没有重复）
+    expect(result).toBe(messages);
+  });
+
+  test("单次工具调用不做去重", () => {
+    const messages = [
+      { role: "user", content: "查找颜色" },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_1", name: "grep", input: { pattern: "color" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_1", content: "找到5处颜色引用" }],
+      },
+    ];
+    const result = deduplicateToolResults(messages);
+    // 单次调用不触发去重，原样返回
+    expect(result).toBe(messages);
+    expect(result[2].content[0].content).toBe("找到5处颜色引用");
+  });
+
+  test("相同工具+相同参数的多次调用，仅保留最新结果", () => {
+    const messages = [
+      { role: "user", content: "查找颜色" },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_1", name: "grep", input: { pattern: "color" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_1", content: "第一次搜索结果：找到5处引用" }],
+      },
+      { role: "assistant", content: [{ type: "text", text: "让我再搜一次确认" }] },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_5", name: "grep", input: { pattern: "color" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_5", content: "第二次搜索结果：找到5处引用（更新）" }],
+      },
+    ];
+
+    const result = deduplicateToolResults(messages);
+
+    // call_1 是更早的重复调用，其结果应被替换为去重提示
+    expect(result[2].content[0].content).toContain("已去重");
+    expect(result[2].content[0].content).toContain("grep");
+
+    // call_5 是最新的，其结果应保持不变
+    expect(result[5].content[0].content).toBe("第二次搜索结果：找到5处引用（更新）");
+
+    // tool_use 块不应被修改
+    expect(result[1].content[0]).toEqual({
+      type: "tool_use",
+      id: "call_1",
+      name: "grep",
+      input: { pattern: "color" },
+    });
+    expect(result[4].content[0]).toEqual({
+      type: "tool_use",
+      id: "call_5",
+      name: "grep",
+      input: { pattern: "color" },
+    });
+  });
+
+  test("不同工具名不去重", () => {
+    const messages = [
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_1", name: "grep", input: { pattern: "color" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_1", content: "grep结果" }],
+      },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_2", name: "get_page_structure", input: { query: "color" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_2", content: "结构结果" }],
+      },
+    ];
+
+    const result = deduplicateToolResults(messages);
+    // 两个不同工具，不触发去重
+    expect(result).toBe(messages);
+  });
+
+  test("相同工具名不同参数不去重", () => {
+    const messages = [
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_1", name: "grep", input: { pattern: "color" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_1", content: "color 的结果" }],
+      },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_2", name: "grep", input: { pattern: "font" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_2", content: "font 的结果" }],
+      },
+    ];
+
+    const result = deduplicateToolResults(messages);
+    // 不同参数，不触发去重
+    expect(result).toBe(messages);
+  });
+
+  test("参数顺序不同但内容相同视为相同调用", () => {
+    const messages = [
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_1", name: "grep", input: { pattern: "color", path: "src/" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_1", content: "第一次结果" }],
+      },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_2", name: "grep", input: { path: "src/", pattern: "color" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_2", content: "第二次结果" }],
+      },
+    ];
+
+    const result = deduplicateToolResults(messages);
+    // call_1 是更早的重复，应被去重
+    expect(result[1].content[0].content).toContain("已去重");
+    // call_2 是最新的，保持原样
+    expect(result[3].content[0].content).toBe("第二次结果");
+  });
+
+  test("三次及以上相同调用，仅保留最后一次", () => {
+    const messages = [
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_1", name: "grep", input: { pattern: "color" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_1", content: "第一次结果" }],
+      },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_2", name: "grep", input: { pattern: "color" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_2", content: "第二次结果" }],
+      },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_3", name: "grep", input: { pattern: "color" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_3", content: "第三次结果" }],
+      },
+    ];
+
+    const result = deduplicateToolResults(messages);
+    // call_1 和 call_2 是更早的重复，都应被去重
+    expect(result[1].content[0].content).toContain("已去重");
+    expect(result[3].content[0].content).toContain("已去重");
+    // call_3 是最新的，保持原样
+    expect(result[5].content[0].content).toBe("第三次结果");
+  });
+
+  test("多个不同工具的重复独立去重", () => {
+    const messages = [
+      // grep 首次调用
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "grep_1", name: "grep", input: { pattern: "color" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "grep_1", content: "grep 首次结果" }],
+      },
+      // apply_style 首次调用
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "style_1", name: "apply_styles", input: { css: "color: red" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "style_1", content: "首次样式结果" }],
+      },
+      // grep 重复调用
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "grep_2", name: "grep", input: { pattern: "color" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "grep_2", content: "grep 重复结果" }],
+      },
+      // apply_style 重复调用
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "style_2", name: "apply_styles", input: { css: "color: red" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "style_2", content: "重复样式结果" }],
+      },
+    ];
+
+    const result = deduplicateToolResults(messages);
+
+    // grep_1 更早，应被去重
+    expect(result[1].content[0].content).toContain("已去重");
+    expect(result[1].content[0].content).toContain("grep");
+    // style_1 更早，应被去重
+    expect(result[3].content[0].content).toContain("已去重");
+    expect(result[3].content[0].content).toContain("apply_styles");
+    // grep_2 最新，保持原样
+    expect(result[5].content[0].content).toBe("grep 重复结果");
+    // style_2 最新，保持原样
+    expect(result[7].content[0].content).toBe("重复样式结果");
+  });
+
+  test("user 消息中混合 tool_result 和 text 时只替换 tool_result", () => {
+    const messages = [
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_1", name: "grep", input: { pattern: "color" } }],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "这是普通文本" },
+          { type: "tool_result", tool_use_id: "call_1", content: "首次grep结果" },
+        ],
+      },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_2", name: "grep", input: { pattern: "color" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_2", content: "第二次grep结果" }],
+      },
+    ];
+
+    const result = deduplicateToolResults(messages);
+    // 混合内容中，text 块保持不变
+    expect(result[1].content[0].type).toBe("text");
+    expect(result[1].content[0].text).toBe("这是普通文本");
+    // 但 tool_result 被去重了
+    expect(result[1].content[1].content).toContain("已去重");
+  });
+
+  test("不修改 user 角色字符串内容消息", () => {
+    const messages = [
+      { role: "user", content: "普通文本消息" },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_1", name: "grep", input: { pattern: "test" } }],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_1", content: "结果" }],
+      },
+    ];
+    const result = deduplicateToolResults(messages);
+    // 只有一次调用，不触发去重，原样返回
+    expect(result).toBe(messages);
+  });
+
+  test("tool_result 内容为对象数组时也能去重", () => {
+    const messages = [
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_1", name: "capture_screenshot", input: {} }],
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "call_1",
+            content: [
+              { type: "text", text: "截图分析结果（首次）" },
+              { type: "image_url", image_url: { url: "data:image/png;base64,abc" } },
+            ],
+          },
+        ],
+      },
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "call_2", name: "capture_screenshot", input: {} }],
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "call_2",
+            content: [
+              { type: "text", text: "截图分析结果（第二次）" },
+              { type: "image_url", image_url: { url: "data:image/png;base64,def" } },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const result = deduplicateToolResults(messages);
+    // call_1 是更早的截图调用，整个 content 被替换为去重提示字符串
+    const dedupedContent = result[1].content[0].content;
+    expect(typeof dedupedContent).toBe("string");
+    expect(dedupedContent).toContain("已去重");
+    expect(dedupedContent).toContain("capture_screenshot");
+    // call_2 最新，保持原样
+    expect(result[3].content[0].content).toEqual([
+      { type: "text", text: "截图分析结果（第二次）" },
+      { type: "image_url", image_url: { url: "data:image/png;base64,def" } },
+    ]);
+  });
+
+  test("assistant 消息中包含 text + tool_use 时不影响文本", () => {
+    const messages = [
+      {
+        role: "assistant",
+        content: [
+          { type: "text", text: "我来查找颜色" },
+          { type: "tool_use", id: "call_1", name: "grep", input: { pattern: "color" } },
+        ],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_1", content: "首次结果" }],
+      },
+      { role: "assistant", content: [{ type: "text", text: "让我再查一次" }] },
+      {
+        role: "assistant",
+        content: [
+          { type: "text", text: "再次查找" },
+          { type: "tool_use", id: "call_2", name: "grep", input: { pattern: "color" } },
+        ],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "call_2", content: "第二次结果" }],
+      },
+    ];
+
+    const result = deduplicateToolResults(messages);
+    // assistant 消息中的 text 块不应被修改
+    expect(result[0].content[0].text).toBe("我来查找颜色");
+    expect(result[3].content[0].text).toBe("再次查找");
+    // tool_use 块不应被修改
+    expect(result[0].content[1]).toEqual({
+      type: "tool_use",
+      id: "call_1",
+      name: "grep",
+      input: { pattern: "color" },
+    });
+    // 但 tool_result 应被去重
+    expect(result[1].content[0].content).toContain("已去重");
   });
 });
