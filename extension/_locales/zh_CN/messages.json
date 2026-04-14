@@ -774,5 +774,53 @@
   "toolLabelOutput": {
     "message": "输出:",
     "description": "Label for tool output section in tool card"
+  },
+  "taskAgentQualityAudit": {
+    "message": "质量审计",
+    "description": "Display name for QualityAudit sub-agent type"
+  },
+  "toolEmptyNoOutput": {
+    "message": "(无输出)",
+    "description": "Placeholder when tool has no output"
+  },
+  "toolEmptyCannotDisplay": {
+    "message": "(无法显示)",
+    "description": "Placeholder when tool input cannot be displayed"
+  },
+  "toolEmptyNoThought": {
+    "message": "(无思考内容)",
+    "description": "Placeholder when think tool has no thought content"
+  },
+  "taskResultPassed": {
+    "message": "✓ 通过",
+    "description": "Task audit result: passed"
+  },
+  "taskResultFailed": {
+    "message": "✗ 未通过",
+    "description": "Task audit result: failed"
+  },
+  "taskResultScore": {
+    "message": "评分",
+    "description": "Label for task audit score"
+  },
+  "taskIssueHigh": {
+    "message": "{count} 严重",
+    "description": "High severity issue count with placeholder"
+  },
+  "taskIssueMedium": {
+    "message": "{count} 中等",
+    "description": "Medium severity issue count with placeholder"
+  },
+  "taskIssueLow": {
+    "message": "{count} 轻微",
+    "description": "Low severity issue count with placeholder"
+  },
+  "taskViewFullReport": {
+    "message": "查看完整报告",
+    "description": "Expand link for full task audit report"
+  },
+  "taskViewFullOutput": {
+    "message": "查看完整输出",
+    "description": "Expand link for full task text output"
   }
 }

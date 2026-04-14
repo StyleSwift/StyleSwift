@@ -5840,6 +5840,29 @@ const TOOL_I18N_KEYS = {
 };
 
 /**
+ * Task 子智能体类型到 i18n 消息键的映射
+ * 用于将 agent_type 枚举值转换为本地化显示名称
+ */
+const AGENT_TYPE_I18N_KEYS = {
+	QualityAudit: "taskAgentQualityAudit",
+};
+
+/**
+ * 获取子智能体类型的本地化显示名称
+ * @param {string} agentType - 子智能体类型（如 "QualityAudit"）
+ * @returns {string} - 本地化的显示名称，未知类型返回原始值
+ */
+function getAgentTypeDisplayName(agentType) {
+	if (!agentType) return "";
+	const i18nKey = AGENT_TYPE_I18N_KEYS[agentType];
+	if (i18nKey) {
+		const localized = getMessage(i18nKey);
+		if (localized !== i18nKey) return localized;
+	}
+	return agentType;
+}
+
+/**
  * 获取工具友好显示名称（国际化）
  * @param {string} toolName - 工具名称
  * @returns {string} - 本地化的友好显示名称
@@ -5953,7 +5976,7 @@ class ToolCardManager {
 				: displayName;
 			const agentType = input?.agent_type || "";
 			const agentBadge = agentType
-				? `<span class="task-card-badge">${this.escapeHtml(agentType)}</span>`
+				? `<span class="task-card-badge">${this.escapeHtml(getAgentTypeDisplayName(agentType))}</span>`
 				: "";
 
 			const summaryHtml = this.formatTaskOutput(output);
@@ -6104,7 +6127,7 @@ class ToolCardManager {
 			}
 			return `<code>${json}</code>`;
 		} catch {
-			return '<span class="tool-card-empty">(无法显示)</span>';
+			return '<span class="tool-card-empty">' + getMessage("toolEmptyCannotDisplay") + '</span>';
 		}
 	}
 
@@ -6115,7 +6138,7 @@ class ToolCardManager {
 	 */
 	formatOutput(output) {
 		if (!output) {
-			return '<span class="tool-card-empty">(无输出)</span>';
+			return '<span class="tool-card-empty">' + getMessage("toolEmptyNoOutput") + '</span>';
 		}
 
 		// 转义HTML
@@ -6134,7 +6157,7 @@ class ToolCardManager {
 	 */
 	formatThinkOutput(thought) {
 		if (!thought) {
-			return '<span class="tool-card-empty">(无思考内容)</span>';
+			return '<span class="tool-card-empty">' + getMessage("toolEmptyNoThought") + '</span>';
 		}
 
 		// 转义 HTML 并将换行转换为 <br>
@@ -6152,7 +6175,7 @@ class ToolCardManager {
 	 */
 	formatTaskOutput(output) {
 		if (!output) {
-			return '<span class="tool-card-empty">(无输出)</span>';
+			return '<span class="tool-card-empty">' + getMessage("toolEmptyNoOutput") + '</span>';
 		}
 
 		// 尝试提取并解析 JSON（支持被 markdown 代码块包裹的情况）
@@ -6180,11 +6203,11 @@ class ToolCardManager {
 				const score = parsed.score;
 				const passedHtml =
 					passed !== undefined
-						? `<span class="task-result-badge ${passed ? "pass" : "fail"}">${passed ? "✓ 通过" : "✗ 未通过"}</span>`
+						? `<span class="task-result-badge ${passed ? "pass" : "fail"}">${passed ? getMessage("taskResultPassed") : getMessage("taskResultFailed")}</span>`
 						: "";
 				const scoreHtml =
 					score !== undefined
-						? `<span class="task-result-score">评分 <strong>${score}</strong>/10</span>`
+						? `<span class="task-result-score">${getMessage("taskResultScore")} <strong>${score}</strong>/10</span>`
 						: "";
 				if (passedHtml || scoreHtml) {
 					parts.push(
@@ -6210,15 +6233,15 @@ class ToolCardManager {
 				const issueChips = [];
 				if (high > 0)
 					issueChips.push(
-						`<span class="task-issue-chip high">${high} 严重</span>`,
+						`<span class="task-issue-chip high">${getMessage("taskIssueHigh").replace("{count}", high)}</span>`,
 					);
 				if (medium > 0)
 					issueChips.push(
-						`<span class="task-issue-chip medium">${medium} 中等</span>`,
+						`<span class="task-issue-chip medium">${getMessage("taskIssueMedium").replace("{count}", medium)}</span>`,
 					);
 				if (low > 0)
 					issueChips.push(
-						`<span class="task-issue-chip low">${low} 轻微</span>`,
+						`<span class="task-issue-chip low">${getMessage("taskIssueLow").replace("{count}", low)}</span>`,
 					);
 				if (issueChips.length > 0) {
 					parts.push(
@@ -6231,7 +6254,7 @@ class ToolCardManager {
 			const rawEscaped = this.escapeHtml(output);
 			parts.push(`
         <details class="task-raw-details">
-          <summary>查看完整报告</summary>
+          <summary>${getMessage("taskViewFullReport")}</summary>
           <pre class="task-raw-output">${rawEscaped}</pre>
         </details>
       `);
@@ -6246,7 +6269,7 @@ class ToolCardManager {
 			return `
         <div class="task-text-preview">${preview.replace(/\n/g, "<br>")}…</div>
         <details class="task-raw-details">
-          <summary>查看完整输出</summary>
+          <summary>${getMessage("taskViewFullOutput")}</summary>
           <pre class="task-raw-output">${escaped}</pre>
         </details>
       `;

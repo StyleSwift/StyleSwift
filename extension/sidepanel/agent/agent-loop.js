@@ -9,8 +9,13 @@
  * - llm-client.js: LLM API streaming calls
  */
 
-import { BASE_TOOLS, SUBAGENT_TOOLS, ALL_TOOLS, getSkillManager } from "../tools.js";
-import { SYSTEM_BASE, AGENT_TYPES, SCREENSHOT_ANALYSIS_HINT } from "./system-prompt.js";
+import {
+  BASE_TOOLS,
+  SUBAGENT_TOOLS,
+  ALL_TOOLS,
+  getSkillManager,
+} from "../tools.js";
+import { SYSTEM_BASE, AGENT_TYPES } from "./system-prompt.js";
 import {
   DEFAULT_TOKEN_BUDGET,
   getDynamicTokenBudget,
@@ -75,7 +80,8 @@ export async function checkPageAccess(tabId) {
   } catch {
     return {
       ok: false,
-      reason: "This page does not support style modifications (browser internal page or restricted page)",
+      reason:
+        "This page does not support style modifications (browser internal page or restricted page)",
     };
   }
 }
@@ -225,10 +231,13 @@ export function detectDeadLoop(toolName, args) {
     const allSame = recentCalls.every((call) => call.key === callKey);
 
     if (allSame) {
-      console.warn("[Dead Loop Detection] Detected 3 consecutive identical tool calls:", {
-        tool: toolName,
-        args: args,
-      });
+      console.warn(
+        "[Dead Loop Detection] Detected 3 consecutive identical tool calls:",
+        {
+          tool: toolName,
+          args: args,
+        },
+      );
       return true;
     }
   }
@@ -265,7 +274,14 @@ export async function executeToolWithRetry(toolName, args, executor, context) {
 
 // --- Subagent Execution (isolated context, QualityAudit auto-screenshot injection to first message) ---
 
-export async function runTask(description, prompt, agentType, abortSignal, tabId, uiCallbacks) {
+export async function runTask(
+  description,
+  prompt,
+  agentType,
+  abortSignal,
+  tabId,
+  uiCallbacks,
+) {
   const config = AGENT_TYPES[agentType];
 
   if (!config) {
@@ -293,7 +309,7 @@ export async function runTask(description, prompt, agentType, abortSignal, tabId
   const { executeTool, getTargetTabId, captureScreenshot } =
     await import("../tools.js");
 
-  const resolvedTabId = tabId ?? await getTargetTabId();
+  const resolvedTabId = tabId ?? (await getTargetTabId());
   let firstUserContent;
   if (agentType === "QualityAudit") {
     try {
@@ -340,9 +356,11 @@ export async function runTask(description, prompt, agentType, abortSignal, tabId
         currentSubMessages = [strippedFirst, ...restMsgs];
       }
 
-      const subTokenCount = subLastInputTokens > 0
-        ? subLastInputTokens + msgTokenEstimate(currentSubMessages[currentSubMessages.length - 1])
-        : estimateTokenCount(currentSubMessages);
+      const subTokenCount =
+        subLastInputTokens > 0
+          ? subLastInputTokens +
+            msgTokenEstimate(currentSubMessages[currentSubMessages.length - 1])
+          : estimateTokenCount(currentSubMessages);
       if (subTokenCount > SUB_TOKEN_BUDGET) {
         currentSubMessages = truncateLargeToolResults(currentSubMessages);
       }
@@ -395,7 +413,27 @@ export async function runTask(description, prompt, agentType, abortSignal, tabId
                 content: [
                   {
                     type: "text",
-                    text: SCREENSHOT_ANALYSIS_HINT,
+                    text: `Screenshot captured. Please analyze this page screenshot against the following dimensions:
+
+                        **Visual Analysis Checklist (Check each item, record issues immediately upon discovery)**
+
+                        1. **Contrast**: Scan all text areas—are there insufficient contrast ratios between light text/light backgrounds and dark text/dark backgrounds (target WCAG AA ≥4.5:1)? Small fonts (<18px) need particular attention.
+
+                        2. **Visibility**: Is any content obscured, cropped, or overflowing container boundaries? Is button/link text clearly legible? Are any elements completely invisible (excessive transparency, colors matching background)?
+
+                        3. **Consistency**: Do similar elements (same-level headings, all links, all cards, all buttons) have unified appearance? Are there any unmatured elements of the same type?
+
+                        4. **Color Harmony**: Do new colors harmonize with the overall page tone? Are there color conflicts, jarring combinations, or obvious mismatches with brand colors?
+
+                        5. **Layout Integrity**: Are there element position shifts, unexpected wrapping, spacing anomalies (too large/too small/asymmetric), or broken alignment? Does horizontal scrollbar appear?
+
+                        6. **Touch Targets**: Are interactive elements (buttons, links, inputs) sufficiently large (target ≥44×44px)?
+
+                        7. **AI Traces**: Are there typical AI-generated style characteristics—gradient text, stacked glassmorphism cards, excessive rounded corners, cookie-cutter hero number display areas, gray text over colored backgrounds?
+
+                        8. **Overall Impression**: Does the page look "finished" and professional? What's already done well that's worth preserving?
+
+                        Please provide specific observations based on the above dimensions (with issue location, e.g., "second link text in left navigation..."), avoid vague descriptions.`,
                   },
                   { type: "image_url", image_url: { url: dataUrl } },
                 ],
@@ -412,7 +450,10 @@ export async function runTask(description, prompt, agentType, abortSignal, tabId
           }
 
           subCb.showToolExecuting?.(block.name);
-          const output = await executeTool(block.name, block.input, { tabId: resolvedTabId, abortSignal });
+          const output = await executeTool(block.name, block.input, {
+            tabId: resolvedTabId,
+            abortSignal,
+          });
           results.push({
             type: "tool_result",
             tool_use_id: block.id,
@@ -440,7 +481,9 @@ export async function runTask(description, prompt, agentType, abortSignal, tabId
 /** Main loop: concurrency protection → Tab lock → session/history → system(L0+L1) → streaming API → tool execution → persistence/title */
 export async function agentLoop(prompt, uiCallbacks) {
   if (isAgentRunning) {
-    uiCallbacks.appendText?.("(Processing in progress, please wait for the current request to complete)");
+    uiCallbacks.appendText?.(
+      "(Processing in progress, please wait for the current request to complete)",
+    );
     return;
   }
 
@@ -465,7 +508,7 @@ export async function agentLoop(prompt, uiCallbacks) {
     currentSession,
     countUserTextMessages,
   } = await import("../session.js");
-  const { getProfileOneLiner   } = await import("../profile.js");
+  const { getProfileOneLiner } = await import("../profile.js");
   const { getSettings, DEFAULT_MODEL } = await import("../api.js");
 
   // Get model name for dynamic token budget calculation
@@ -474,7 +517,10 @@ export async function agentLoop(prompt, uiCallbacks) {
     const settings = await getSettings();
     currentModelName = settings.model || DEFAULT_MODEL;
   } catch (err) {
-    console.warn("[Token Budget] Failed to get model name, using default:", err);
+    console.warn(
+      "[Token Budget] Failed to get model name, using default:",
+      err,
+    );
   }
   const tokenBudget = getDynamicTokenBudget(currentModelName);
 
@@ -540,7 +586,9 @@ export async function agentLoop(prompt, uiCallbacks) {
 
       // --- Inject pending user messages at the start of each iteration ---
       if (pendingUserMessages.length > 0) {
-        console.log(`[Agent] Injecting ${pendingUserMessages.length} pending user message(s) at iteration ${iterations}`);
+        console.log(
+          `[Agent] Injecting ${pendingUserMessages.length} pending user message(s) at iteration ${iterations}`,
+        );
         for (const pendingMsg of pendingUserMessages) {
           const userInjectMsg = {
             role: "user",
@@ -550,7 +598,10 @@ export async function agentLoop(prompt, uiCallbacks) {
           fullHistory.push(userInjectMsg);
           llmHistory.push(userInjectMsg);
 
-          if (onQueuedMessageProcessed && typeof pendingMsg.content === "string") {
+          if (
+            onQueuedMessageProcessed &&
+            typeof pendingMsg.content === "string"
+          ) {
             onQueuedMessageProcessed(pendingMsg.content);
           }
         }
@@ -560,9 +611,11 @@ export async function agentLoop(prompt, uiCallbacks) {
       if (iterations > 1) {
         uiCallbacks.onNewIteration?.();
       }
-      const tokenCount = lastInputTokens > 0
-        ? lastInputTokens + msgTokenEstimate(llmHistory[llmHistory.length - 1])
-        : estimateTokenCount(llmHistory, systemAndToolsOverhead);
+      const tokenCount =
+        lastInputTokens > 0
+          ? lastInputTokens +
+            msgTokenEstimate(llmHistory[llmHistory.length - 1])
+          : estimateTokenCount(llmHistory, systemAndToolsOverhead);
 
       console.log("[Token Budget] Check:", {
         iteration: iterations,
@@ -575,7 +628,12 @@ export async function agentLoop(prompt, uiCallbacks) {
 
       if (tokenCount > tokenBudget) {
         console.log("[Token Budget] Triggering compression...");
-        const compressionResult = await checkAndCompressHistory(llmHistory, tokenCount, uiCallbacks, tokenBudget);
+        const compressionResult = await checkAndCompressHistory(
+          llmHistory,
+          tokenCount,
+          uiCallbacks,
+          tokenBudget,
+        );
         fullHistory = compressionResult.fullHistory;
         llmHistory = compressionResult.llmHistory;
         lastInputTokens = 0;
@@ -609,7 +667,9 @@ export async function agentLoop(prompt, uiCallbacks) {
       llmHistory.push(fullMsg);
       if (response.stop_reason !== "tool_use") {
         if (pendingUserMessages.length > 0) {
-          console.log(`[Agent] No more tool calls, but ${pendingUserMessages.length} user message(s) pending. Injecting and continuing...`);
+          console.log(
+            `[Agent] No more tool calls, but ${pendingUserMessages.length} user message(s) pending. Injecting and continuing...`,
+          );
           for (const pendingMsg of pendingUserMessages) {
             const userInjectMsg = {
               role: "user",
@@ -658,7 +718,27 @@ export async function agentLoop(prompt, uiCallbacks) {
                 content: [
                   {
                     type: "text",
-                    text: SCREENSHOT_ANALYSIS_HINT,
+                    text: `Screenshot captured. Please analyze this page screenshot against the following dimensions:
+
+                          **Visual Analysis Checklist (Check each item, record issues immediately upon discovery)**
+
+                          1. **Contrast**: Scan all text areas—are there insufficient contrast ratios between light text/light backgrounds and dark text/dark backgrounds (target WCAG AA ≥4.5:1)? Small fonts (<18px) need particular attention.
+
+                          2. **Visibility**: Is any content obscured, cropped, or overflowing container boundaries? Is button/link text clearly legible? Are any elements completely invisible (excessive transparency, colors matching background)?
+
+                          3. **Consistency**: Do similar elements (same-level headings, all links, all cards, all buttons) have unified appearance? Are there any unmatured elements of the same type?
+
+                          4. **Color Harmony**: Do new colors harmonize with the overall page tone? Are there color conflicts, jarring combinations, or obvious mismatches with brand colors?
+
+                          5. **Layout Integrity**: Are there element position shifts, unexpected wrapping, spacing anomalies (too large/too small/asymmetric), or broken alignment? Does horizontal scrollbar appear?
+
+                          6. **Touch Targets**: Are interactive elements (buttons, links, inputs) sufficiently large (target ≥44×44px)?
+
+                          7. **AI Traces**: Are there typical AI-generated style characteristics—gradient text, stacked glassmorphism cards, excessive rounded corners, cookie-cutter hero number display areas, gray text over colored backgrounds?
+
+                          8. **Overall Impression**: Does the page look "finished" and professional? What's already done well that's worth preserving?
+
+                          Please provide specific observations based on the above dimensions (with issue location, e.g., "second link text in left navigation..."), avoid vague descriptions.`,
                   },
                   { type: "image_url", image_url: { url: dataUrl } },
                 ],
@@ -675,7 +755,10 @@ export async function agentLoop(prompt, uiCallbacks) {
           }
           const toolContext = { abortSignal: signal, tabId, uiCallbacks };
           if (block.name === "Task" && uiCallbacks.onTaskStart) {
-            toolContext.uiCallbacks = uiCallbacks.onTaskStart(block.id, block.input);
+            toolContext.uiCallbacks = uiCallbacks.onTaskStart(
+              block.id,
+              block.input,
+            );
           }
           const output = await executeToolWithRetry(
             block.name,
@@ -694,8 +777,12 @@ export async function agentLoop(prompt, uiCallbacks) {
               await import("./todo-manager.js");
             if (isAwaitingConfirmation()) {
               const abortPromise = new Promise((resolve) => {
-                const onAbort = () => resolve({ confirmed: false, aborted: true });
-                if (signal.aborted) { onAbort(); return; }
+                const onAbort = () =>
+                  resolve({ confirmed: false, aborted: true });
+                if (signal.aborted) {
+                  onAbort();
+                  return;
+                }
                 signal.addEventListener("abort", onAbort, { once: true });
               });
 
@@ -715,7 +802,8 @@ export async function agentLoop(prompt, uiCallbacks) {
                 const firstTodoId = confirmation.todos[0]?.id;
                 lastResult.content = `User confirmed the task plan. Tasks have been assigned IDs. To update status, use TodoWrite with incremental mode (include id field):\n\n${planText}\n\nExample to start first task:\nTodoWrite([{id: "${firstTodoId}", status: "in_progress"}])`;
               } else {
-                lastResult.content = "User cancelled the task plan. Please ask what adjustments the user needs.";
+                lastResult.content =
+                  "User cancelled the task plan. Please ask what adjustments the user needs.";
                 planCancelled = true;
               }
             }
@@ -727,7 +815,9 @@ export async function agentLoop(prompt, uiCallbacks) {
       llmHistory.push(toolResultMsg);
     }
     if (iterations >= MAX_ITERATIONS) {
-      uiCallbacks.appendText?.("\n(Max iterations reached, stopping automatically)");
+      uiCallbacks.appendText?.(
+        "\n(Max iterations reached, stopping automatically)",
+      );
     }
     const turnNumber = countUserTextMessages(fullHistory);
     const snapshotResult = await chrome.storage.local.get(session.stylesKey);
@@ -747,10 +837,16 @@ export async function agentLoop(prompt, uiCallbacks) {
       if (_saveState) {
         try {
           const { domain, sessionId, fullHistory, snapshots } = _saveState;
-          await saveHistory(domain, sessionId, { messages: fullHistory, snapshots });
+          await saveHistory(domain, sessionId, {
+            messages: fullHistory,
+            snapshots,
+          });
           console.log("[Agent] History saved after cancellation");
         } catch (saveErr) {
-          console.error("[Agent] Failed to save history after cancellation:", saveErr);
+          console.error(
+            "[Agent] Failed to save history after cancellation:",
+            saveErr,
+          );
         }
       }
       return;
@@ -759,16 +855,21 @@ export async function agentLoop(prompt, uiCallbacks) {
     if (err instanceof AgentError) {
       const userMessages = {
         API_KEY_INVALID: "\n⚠️ Invalid API Key, please check in settings.",
-        NETWORK_ERROR: "\n⚠️ Network connection failed, please check your network and try again.",
+        NETWORK_ERROR:
+          "\n⚠️ Network connection failed, please check your network and try again.",
         RATE_LIMITED: "\n⚠️ API rate limit exceeded, please try again later.",
         MAX_RETRIES: "\n⚠️ API retry limit reached, please try again later.",
-        CONTEXT_TOO_LONG: "\n⚠️ Conversation exceeds model context length limit, auto-compression applied but still over limit. Please try starting a new session.",
+        CONTEXT_TOO_LONG:
+          "\n⚠️ Conversation exceeds model context length limit, auto-compression applied but still over limit. Please try starting a new session.",
       };
       uiCallbacks.appendText?.(userMessages[err.code] || `\n⚠️ ${err.message}`);
       if (_saveState) {
         try {
           const { domain, sessionId, fullHistory, snapshots } = _saveState;
-          await saveHistory(domain, sessionId, { messages: fullHistory, snapshots });
+          await saveHistory(domain, sessionId, {
+            messages: fullHistory,
+            snapshots,
+          });
         } catch {}
       }
       return;

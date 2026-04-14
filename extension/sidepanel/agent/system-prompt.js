@@ -11,7 +11,27 @@
 // captures a screenshot, it only injects a brief reference so the model uses
 // its system prompt protocol instead of receiving a conflicting inline checklist.
 
-export const SCREENSHOT_ANALYSIS_HINT = `Screenshot captured. Analyze this page for visual quality issues.`;
+export const SCREENSHOT_ANALYSIS_HINT = `Screenshot captured. Please analyze this page screenshot against the following dimensions:
+
+**Visual Analysis Checklist (Check each item, record issues immediately upon discovery)**
+
+1. **Contrast**: Scan all text areas—are there insufficient contrast ratios between light text/light backgrounds and dark text/dark backgrounds (target WCAG AA ≥4.5:1)? Small fonts (<18px) need particular attention.
+
+2. **Visibility**: Is any content obscured, cropped, or overflowing container boundaries? Is button/link text clearly legible? Are any elements completely invisible (excessive transparency, colors matching background)?
+
+3. **Consistency**: Do similar elements (same-level headings, all links, all cards, all buttons) have unified appearance? Are there any unmatured elements of the same type?
+
+4. **Color Harmony**: Do new colors harmonize with the overall page tone? Are there color conflicts, jarring combinations, or obvious mismatches with brand colors?
+
+5. **Layout Integrity**: Are there element position shifts, unexpected wrapping, spacing anomalies (too large/too small/asymmetric), or broken alignment? Does horizontal scrollbar appear?
+
+6. **Touch Targets**: Are interactive elements (buttons, links, inputs) sufficiently large (target ≥44×44px)?
+
+7. **AI Traces**: Are there typical AI-generated style characteristics—gradient text, stacked glassmorphism cards, excessive rounded corners, cookie-cutter hero number display areas, gray text over colored backgrounds?
+
+8. **Overall Impression**: Does the page look "finished" and professional? What's already done well that's worth preserving?
+
+Please provide specific observations based on the above dimensions (with issue location, e.g., "second link text in left navigation..."), avoid vague descriptions.`;
 
 export const SYSTEM_BASE = `You are StyleSwift, a web styling personalization agent. Your sole purpose is
 to help users achieve personalized web visual styles through precise CSS modifications.

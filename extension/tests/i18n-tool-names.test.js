@@ -31,6 +31,18 @@ const ZH_CN_MESSAGES = {
 	toolStatusSubAgentRunning: { message: '子智能体运行中…' },
 	toolLabelInput: { message: '输入:' },
 	toolLabelOutput: { message: '输出:' },
+	taskAgentQualityAudit: { message: '质量审计' },
+	toolEmptyNoOutput: { message: '(无输出)' },
+	toolEmptyCannotDisplay: { message: '(无法显示)' },
+	toolEmptyNoThought: { message: '(无思考内容)' },
+	taskResultPassed: { message: '✓ 通过' },
+	taskResultFailed: { message: '✗ 未通过' },
+	taskResultScore: { message: '评分' },
+	taskIssueHigh: { message: '{count} 严重' },
+	taskIssueMedium: { message: '{count} 中等' },
+	taskIssueLow: { message: '{count} 轻微' },
+	taskViewFullReport: { message: '查看完整报告' },
+	taskViewFullOutput: { message: '查看完整输出' },
 };
 
 const EN_MESSAGES = {
@@ -50,6 +62,18 @@ const EN_MESSAGES = {
 	toolStatusSubAgentRunning: { message: 'Sub-agent running...' },
 	toolLabelInput: { message: 'Input:' },
 	toolLabelOutput: { message: 'Output:' },
+	taskAgentQualityAudit: { message: 'Quality Audit' },
+	toolEmptyNoOutput: { message: '(No output)' },
+	toolEmptyCannotDisplay: { message: '(Cannot display)' },
+	toolEmptyNoThought: { message: '(No reasoning content)' },
+	taskResultPassed: { message: '✓ Passed' },
+	taskResultFailed: { message: '✗ Failed' },
+	taskResultScore: { message: 'Score' },
+	taskIssueHigh: { message: '{count} Critical' },
+	taskIssueMedium: { message: '{count} Medium' },
+	taskIssueLow: { message: '{count} Minor' },
+	taskViewFullReport: { message: 'View full report' },
+	taskViewFullOutput: { message: 'View full output' },
 };
 
 // ============================================================================
@@ -204,6 +228,18 @@ describe('工具名称 i18n 映射', () => {
 				'toolStatusSubAgentRunning',
 				'toolLabelInput',
 				'toolLabelOutput',
+				'taskAgentQualityAudit',
+				'toolEmptyNoOutput',
+				'toolEmptyCannotDisplay',
+				'toolEmptyNoThought',
+				'taskResultPassed',
+				'taskResultFailed',
+				'taskResultScore',
+				'taskIssueHigh',
+				'taskIssueMedium',
+				'taskIssueLow',
+				'taskViewFullReport',
+				'taskViewFullOutput',
 			];
 
 			for (const key of requiredKeys) {
@@ -229,6 +265,18 @@ describe('工具名称 i18n 映射', () => {
 				'toolStatusSubAgentRunning',
 				'toolLabelInput',
 				'toolLabelOutput',
+				'taskAgentQualityAudit',
+				'toolEmptyNoOutput',
+				'toolEmptyCannotDisplay',
+				'toolEmptyNoThought',
+				'taskResultPassed',
+				'taskResultFailed',
+				'taskResultScore',
+				'taskIssueHigh',
+				'taskIssueMedium',
+				'taskIssueLow',
+				'taskViewFullReport',
+				'taskViewFullOutput',
 			];
 
 			for (const key of requiredKeys) {
@@ -293,6 +341,39 @@ describe('工具名称 i18n 映射', () => {
 			}
 
 			expect(getToolDisplayNameWithFallback('some_random_tool')).toBe('some_random_tool');
+		});
+	});
+
+	describe('getAgentTypeDisplayName', () => {
+		// 模拟 getAgentTypeDisplayName 函数逻辑
+		function getAgentTypeDisplayName(agentType) {
+			if (!agentType) return '';
+			const AGENT_TYPE_I18N_KEYS = {
+				QualityAudit: 'taskAgentQualityAudit',
+			};
+			const i18nKey = AGENT_TYPE_I18N_KEYS[agentType];
+			if (i18nKey) {
+				const localized = getMessageMock(i18nKey);
+				if (localized !== i18nKey) return localized;
+			}
+			return agentType;
+		}
+
+		it('应该返回已知的子智能体类型本地化名称', () => {
+			expect(getAgentTypeDisplayName('QualityAudit')).toBe('质量审计');
+		});
+
+		it('未知类型应该回退到原始名称', () => {
+			expect(getAgentTypeDisplayName('SomeFutureAgent')).toBe('SomeFutureAgent');
+		});
+
+		it('空字符串应该返回空字符串', () => {
+			expect(getAgentTypeDisplayName('')).toBe('');
+		});
+
+		it('null/undefined 应该返回空字符串', () => {
+			expect(getAgentTypeDisplayName(null)).toBe('');
+			expect(getAgentTypeDisplayName(undefined)).toBe('');
 		});
 	});
 });

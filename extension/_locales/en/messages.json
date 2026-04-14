@@ -774,5 +774,53 @@
   "toolLabelOutput": {
     "message": "Output:",
     "description": "Label for tool output section in tool card"
+  },
+  "taskAgentQualityAudit": {
+    "message": "Quality Audit",
+    "description": "Display name for QualityAudit sub-agent type"
+  },
+  "toolEmptyNoOutput": {
+    "message": "(No output)",
+    "description": "Placeholder when tool has no output"
+  },
+  "toolEmptyCannotDisplay": {
+    "message": "(Cannot display)",
+    "description": "Placeholder when tool input cannot be displayed"
+  },
+  "toolEmptyNoThought": {
+    "message": "(No reasoning content)",
+    "description": "Placeholder when think tool has no thought content"
+  },
+  "taskResultPassed": {
+    "message": "✓ Passed",
+    "description": "Task audit result: passed"
+  },
+  "taskResultFailed": {
+    "message": "✗ Failed",
+    "description": "Task audit result: failed"
+  },
+  "taskResultScore": {
+    "message": "Score",
+    "description": "Label for task audit score"
+  },
+  "taskIssueHigh": {
+    "message": "{count} Critical",
+    "description": "High severity issue count with placeholder"
+  },
+  "taskIssueMedium": {
+    "message": "{count} Medium",
+    "description": "Medium severity issue count with placeholder"
+  },
+  "taskIssueLow": {
+    "message": "{count} Minor",
+    "description": "Low severity issue count with placeholder"
+  },
+  "taskViewFullReport": {
+    "message": "View full report",
+    "description": "Expand link for full task audit report"
+  },
+  "taskViewFullOutput": {
+    "message": "View full output",
+    "description": "Expand link for full task text output"
   }
 }

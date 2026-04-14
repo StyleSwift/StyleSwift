@@ -355,6 +355,9 @@ describe('isDefaultProfile', () => {
   test('使用 chrome.i18n.getMessage 来判断', () => {
     // 验证 isDefaultProfile 是通过 getMessage 动态比较，而非硬编码
     isDefaultProfile(DEFAULT_PROFILE_TEXT);
-    expect(chrome.i18n.getMessage).toHaveBeenCalledWith('newUserProfile');
+    // getMessage 被调用时 key 为 'newUserProfile'（可能有额外的 undefined 参数）
+    const calls = chrome.i18n.getMessage.mock.calls;
+    const lastCall = calls[calls.length - 1];
+    expect(lastCall[0]).toBe('newUserProfile');
   });
 });

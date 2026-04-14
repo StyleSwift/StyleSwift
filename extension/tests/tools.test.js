@@ -1737,14 +1737,14 @@ describe("executeTool 统一分派器", () => {
   async function runGetUserProfile() {
     const { userProfile } = await mockStorage.get("userProfile");
     if (!userProfile?.trim()) {
-      return "(新用户，暂无风格偏好记录)";
+      return "(新用户，暂无风格偏好记录)"; // i18n: matches newUserProfile message key in _locales
     }
     return userProfile;
   }
 
   async function runUpdateUserProfile(content) {
     await mockStorage.set({ userProfile: content });
-    return "已更新用户画像";
+    return "已更新用户画像"; // i18n: matches profileUpdated message key in _locales
   }
 
   const SKILL_PATHS = {
@@ -1902,7 +1902,7 @@ describe("executeTool 统一分派器", () => {
     test("get_user_profile 正确路由", async () => {
       // 无画像时
       let result = await executeTool("get_user_profile", {});
-      expect(result).toBe("(新用户，暂无风格偏好记录)");
+      expect(result).toBe("(新用户，暂无风格偏好记录)"); // i18n: matches newUserProfile message key
 
       // 有画像时
       await mockStorage.set({ userProfile: "用户偏好深色模式" });
@@ -1915,7 +1915,7 @@ describe("executeTool 统一分派器", () => {
         content: "用户偏好圆角设计",
       });
 
-      expect(result).toBe("已更新用户画像");
+      expect(result).toBe("已更新用户画像"); // i18n: matches profileUpdated message key
       expect(mockStorage.data.userProfile).toBe("用户偏好圆角设计");
     });
 
