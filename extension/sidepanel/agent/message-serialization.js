@@ -314,15 +314,21 @@ export function finalizeOpenAIStream(state, callbacks) {
  * @param {Object} callbacks - { onReasoning, onText, onToolCall }
  */
 export function parseClaudeStreamLine(eventType, line, state, callbacks) {
-  if (!line.startsWith("data: ")) return;
+  // Handle both "data:" and "data: " formats
+  if (!line.startsWith("data:")) return;
 
   try {
-    const data = JSON.parse(line.slice(6));
+    // Extract JSON payload - handle "data:{...}" and "data: {...}" formats
+    const jsonStr = line.startsWith("data: ") ? line.slice(6) : line.slice(5);
+    const data = JSON.parse(jsonStr);
 
     if (eventType === "content_block_start") {
       const block = data.content_block;
       const idx = data.index;
-      if (block.type === "text") {
+      if (block.type === "thinking") {
+        // Claude extended thinking block - initialize reasoning accumulator
+        state.blocks[idx] = { type: "thinking", thinking: "" };
+      } else if (block.type === "text") {
         state.blocks[idx] = { type: "text", text: "" };
       } else if (block.type === "tool_use") {
         state.blocks[idx] = {
@@ -342,8 +348,12 @@ export function parseClaudeStreamLine(eventType, line, state, callbacks) {
         block.text += delta.text;
         callbacks.onText?.(delta.text);
       } else if (delta.type === "thinking_delta") {
+        // Accumulate thinking content to block and state.reasoning
+        block.thinking += delta.thinking;
         state.reasoning += delta.thinking;
         callbacks.onReasoning?.(delta.thinking);
+      } else if (delta.type === "signature_delta") {
+        // Signature for thinking block (no content to display)
       } else if (delta.type === "input_json_delta") {
         block.input += delta.partial_json;
       }

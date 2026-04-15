@@ -62,8 +62,10 @@ function checkHttpError(response) {
   return Promise.resolve();
 }
 
+
 // --- OpenAI Streaming API ---
-// Call OpenAI chat/completions API with streaming
+// Call OpenAI chat/completions API with streaming (OpenAI-compatible SSE format only)
+// Provider detection is done by detectProvider() based on URL, not runtime SSE detection
 
 async function callOpenAIStream(
   { apiKey, model, apiBase },
@@ -105,6 +107,7 @@ async function callOpenAIStream(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
 
+  // State for OpenAI-compatible format
   const state = {
     text: "",
     reasoning: "",
@@ -114,6 +117,7 @@ async function callOpenAIStream(
   };
 
   let buffer = "";
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -124,6 +128,7 @@ async function callOpenAIStream(
 
     for (const line of lines) {
       if (!line.trim()) continue;
+      // OpenAI-compatible format: data: {"choices":[...]}
       parseOpenAIStreamLine(line, state, callbacks);
     }
   }
@@ -132,7 +137,8 @@ async function callOpenAIStream(
 }
 
 // --- Claude Streaming API ---
-// Call Claude messages API with streaming
+// Call Claude messages API with streaming (Claude-native SSE format only)
+// Provider detection is done by detectProvider() based on URL - if URL contains /anthropic, use this path
 
 async function callClaudeStream(
   { apiKey, model, apiBase },
@@ -178,6 +184,7 @@ async function callClaudeStream(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
 
+  // State for Claude-native format
   const state = {
     blocks: [],
     reasoning: "",
@@ -198,9 +205,13 @@ async function callClaudeStream(
 
     for (const line of lines) {
       if (!line.trim()) continue;
-      if (line.startsWith("event: ")) {
-        currentEventType = line.slice(7).trim();
-      } else if (line.startsWith("data: ")) {
+
+      // Claude-native format: event:message_start or event: message_start + data: {...}
+      if (line.startsWith("event:")) {
+        // Handle both "event:" and "event: " formats
+        currentEventType = line.slice(6).trim();
+      } else if (line.startsWith("data:")) {
+        // Handle both "data:" and "data: " formats
         parseClaudeStreamLine(currentEventType, line, state, callbacks);
       }
     }
