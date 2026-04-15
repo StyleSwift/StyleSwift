@@ -10,7 +10,7 @@
 
 export const CAPTURE_SCREENSHOT_TOOL = {
   name: "capture_screenshot",
-  description: "截取当前页面可见区域的截图，用于视觉分析页面样式效果。",
+  description: "截取当前页面可见区域的截图，用于视觉分析页面样式效果。返回截图和分析指南。",
   input_schema: {
     type: "object",
     properties: {},
@@ -43,7 +43,12 @@ export function createScreenshotToolHandlers(captureScreenshotFn) {
   return {
     capture_screenshot: async (_args, context) => {
       const dataUrl = await captureScreenshotFn(context?.tabId);
-      return dataUrl;
+      // 返回特殊对象格式，包含截图 dataUrl
+      // agent-loop 会检测此格式并特殊处理：将图像放入单独的 user message
+      return {
+        _screenshot_result: true,
+        dataUrl: dataUrl,
+      };
     },
   };
 }

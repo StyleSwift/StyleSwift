@@ -272,7 +272,7 @@ export async function executeToolWithRetry(toolName, args, executor, context) {
   return `Tool ${toolName} execution failed: ${lastError?.message || lastError}`;
 }
 
-// --- Subagent Execution (isolated context, QualityAudit auto-screenshot injection to first message) ---
+// --- Subagent Execution (isolated context, Agent autonomously calls tools including capture_screenshot) ---
 
 export async function runTask(
   description,
@@ -306,25 +306,12 @@ export async function runTask(
       ? SUBAGENT_TOOLS
       : SUBAGENT_TOOLS.filter((t) => config.tools.includes(t.name));
 
-  const { executeTool, getTargetTabId, captureScreenshot } =
-    await import("../tools.js");
+  const { executeTool, getTargetTabId } = await import("../tools.js");
 
   const resolvedTabId = tabId ?? (await getTargetTabId());
-  let firstUserContent;
-  if (agentType === "QualityAudit") {
-    try {
-      const dataUrl = await captureScreenshot(resolvedTabId);
-      firstUserContent = [
-        { type: "text", text: enrichedPrompt },
-        { type: "image_url", image_url: { url: dataUrl } },
-      ];
-    } catch (err) {
-      console.warn("[Subagent] Screenshot failed, using text-only:", err);
-      firstUserContent = enrichedPrompt;
-    }
-  } else {
-    firstUserContent = enrichedPrompt;
-  }
+  // 统一处理：所有子Agent都使用文本prompt，由Agent按系统提示自主调用工具
+  // QualityAudit 的截图由 Agent 通过 capture_screenshot 工具主动获取
+  const firstUserContent = enrichedPrompt;
 
   const SUB_TOKEN_BUDGET = 40000;
   const subMessages = [{ role: "user", content: firstUserContent }];
@@ -392,6 +379,7 @@ export async function runTask(
       }
 
       const results = [];
+      const screenshotMessages = []; // 收集截图相关的额外消息
       for (const block of response.content) {
         if (abortSignal?.aborted) return "(Subagent cancelled)";
 
@@ -404,67 +392,47 @@ export async function runTask(
               return `(Subagent detected dead loop: ${block.name} called ${DUPLICATE_CALL_THRESHOLD} times consecutively)`;
             }
           }
-          if (block.name === "capture_screenshot") {
-            try {
-              const dataUrl = await captureScreenshot(resolvedTabId);
-              results.push({
-                type: "tool_result",
-                tool_use_id: block.id,
-                content: [
-                  {
-                    type: "text",
-                    text: `Screenshot captured. Please analyze this page screenshot against the following dimensions:
-
-                        **Visual Analysis Checklist (Check each item, record issues immediately upon discovery)**
-
-                        1. **Contrast**: Scan all text areas—are there insufficient contrast ratios between light text/light backgrounds and dark text/dark backgrounds (target WCAG AA ≥4.5:1)? Small fonts (<18px) need particular attention.
-
-                        2. **Visibility**: Is any content obscured, cropped, or overflowing container boundaries? Is button/link text clearly legible? Are any elements completely invisible (excessive transparency, colors matching background)?
-
-                        3. **Consistency**: Do similar elements (same-level headings, all links, all cards, all buttons) have unified appearance? Are there any unmatured elements of the same type?
-
-                        4. **Color Harmony**: Do new colors harmonize with the overall page tone? Are there color conflicts, jarring combinations, or obvious mismatches with brand colors?
-
-                        5. **Layout Integrity**: Are there element position shifts, unexpected wrapping, spacing anomalies (too large/too small/asymmetric), or broken alignment? Does horizontal scrollbar appear?
-
-                        6. **Touch Targets**: Are interactive elements (buttons, links, inputs) sufficiently large (target ≥44×44px)?
-
-                        7. **AI Traces**: Are there typical AI-generated style characteristics—gradient text, stacked glassmorphism cards, excessive rounded corners, cookie-cutter hero number display areas, gray text over colored backgrounds?
-
-                        8. **Overall Impression**: Does the page look "finished" and professional? What's already done well that's worth preserving?
-
-                        Please provide specific observations based on the above dimensions (with issue location, e.g., "second link text in left navigation..."), avoid vague descriptions.`,
-                  },
-                  { type: "image_url", image_url: { url: dataUrl } },
-                ],
-              });
-            } catch (err) {
-              results.push({
-                type: "tool_result",
-                tool_use_id: block.id,
-                content: `Screenshot failed: ${err.message}`,
-              });
-            }
-            subCb.showToolResult?.(block.id, "Screenshot captured");
-            continue;
-          }
-
           subCb.showToolExecuting?.(block.name);
           const output = await executeTool(block.name, block.input, {
             tabId: resolvedTabId,
             abortSignal,
           });
-          results.push({
-            type: "tool_result",
-            tool_use_id: block.id,
-            content: output,
-          });
-          subCb.showToolResult?.(block.id, output);
+
+          // 检测截图特殊格式：将图像放入单独的 user message（兼容 OpenAI）
+          if (output && typeof output === "object" && output._screenshot_result) {
+            const { SCREENSHOT_ANALYSIS_HINT } = await import("./system-prompt.js");
+            // tool_result 只包含确认文本
+            results.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: "Screenshot captured successfully.",
+            });
+            // 截图和分析提示放入单独的 user message
+            screenshotMessages.push({
+              role: "user",
+              content: [
+                { type: "text", text: SCREENSHOT_ANALYSIS_HINT },
+                { type: "image_url", image_url: { url: output.dataUrl } },
+              ],
+            });
+            subCb.showToolResult?.(block.id, "Screenshot captured (with image)");
+          } else {
+            results.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: output,
+            });
+            subCb.showToolResult?.(block.id, output);
+          }
         }
       }
 
+      // 先添加 tool_results，再添加截图消息（保持消息顺序）
       if (results.length > 0) {
         subMessages.push({ role: "user", content: results });
+      }
+      if (screenshotMessages.length > 0) {
+        subMessages.push(...screenshotMessages);
       }
     } catch (error) {
       if (error.name === "AbortError") return "(Subagent cancelled)";
@@ -495,7 +463,7 @@ export async function agentLoop(prompt, uiCallbacks) {
     await import("./todo-manager.js");
   resetTodos();
   setTodoUpdateCallback(uiCallbacks.onTodoUpdate || null);
-  const { getTargetTabId, lockTab, unlockTab, executeTool, captureScreenshot } =
+  const { getTargetTabId, lockTab, unlockTab, executeTool } =
     await import("../tools.js");
   const {
     getOrCreateSession,
@@ -685,6 +653,7 @@ export async function agentLoop(prompt, uiCallbacks) {
         break;
       }
       const results = [];
+      const screenshotMessages = []; // 收集截图相关的额外消息
       let planCancelled = false;
       for (const block of response.content) {
         if (signal.aborted) {
@@ -709,50 +678,6 @@ export async function agentLoop(prompt, uiCallbacks) {
             continue;
           }
           uiCallbacks.showToolExecuting?.(block.name);
-          if (block.name === "capture_screenshot") {
-            try {
-              const dataUrl = await captureScreenshot(tabId);
-              results.push({
-                type: "tool_result",
-                tool_use_id: block.id,
-                content: [
-                  {
-                    type: "text",
-                    text: `Screenshot captured. Please analyze this page screenshot against the following dimensions:
-
-                          **Visual Analysis Checklist (Check each item, record issues immediately upon discovery)**
-
-                          1. **Contrast**: Scan all text areas—are there insufficient contrast ratios between light text/light backgrounds and dark text/dark backgrounds (target WCAG AA ≥4.5:1)? Small fonts (<18px) need particular attention.
-
-                          2. **Visibility**: Is any content obscured, cropped, or overflowing container boundaries? Is button/link text clearly legible? Are any elements completely invisible (excessive transparency, colors matching background)?
-
-                          3. **Consistency**: Do similar elements (same-level headings, all links, all cards, all buttons) have unified appearance? Are there any unmatured elements of the same type?
-
-                          4. **Color Harmony**: Do new colors harmonize with the overall page tone? Are there color conflicts, jarring combinations, or obvious mismatches with brand colors?
-
-                          5. **Layout Integrity**: Are there element position shifts, unexpected wrapping, spacing anomalies (too large/too small/asymmetric), or broken alignment? Does horizontal scrollbar appear?
-
-                          6. **Touch Targets**: Are interactive elements (buttons, links, inputs) sufficiently large (target ≥44×44px)?
-
-                          7. **AI Traces**: Are there typical AI-generated style characteristics—gradient text, stacked glassmorphism cards, excessive rounded corners, cookie-cutter hero number display areas, gray text over colored backgrounds?
-
-                          8. **Overall Impression**: Does the page look "finished" and professional? What's already done well that's worth preserving?
-
-                          Please provide specific observations based on the above dimensions (with issue location, e.g., "second link text in left navigation..."), avoid vague descriptions.`,
-                  },
-                  { type: "image_url", image_url: { url: dataUrl } },
-                ],
-              });
-            } catch (err) {
-              results.push({
-                type: "tool_result",
-                tool_use_id: block.id,
-                content: `Screenshot failed: ${err.message}`,
-              });
-            }
-            uiCallbacks.showToolResult?.(block.id, "Screenshot captured");
-            continue;
-          }
           const toolContext = { abortSignal: signal, tabId, uiCallbacks };
           if (block.name === "Task" && uiCallbacks.onTaskStart) {
             toolContext.uiCallbacks = uiCallbacks.onTaskStart(
@@ -766,12 +691,34 @@ export async function agentLoop(prompt, uiCallbacks) {
             executeTool,
             toolContext,
           );
-          results.push({
-            type: "tool_result",
-            tool_use_id: block.id,
-            content: output,
-          });
-          uiCallbacks.showToolResult?.(block.id, output);
+
+          // 检测截图特殊格式：将图像放入单独的 user message（兼容 OpenAI）
+          if (output && typeof output === "object" && output._screenshot_result) {
+            const { SCREENSHOT_ANALYSIS_HINT } = await import("./system-prompt.js");
+            // tool_result 只包含确认文本
+            results.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: "Screenshot captured successfully.",
+            });
+            // 截图和分析提示放入单独的 user message
+            screenshotMessages.push({
+              role: "user",
+              content: [
+                { type: "text", text: SCREENSHOT_ANALYSIS_HINT },
+                { type: "image_url", image_url: { url: output.dataUrl } },
+              ],
+            });
+            uiCallbacks.showToolResult?.(block.id, "Screenshot captured (with image)");
+          } else {
+            results.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: output,
+            });
+            uiCallbacks.showToolResult?.(block.id, output);
+          }
+
           if (block.name === "TodoWrite") {
             const { isAwaitingConfirmation, requestConfirmation } =
               await import("./todo-manager.js");
@@ -813,6 +760,13 @@ export async function agentLoop(prompt, uiCallbacks) {
       const toolResultMsg = { role: "user", content: results };
       fullHistory.push(toolResultMsg);
       llmHistory.push(toolResultMsg);
+      // 添加截图消息（如果有的话）
+      if (screenshotMessages.length > 0) {
+        for (const msg of screenshotMessages) {
+          fullHistory.push(msg);
+          llmHistory.push(msg);
+        }
+      }
     }
     if (iterations >= MAX_ITERATIONS) {
       uiCallbacks.appendText?.(
