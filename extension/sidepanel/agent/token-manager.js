@@ -366,6 +366,7 @@ export async function summarizeOldTurns(oldHistory, existingSummary = null) {
 
   if (!condensed.trim() && !existingSummary) return "(No history)";
 
+  let systemPrompt;
   let userContent;
   if (existingSummary) {
     systemPrompt = `You are a conversation history compression assistant. Integrate the existing summary with new conversation content.

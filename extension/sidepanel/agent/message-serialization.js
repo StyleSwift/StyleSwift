@@ -35,7 +35,7 @@ export function serializeToOpenAI(system, messages) {
         : msg.content;
       result.push({ role: "user", content: userContent });
     } else if (msg.role === "assistant") {
-      // OpenAI assistant: text + tool_calls array
+      // OpenAI assistant: text + tool_calls array + reasoning_content
       const textBlocks = (msg.content || []).filter((b) => b.type === "text");
       const toolBlocks = (msg.content || []).filter((b) => b.type === "tool_use");
 
@@ -50,7 +50,18 @@ export function serializeToOpenAI(system, messages) {
       }));
 
       const assistantMsg = { role: "assistant" };
-      if (textContent) assistantMsg.content = textContent;
+
+      // Include reasoning as reasoning_content field (for DeepSeek-R1, etc.)
+      // Do NOT duplicate in content - reasoning_content is the proper place for it
+      if (msg._reasoning) {
+        assistantMsg.reasoning_content = msg._reasoning;
+      }
+
+      // Only set content if there's actual text content (not just reasoning)
+      if (textContent) {
+        assistantMsg.content = textContent;
+      }
+
       if (toolCalls.length > 0) assistantMsg.tool_calls = toolCalls;
       result.push(assistantMsg);
     }
@@ -161,6 +172,12 @@ export function serializeToClaude(messages) {
     } else if (msg.role === "assistant") {
       // Claude assistant: content blocks array
       const claudeContent = [];
+
+      // Include reasoning as thinking block if present
+      if (msg._reasoning) {
+        claudeContent.push({ type: "thinking", thinking: msg._reasoning });
+      }
+
       const textBlocks = (msg.content || []).filter((b) => b.type === "text");
       const toolBlocks = (msg.content || []).filter((b) => b.type === "tool_use");
 
