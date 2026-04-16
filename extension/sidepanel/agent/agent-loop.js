@@ -27,6 +27,7 @@ import {
   truncateLargeToolResults,
   msgTokenEstimate,
   deduplicateToolResults,
+  pruneReasoningContent,
 } from "./token-manager.js";
 import {
   AgentError,
@@ -355,6 +356,9 @@ export async function runTask(
       // Deduplicate identical tool calls (same name + same params) to save context
       currentSubMessages = deduplicateToolResults(currentSubMessages);
 
+      // Prune reasoning_content: only keep the last assistant message's reasoning
+      currentSubMessages = pruneReasoningContent(currentSubMessages);
+
       const response = await callLLMStreamSafe(
         subSystem,
         currentSubMessages,
@@ -614,6 +618,9 @@ export async function agentLoop(prompt, uiCallbacks) {
         ];
       }
       isFirstIteration = false;
+      // Prune reasoning_content: only keep the last assistant message's reasoning
+      // This mirrors Anthropic's clear_thinking_20251015 strategy to reduce token inflation
+      currentLlmHistory = pruneReasoningContent(currentLlmHistory);
       response = await callLLMStreamSafe(
         system,
         currentLlmHistory,
@@ -880,6 +887,7 @@ export {
   estimateTokenCount,
   truncateLargeToolResults,
   deduplicateToolResults,
+  pruneReasoningContent,
 };
 
 // Re-export from llm-client.js

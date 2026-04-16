@@ -71,6 +71,59 @@ function collectMsgTexts(msg, out) {
   }
 }
 
+// --- Reasoning Content Pruning ---
+// Remove reasoning_content from older assistant messages to save tokens.
+// Only keep the most recent reasoning block, mirroring Anthropic's
+// clear_thinking_20251015 strategy with keep: { type: "thinking_turns", value: 1 }
+
+/**
+ * Prune reasoning_content: keep only the last assistant message's reasoning.
+ * Removes _reasoning from all previous assistant messages to save tokens.
+ * This mirrors Anthropic's clear_thinking_20251015 strategy with keep: { type: "thinking_turns", value: 1 }
+ *
+ * @param {Array} messages - ICF message array
+ * @returns {Array} - Messages with pruned reasoning (shallow copy)
+ */
+export function pruneReasoningContent(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) return messages;
+
+  // Find the last assistant message that has _reasoning
+  let lastReasoningIndex = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "assistant" && messages[i]._reasoning) {
+      lastReasoningIndex = i;
+      break;
+    }
+  }
+
+  // No assistant messages with reasoning, or only one - no pruning needed
+  if (lastReasoningIndex <= 0) return messages;
+
+  // Prune: remove _reasoning from all assistant messages before lastReasoningIndex
+  const prunedMessages = [];
+  let prunedCount = 0;
+
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+
+    if (msg.role === "assistant" && msg._reasoning && i < lastReasoningIndex) {
+      // Shallow copy without _reasoning
+      const prunedMsg = { ...msg };
+      delete prunedMsg._reasoning;
+      prunedMessages.push(prunedMsg);
+      prunedCount++;
+    } else {
+      prunedMessages.push(msg);
+    }
+  }
+
+  if (prunedCount > 0) {
+    console.log(`[Reasoning Prune] Removed ${prunedCount} older reasoning blocks, kept latest at index ${lastReasoningIndex}`);
+  }
+
+  return prunedMessages;
+}
+
 /**
  * Estimate single message token count
  * @param {Object} msg - ICF message
