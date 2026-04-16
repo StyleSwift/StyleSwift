@@ -18,13 +18,18 @@ Use cases:
 - Tracking task completion progress
 
 Working modes:
-1. Planning mode (first call): Pass a complete task array with all tasks set to status: pending.
+1. Planning mode (first call): Pass a complete task array WITHOUT id field. All tasks should have status: pending.
    The plan is presented to the user for confirmation. User can edit, add, or remove steps.
-   Execution begins only after confirmation.
+   Execution begins only after confirmation. The system generates IDs in format "todo_X".
    Example: todos: [{content: "Get page structure", status: "pending"}, {content: "Modify navigation styles", status: "pending"}]
 
-2. Update mode (subsequent calls): Pass task id and new status to update individual task progress (no confirmation needed).
+2. Update mode (subsequent calls): Pass task id (MUST use the ID returned by planning mode, format: "todo_X") and new status.
+   DO NOT create your own IDs - always use the IDs from the confirmed plan.
    Example: todos: [{id: "todo_1", status: "in_progress"}] or [{id: "todo_1", status: "completed"}]
+
+⚠️ IMPORTANT: If you provide an id field, the system enters update mode and will NOT create new tasks.
+   - Providing custom IDs like "1", "task_1" will fail because they don't match system-generated "todo_X" format.
+   - If current task list is empty, update mode cannot add tasks - use planning mode instead.
 
 Status flow: pending → in_progress → completed
 - Mark as in_progress when starting a task

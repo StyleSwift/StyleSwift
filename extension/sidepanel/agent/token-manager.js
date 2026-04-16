@@ -72,14 +72,34 @@ function collectMsgTexts(msg, out) {
 }
 
 // --- Reasoning Content Pruning ---
-// Remove reasoning_content from older assistant messages to save tokens.
-// Only keep the most recent reasoning block, mirroring Anthropic's
-// clear_thinking_20251015 strategy with keep: { type: "thinking_turns", value: 1 }
+// Remove reasoning_content from older conversation turns to save tokens.
+// Only keep the reasoning blocks from the most recent turn (user message → assistant response chain).
+// This preserves reasoning continuity within the current turn while reducing token inflation.
 
 /**
- * Prune reasoning_content: keep only the last assistant message's reasoning.
- * Removes _reasoning from all previous assistant messages to save tokens.
- * This mirrors Anthropic's clear_thinking_20251015 strategy with keep: { type: "thinking_turns", value: 1 }
+ * Check if a user message is a "clean" user message (not a tool_result message).
+ * Tool_result messages are part of a tool call chain, not a new turn start.
+ * @param {Object} msg - ICF message
+ * @returns {boolean} - True if it's a clean user message (new turn start)
+ */
+function isCleanUserMessage(msg) {
+  if (msg.role !== "user") return false;
+  // Pure text user message (new turn start)
+  if (typeof msg.content === "string") return true;
+  // User message with content array but no tool_result (new turn start)
+  if (Array.isArray(msg.content)) {
+    return !msg.content.some((c) => c.type === "tool_result");
+  }
+  return false;
+}
+
+/**
+ * Prune reasoning_content: keep only the reasoning blocks from the most recent turn.
+ * A "turn" starts from a clean user message (not tool_result) and includes all subsequent
+ * assistant responses and tool_result chains until the next clean user message.
+ * 
+ * This preserves reasoning continuity within the current conversation turn,
+ * preventing the Agent from forgetting context during multi-step tool calls.
  *
  * @param {Array} messages - ICF message array
  * @returns {Array} - Messages with pruned reasoning (shallow copy)
@@ -87,26 +107,30 @@ function collectMsgTexts(msg, out) {
 export function pruneReasoningContent(messages) {
   if (!Array.isArray(messages) || messages.length === 0) return messages;
 
-  // Find the last assistant message that has _reasoning
-  let lastReasoningIndex = -1;
+  // Find the start of the most recent turn: the last clean user message
+  // (a user message that is NOT a tool_result message)
+  let currentTurnStartIndex = -1;
   for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === "assistant" && messages[i]._reasoning) {
-      lastReasoningIndex = i;
+    if (isCleanUserMessage(messages[i])) {
+      currentTurnStartIndex = i;
       break;
     }
   }
 
-  // No assistant messages with reasoning, or only one - no pruning needed
-  if (lastReasoningIndex <= 0) return messages;
+  // No clean user message found - keep all reasoning (edge case)
+  if (currentTurnStartIndex === -1) return messages;
 
-  // Prune: remove _reasoning from all assistant messages before lastReasoningIndex
+  // Only one turn in history - no pruning needed
+  if (currentTurnStartIndex === 0) return messages;
+
+  // Prune: remove _reasoning from all assistant messages BEFORE currentTurnStartIndex
   const prunedMessages = [];
   let prunedCount = 0;
 
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
 
-    if (msg.role === "assistant" && msg._reasoning && i < lastReasoningIndex) {
+    if (msg.role === "assistant" && msg._reasoning && i < currentTurnStartIndex) {
       // Shallow copy without _reasoning
       const prunedMsg = { ...msg };
       delete prunedMsg._reasoning;
@@ -118,7 +142,7 @@ export function pruneReasoningContent(messages) {
   }
 
   if (prunedCount > 0) {
-    console.log(`[Reasoning Prune] Removed ${prunedCount} older reasoning blocks, kept latest at index ${lastReasoningIndex}`);
+    console.log(`[Reasoning Prune] Removed ${prunedCount} reasoning blocks from previous turns, kept all reasoning from current turn (starting at index ${currentTurnStartIndex})`);
   }
 
   return prunedMessages;

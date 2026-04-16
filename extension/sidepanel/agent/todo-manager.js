@@ -115,19 +115,46 @@ function updateTodos(todos) {
 
   if (isIncremental) {
     // 增量更新模式（不需要确认）
+    let matchedCount = 0;
+    const unmatchedIds = [];
+    
     for (const update of todos) {
       if (!update.id) continue;
 
       const todo = currentTodos.find(t => t.id === update.id);
       if (todo) {
+        matchedCount++;
         if (update.content !== undefined) {
           todo.content = update.content;
         }
         if (update.status !== undefined) {
           todo.status = update.status;
         }
+      } else {
+        unmatchedIds.push(update.id);
       }
     }
+    
+    // 检测无匹配情况：提供明确的错误提示
+    if (matchedCount === 0 && unmatchedIds.length > 0) {
+      if (currentTodos.length === 0) {
+        // 当前无任务，引导用户使用规划模式
+        return `⚠️ 更新失败：当前无任务可更新。\n\n` +
+               `原因：您提供的任务 ID (${unmatchedIds.join(', ')}) 在当前任务列表中不存在，且当前列表为空。\n\n` +
+               `解决方法：如需创建新任务计划，请使用规划模式（不提供 id 字段）：\n` +
+               `TodoWrite([{content: "任务描述", status: "pending"}, ...])\n\n` +
+               `系统会生成标准格式的 ID（如 todo_1），确认后再使用该 ID 进行状态更新。`;
+      } else {
+        // 有任务但 ID 不匹配，提示正确的 ID
+        const validIds = currentTodos.map(t => t.id).join(', ');
+        return `⚠️ 更新失败：任务 ID 不匹配。\n\n` +
+               `您提供的 ID: ${unmatchedIds.join(', ')}\n` +
+               `当前有效的 ID: ${validIds}\n\n` +
+               `请使用上述有效 ID 进行更新。例如：\n` +
+               `TodoWrite([{id: "${currentTodos[0]?.id}", status: "in_progress"}])`;
+      }
+    }
+    
     notifyUpdate();
     return formatTodoList();
   } else {
