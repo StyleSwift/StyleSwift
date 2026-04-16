@@ -822,5 +822,269 @@
   "taskViewFullOutput": {
     "message": "查看完整输出",
     "description": "Expand link for full task text output"
+  },
+  "welcomeTitle": {
+    "message": "欢迎使用 数字女娲",
+    "description": "Welcome page title"
+  },
+  "stepFeatures": {
+    "message": "功能介绍",
+    "description": "Step 1 label - Features introduction"
+  },
+  "stepPin": {
+    "message": "置顶图标",
+    "description": "Step 2 label - Pin extension icon"
+  },
+  "stepStyles": {
+    "message": "设计风格",
+    "description": "Step 3 label - Design styles"
+  },
+  "featuresTitle": {
+    "message": "一句话，给常逛的网页换皮肤",
+    "description": "Main features heading"
+  },
+  "featuresSubtitle": {
+    "message": "数字女娲 让你用自然语言控制网页样式",
+    "description": "Features subtitle"
+  },
+  "feature1Title": {
+    "message": "网页风格化",
+    "description": "Feature 1 title - webpage styling"
+  },
+  "feature1Desc": {
+    "message": "一键为任意网站换上精美主题，打造个性化浏览体验",
+    "description": "Feature 1 description"
+  },
+  "feature2Title": {
+    "message": "样式质检",
+    "description": "Feature 2 title - style quality check"
+  },
+  "feature2Desc": {
+    "message": "智能检测样式问题，确保可读性和视觉一致性",
+    "description": "Feature 2 description"
+  },
+  "feature3Title": {
+    "message": "精准编辑",
+    "description": "Feature 3 title - precision editing"
+  },
+  "feature3Desc": {
+    "message": "点选任意元素，精准定位并修改特定样式",
+    "description": "Feature 3 description"
+  },
+  "feature4Title": {
+    "message": "风格技能复用",
+    "description": "Feature 4 title - style skill reuse"
+  },
+  "feature4Desc": {
+    "message": "保存成功的风格方案，跨网站一键复用",
+    "description": "Feature 4 description"
+  },
+  "demoHint": {
+    "message": "GIF 演示",
+    "description": "Demo placeholder hint"
+  },
+  "btnNext": {
+    "message": "下一步",
+    "description": "Next button"
+  },
+  "btnSkip": {
+    "message": "跳过",
+    "description": "Skip button"
+  },
+  "btnBack": {
+    "message": "上一步",
+    "description": "Back button"
+  },
+  "btnStart": {
+    "message": "开始使用",
+    "description": "Start using button"
+  },
+  "pinTitle": {
+    "message": "置顶扩展图标",
+    "description": "Pin page title"
+  },
+  "pinSubtitle": {
+    "message": "将 数字女娲 固定到工具栏，方便随时使用",
+    "description": "Pin page subtitle"
+  },
+  "pinCallout": {
+    "message": "固定到工具栏",
+    "description": "Pin callout text"
+  },
+  "pinStep1Title": {
+    "message": "点击拼图图标",
+    "description": "Pin step 1 title"
+  },
+  "pinStep1Desc": {
+    "message": "在浏览器工具栏右侧找到拼图形状的扩展图标",
+    "description": "Pin step 1 description"
+  },
+  "pinStep2Title": {
+    "message": "找到 数字女娲",
+    "description": "Pin step 2 title"
+  },
+  "pinStep2Desc": {
+    "message": "在扩展列表中找到\"数字女娲\"",
+    "description": "Pin step 2 description"
+  },
+  "pinStep3Title": {
+    "message": "点击图钉固定",
+    "description": "Pin step 3 title"
+  },
+  "pinStep3Desc": {
+    "message": "点击旁边的图钉图标，将其固定到工具栏",
+    "description": "Pin step 3 description"
+  },
+  "detectWaiting": {
+    "message": "正在检测置顶状态...",
+    "description": "Pin detection waiting message"
+  },
+  "detectSuccess": {
+    "message": "已成功置顶！",
+    "description": "Pin detection success message"
+  },
+  "detectHint": {
+    "message": "请按照上述步骤将插件固定到工具栏",
+    "description": "Pin detection hint"
+  },
+  "detectSuccessHint": {
+    "message": "太棒了！插件已成功固定到工具栏",
+    "description": "Pin detection success hint"
+  },
+  "celebrateTitle": {
+    "message": "设置成功！",
+    "description": "Celebration overlay title"
+  },
+  "celebrateMessage": {
+    "message": "插件已固定到工具栏，随时可以开始使用",
+    "description": "Celebration overlay message"
+  },
+  "celebrateButton": {
+    "message": "开始探索",
+    "description": "Celebration overlay button"
+  },
+  "stylesTitle": {
+    "message": "探索设计风格",
+    "description": "Styles page title"
+  },
+  "stylesSubtitle": {
+    "message": "选择一个喜欢的风格，立即开始你的定制之旅",
+    "description": "Styles page subtitle"
+  },
+  "stylePrompt": {
+    "message": "风格提示词",
+    "description": "Style prompt section title"
+  },
+  "btnCopy": {
+    "message": "复制",
+    "description": "Copy button"
+  },
+  "btnClose": {
+    "message": "关闭",
+    "description": "Close button"
+  },
+  "btnUseStyle": {
+    "message": "使用此风格",
+    "description": "Use style button"
+  },
+  "copied": {
+    "message": "已复制",
+    "description": "Copied confirmation"
+  },
+  "apiGuideTitle": {
+    "message": "API 供应商指南",
+    "description": "API guide page title"
+  },
+  "apiGuideSubtitle": {
+    "message": "选择适合你的 API 方案",
+    "description": "API guide page subtitle"
+  },
+  "domesticProviders": {
+    "message": "国内主流 API",
+    "description": "Domestic API providers section title"
+  },
+  "internationalProviders": {
+    "message": "国际主流 API",
+    "description": "International API providers section title"
+  },
+  "ppioDesc": {
+    "message": "多模型聚合，开发者友好",
+    "description": "PPIO provider description"
+  },
+  "zhipuDesc": {
+    "message": "GLM-4 系列模型，Coding Plan 性价比高",
+    "description": "Zhipu AI provider description"
+  },
+  "bailianDesc": {
+    "message": "通义千问系列，免费额度大",
+    "description": "Alibaba Bailian provider description"
+  },
+  "deepseekDesc": {
+    "message": "DeepSeek-R1/V3，价格极具竞争力",
+    "description": "DeepSeek provider description"
+  },
+  "siliconflowDesc": {
+    "message": "多模型代理，免费额度丰富",
+    "description": "SiliconFlow provider description"
+  },
+  "doubaoDesc": {
+    "message": "豆包系列，响应速度快",
+    "description": "ByteDance Doubao provider description"
+  },
+  "anthropicDesc": {
+    "message": "Claude 系列原厂，能力最强",
+    "description": "Anthropic provider description"
+  },
+  "openaiDesc": {
+    "message": "GPT-4 系列原厂，生态完善",
+    "description": "OpenAI provider description"
+  },
+  "googleDesc": {
+    "message": "Gemini 系列，免费额度大",
+    "description": "Google AI provider description"
+  },
+  "azureDesc": {
+    "message": "企业级 GPT 服务，合规性强",
+    "description": "Azure OpenAI provider description"
+  },
+  "compatibilityTitle": {
+    "message": "兼容性说明",
+    "description": "Compatibility section title"
+  },
+  "compatibilityDesc": {
+    "message": "本扩展兼容 Anthropic Claude 和 OpenAI 两种 API 格式，支持上述所有供应商及任意第三方 API 平台。填写 API Key 和对应地址即可开始使用。",
+    "description": "Compatibility description"
+  },
+  "securityTitle": {
+    "message": "安全保障",
+    "description": "Security section title"
+  },
+  "openSourceBadge": {
+    "message": "开源",
+    "description": "Open source badge"
+  },
+  "openSourceDesc": {
+    "message": "完全开源，代码可审计",
+    "description": "Open source description"
+  },
+  "verifiedBadge": {
+    "message": "已验证",
+    "description": "Verified badge"
+  },
+  "verifiedDesc": {
+    "message": "隐私政策已通过 Chrome 官方审核",
+    "description": "Verified description"
+  },
+  "localBadge": {
+    "message": "本地",
+    "description": "Local badge"
+  },
+  "localDesc": {
+    "message": "API Key 仅存储于本地浏览器，不上传任何服务器",
+    "description": "Local storage description"
+  },
+  "guideFooter": {
+    "message": "StyleSwift - 一句话，给常逛的网页换皮肤",
+    "description": "API guide footer"
   }
 }

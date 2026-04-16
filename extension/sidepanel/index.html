@@ -23,9 +23,9 @@
         
         <div class="setup-form">
           <div class="form-group">
-            <label for="api-key-input" data-i18n="apiKeyLabel">API Key</label>
-            <input type="password" id="api-key-input" data-testid="api-key-input" autocomplete="off">
-            <p class="hint" data-i18n="apiKeyPlaceholder">Enter your API Key</p>
+            <label for="model-input" data-i18n="modelLabel">Model (optional)</label>
+            <input type="text" id="model-input" data-testid="model-input" autocomplete="off">
+            <p class="hint" data-i18n="modelPlaceholder">Use claude-opus-4-6 by default</p>
           </div>
 
           <div class="form-group">
@@ -35,9 +35,9 @@
           </div>
 
           <div class="form-group">
-            <label for="model-input" data-i18n="modelLabel">Model (optional)</label>
-            <input type="text" id="model-input" data-testid="model-input" autocomplete="off">
-            <p class="hint" data-i18n="modelPlaceholder">Use claude-opus-4-6 by default</p>
+            <label for="api-key-input" data-i18n="apiKeyLabel">API Key</label>
+            <input type="password" id="api-key-input" data-testid="api-key-input" autocomplete="off">
+            <p class="hint" data-i18n="apiKeyPlaceholder">Enter your API Key</p>
           </div>
 
           <button id="start-btn" class="btn-primary" data-testid="start-btn" disabled data-i18n="startUsing">Get Started</button>
@@ -247,7 +247,6 @@
           <h3 data-i18n="userProfileTitle">User Profile</h3>
           <p class="hint" data-i18n="userProfileDesc">Record your style preferences. AI will use these to generate styles.</p>
           <div class="form-group">
-            <label for="settings-user-profile" data-i18n="name">Profile Content</label>
             <textarea
               id="settings-user-profile"
               class="settings-textarea"

@@ -822,5 +822,269 @@
   "taskViewFullOutput": {
     "message": "View full output",
     "description": "Expand link for full task text output"
+  },
+  "welcomeTitle": {
+    "message": "Welcome to StyleSwift",
+    "description": "Welcome page title"
+  },
+  "stepFeatures": {
+    "message": "Features",
+    "description": "Step 1 label - Features introduction"
+  },
+  "stepPin": {
+    "message": "Pin Icon",
+    "description": "Step 2 label - Pin extension icon"
+  },
+  "stepStyles": {
+    "message": "Styles",
+    "description": "Step 3 label - Design styles"
+  },
+  "featuresTitle": {
+    "message": "Transform Any Webpage with a Single Sentence",
+    "description": "Main features heading"
+  },
+  "featuresSubtitle": {
+    "message": "StyleSwift lets you control webpage styles with natural language",
+    "description": "Features subtitle"
+  },
+  "feature1Title": {
+    "message": "Webpage Styling",
+    "description": "Feature 1 title - webpage styling"
+  },
+  "feature1Desc": {
+    "message": "Transform any website with beautiful themes for a personalized browsing experience",
+    "description": "Feature 1 description"
+  },
+  "feature2Title": {
+    "message": "Style Quality Check",
+    "description": "Feature 2 title - style quality check"
+  },
+  "feature2Desc": {
+    "message": "Intelligently detect style issues to ensure readability and visual consistency",
+    "description": "Feature 2 description"
+  },
+  "feature3Title": {
+    "message": "Precision Editing",
+    "description": "Feature 3 title - precision editing"
+  },
+  "feature3Desc": {
+    "message": "Click any element to precisely target and modify specific styles",
+    "description": "Feature 3 description"
+  },
+  "feature4Title": {
+    "message": "Style Skill Reuse",
+    "description": "Feature 4 title - style skill reuse"
+  },
+  "feature4Desc": {
+    "message": "Save successful style solutions and reuse them across websites with one click",
+    "description": "Feature 4 description"
+  },
+  "demoHint": {
+    "message": "GIF Demo",
+    "description": "Demo placeholder hint"
+  },
+  "btnNext": {
+    "message": "Next",
+    "description": "Next button"
+  },
+  "btnSkip": {
+    "message": "Skip",
+    "description": "Skip button"
+  },
+  "btnBack": {
+    "message": "Back",
+    "description": "Back button"
+  },
+  "btnStart": {
+    "message": "Get Started",
+    "description": "Start using button"
+  },
+  "pinTitle": {
+    "message": "Pin Extension Icon",
+    "description": "Pin page title"
+  },
+  "pinSubtitle": {
+    "message": "Pin StyleSwift to your toolbar for quick access anytime",
+    "description": "Pin page subtitle"
+  },
+  "pinCallout": {
+    "message": "Pin to toolbar",
+    "description": "Pin callout text"
+  },
+  "pinStep1Title": {
+    "message": "Click puzzle icon",
+    "description": "Pin step 1 title"
+  },
+  "pinStep1Desc": {
+    "message": "Find the puzzle-shaped extension icon on the right side of browser toolbar",
+    "description": "Pin step 1 description"
+  },
+  "pinStep2Title": {
+    "message": "Find StyleSwift",
+    "description": "Pin step 2 title"
+  },
+  "pinStep2Desc": {
+    "message": "Find \"StyleSwift\" in the extension list",
+    "description": "Pin step 2 description"
+  },
+  "pinStep3Title": {
+    "message": "Click pin icon",
+    "description": "Pin step 3 title"
+  },
+  "pinStep3Desc": {
+    "message": "Click the pin icon next to it to pin it to the toolbar",
+    "description": "Pin step 3 description"
+  },
+  "detectWaiting": {
+    "message": "Detecting pin status...",
+    "description": "Pin detection waiting message"
+  },
+  "detectSuccess": {
+    "message": "Successfully pinned!",
+    "description": "Pin detection success message"
+  },
+  "detectHint": {
+    "message": "Please follow the steps above to pin the extension to toolbar",
+    "description": "Pin detection hint"
+  },
+  "detectSuccessHint": {
+    "message": "Great! Extension is pinned to toolbar",
+    "description": "Pin detection success hint"
+  },
+  "celebrateTitle": {
+    "message": "Setup Complete!",
+    "description": "Celebration overlay title"
+  },
+  "celebrateMessage": {
+    "message": "Extension pinned to toolbar, ready to use anytime",
+    "description": "Celebration overlay message"
+  },
+  "celebrateButton": {
+    "message": "Start Exploring",
+    "description": "Celebration overlay button"
+  },
+  "stylesTitle": {
+    "message": "Explore Design Styles",
+    "description": "Styles page title"
+  },
+  "stylesSubtitle": {
+    "message": "Choose a style you like and start your customization journey",
+    "description": "Styles page subtitle"
+  },
+  "stylePrompt": {
+    "message": "Style Prompt",
+    "description": "Style prompt section title"
+  },
+  "btnCopy": {
+    "message": "Copy",
+    "description": "Copy button"
+  },
+  "btnClose": {
+    "message": "Close",
+    "description": "Close button"
+  },
+  "btnUseStyle": {
+    "message": "Use This Style",
+    "description": "Use style button"
+  },
+  "copied": {
+    "message": "Copied",
+    "description": "Copied confirmation"
+  },
+  "apiGuideTitle": {
+    "message": "API Provider Guide",
+    "description": "API guide page title"
+  },
+  "apiGuideSubtitle": {
+    "message": "Choose the right API for you",
+    "description": "API guide page subtitle"
+  },
+  "domesticProviders": {
+    "message": "Domestic Providers (China)",
+    "description": "Domestic API providers section title"
+  },
+  "internationalProviders": {
+    "message": "International Providers",
+    "description": "International API providers section title"
+  },
+  "ppioDesc": {
+    "message": "Multi-model aggregation, developer-friendly",
+    "description": "PPIO provider description"
+  },
+  "zhipuDesc": {
+    "message": "GLM-4 series, cost-effective Coding Plan",
+    "description": "Zhipu AI provider description"
+  },
+  "bailianDesc": {
+    "message": "Qwen series, generous free tier",
+    "description": "Alibaba Bailian provider description"
+  },
+  "deepseekDesc": {
+    "message": "DeepSeek-R1/V3, highly competitive pricing",
+    "description": "DeepSeek provider description"
+  },
+  "siliconflowDesc": {
+    "message": "Multi-model proxy, rich free tier",
+    "description": "SiliconFlow provider description"
+  },
+  "doubaoDesc": {
+    "message": "Doubao series, fast response",
+    "description": "ByteDance Doubao provider description"
+  },
+  "anthropicDesc": {
+    "message": "Claude series original, most capable",
+    "description": "Anthropic provider description"
+  },
+  "openaiDesc": {
+    "message": "GPT-4 series original, rich ecosystem",
+    "description": "OpenAI provider description"
+  },
+  "googleDesc": {
+    "message": "Gemini series, generous free tier",
+    "description": "Google AI provider description"
+  },
+  "azureDesc": {
+    "message": "Enterprise GPT service, strong compliance",
+    "description": "Azure OpenAI provider description"
+  },
+  "compatibilityTitle": {
+    "message": "Compatibility Note",
+    "description": "Compatibility section title"
+  },
+  "compatibilityDesc": {
+    "message": "This extension is compatible with both Anthropic Claude and OpenAI API formats, supporting all providers above and any third-party API platforms. Just enter your API Key and endpoint URL to get started.",
+    "description": "Compatibility description"
+  },
+  "securityTitle": {
+    "message": "Security Assurance",
+    "description": "Security section title"
+  },
+  "openSourceBadge": {
+    "message": "Open Source",
+    "description": "Open source badge"
+  },
+  "openSourceDesc": {
+    "message": "Fully open source, code auditable",
+    "description": "Open source description"
+  },
+  "verifiedBadge": {
+    "message": "Verified",
+    "description": "Verified badge"
+  },
+  "verifiedDesc": {
+    "message": "Privacy policy approved by Chrome Web Store",
+    "description": "Verified description"
+  },
+  "localBadge": {
+    "message": "Local",
+    "description": "Local badge"
+  },
+  "localDesc": {
+    "message": "API Key stored locally in browser, never uploaded to any server",
+    "description": "Local storage description"
+  },
+  "guideFooter": {
+    "message": "StyleSwift - Transform any webpage with a single sentence",
+    "description": "API guide footer"
   }
 }

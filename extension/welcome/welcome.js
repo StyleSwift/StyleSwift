@@ -4,142 +4,50 @@
  */
 
 // ============================================================
-// 1. 国际化配置
+// 1. 国际化配置 - 使用 Chrome i18n API
 // ============================================================
 
-const i18n = {
-	zh_CN: {
-		welcomeTitle: "欢迎使用 数字女娲",
-		stepFeatures: "功能介绍",
-		stepPin: "置顶图标",
-		stepStyles: "设计风格",
-		featuresTitle: "一句话，给常逛的网页换皮肤",
-		featuresSubtitle: "数字女娲 让你用自然语言控制网页样式",
-		feature1Title: "网页风格化",
-		feature1Desc: "一键为任意网站换上精美主题，打造个性化浏览体验",
-		feature2Title: "样式质检",
-		feature2Desc: "智能检测样式问题，确保可读性和视觉一致性",
-		feature3Title: "精准编辑",
-		feature3Desc: "点选任意元素，精准定位并修改特定样式",
-		feature4Title: "风格技能复用",
-		feature4Desc: "保存成功的风格方案，跨网站一键复用",
-		demoHint: "GIF 演示",
-		btnNext: "下一步",
-		btnSkip: "跳过",
-		btnBack: "上一步",
-		btnStart: "开始使用",
-		pinTitle: "置顶扩展图标",
-		pinSubtitle: "将 数字女娲 固定到工具栏，方便随时使用",
-		pinCallout: "固定到工具栏",
-		pinStep1Title: "点击拼图图标",
-		pinStep1Desc: "在浏览器工具栏右侧找到拼图形状的扩展图标",
-		pinStep2Title: "找到 数字女娲",
-		pinStep2Desc: '在扩展列表中找到"数字女娲"',
-		pinStep3Title: "点击图钉固定",
-		pinStep3Desc: "点击旁边的图钉图标，将其固定到工具栏",
-		detectWaiting: "正在检测置顶状态...",
-		detectSuccess: "已成功置顶！",
-		detectHint: "请按照上述步骤将插件固定到工具栏",
-		detectSuccessHint: "太棒了！插件已成功固定到工具栏",
-		celebrateTitle: "设置成功！",
-		celebrateMessage: "插件已固定到工具栏，随时可以开始使用",
-		celebrateButton: "开始探索",
-		stylesTitle: "探索设计风格",
-		stylesSubtitle: "选择一个喜欢的风格，立即开始你的定制之旅",
-		stylePrompt: "风格提示词",
-		btnCopy: "复制",
-		btnClose: "关闭",
-		btnUseStyle: "使用此风格",
-		copied: "已复制",
-	},
-	en: {
-		welcomeTitle: "Welcome to StyleSwift",
-		stepFeatures: "Features",
-		stepPin: "Pin Icon",
-		stepStyles: "Styles",
-		featuresTitle: "Transform Any Webpage with a Single Sentence",
-		featuresSubtitle:
-			"StyleSwift lets you control webpage styles with natural language",
-		feature1Title: "Webpage Styling",
-		feature1Desc:
-			"Transform any website with beautiful themes for a personalized browsing experience",
-		feature2Title: "Style Quality Check",
-		feature2Desc:
-			"Intelligently detect style issues to ensure readability and visual consistency",
-		feature3Title: "Precision Editing",
-		feature3Desc:
-			"Click any element to precisely target and modify specific styles",
-		feature4Title: "Style Skill Reuse",
-		feature4Desc:
-			"Save successful style solutions and reuse them across websites with one click",
-		demoHint: "GIF Demo",
-		btnNext: "Next",
-		btnSkip: "Skip",
-		btnBack: "Back",
-		btnStart: "Get Started",
-		pinTitle: "Pin Extension Icon",
-		pinSubtitle: "Pin StyleSwift to your toolbar for quick access anytime",
-		pinCallout: "Pin to toolbar",
-		pinStep1Title: "Click puzzle icon",
-		pinStep1Desc:
-			"Find the puzzle-shaped extension icon on the right side of browser toolbar",
-		pinStep2Title: "Find StyleSwift",
-		pinStep2Desc: 'Find "StyleSwift" in the extension list',
-		pinStep3Title: "Click pin icon",
-		pinStep3Desc: "Click the pin icon next to it to pin it to the toolbar",
-		detectWaiting: "Detecting pin status...",
-		detectSuccess: "Successfully pinned!",
-		detectHint: "Please follow the steps above to pin the extension to toolbar",
-		detectSuccessHint: "Great! Extension is pinned to toolbar",
-		celebrateTitle: "Setup Complete!",
-		celebrateMessage: "Extension pinned to toolbar, ready to use anytime",
-		celebrateButton: "Start Exploring",
-		stylesTitle: "Explore Design Styles",
-		stylesSubtitle:
-			"Choose a style you like and start your customization journey",
-		stylePrompt: "Style Prompt",
-		btnCopy: "Copy",
-		btnClose: "Close",
-		btnUseStyle: "Use This Style",
-		copied: "Copied",
-	},
-};
+/**
+ * 获取翻译文本
+ * @param {string} key - i18n message key
+ * @returns {string} 翻译后的文本
+ */
+function t(key) {
+	return chrome.i18n.getMessage(key) || key;
+}
+
+/**
+ * 获取当前语言环境
+ * @returns {string} 'zh_CN' 或 'en'
+ */
+function getLocale() {
+	const uiLang = chrome.i18n.getUILanguage();
+	return uiLang.startsWith("zh") ? "zh_CN" : "en";
+}
 
 // 功能对应的GIF演示数据
 const FEATURE_DEMOS = [
 	{
-		title: "网页风格化",
+		titleKey: "feature1Title",
 		gif: "../images/网页风格化压缩.gif",
 		thumbnail: "../images/网页风格化压缩.gif",
 	},
 	{
-		title: "样式质检",
+		titleKey: "feature2Title",
 		gif: "../images/质检压缩.gif",
 		thumbnail: "../images/质检压缩.gif",
 	},
 	{
-		title: "精准编辑",
+		titleKey: "feature3Title",
 		gif: "../images/精准编辑压缩.gif",
 		thumbnail: "../images/精准编辑压缩.gif",
 	},
 	{
-		title: "风格技能复用",
+		titleKey: "feature4Title",
 		gif: "../images/风格复用.gif",
 		thumbnail: "../images/风格复用.gif",
 	},
 ];
-
-// 获取当前语言
-function getLocale() {
-	const browserLang = navigator.language || navigator.languages?.[0] || "en";
-	return browserLang.startsWith("zh") ? "zh_CN" : "en";
-}
-
-// 获取翻译文本
-function t(key) {
-	const locale = getLocale();
-	return i18n[locale]?.[key] || i18n.en[key] || key;
-}
 
 // ============================================================
 // 2. 预设风格数据
