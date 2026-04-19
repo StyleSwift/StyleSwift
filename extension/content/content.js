@@ -40,6 +40,23 @@ const SKIP_TAGS = new Set([
   "area",
   "col",
   "colgroup",
+  // SVG图形元素（装饰性，对样式生成无价值）
+  "svg",
+  "path",
+  "g",
+  "circle",
+  "rect",
+  "ellipse",
+  "line",
+  "polygon",
+  "polyline",
+  "text",
+  "use",
+  "defs",
+  "mask",
+  "clippath",
+  // Canvas/WebGL
+  "canvas",
 ]);
 
 // 语义化地标标签（获得额外深度）
@@ -89,14 +106,27 @@ const STYLE_WHITELIST = [
   "overflow",
 ];
 
-// 跳过的 CSS 属性值
+// 跳过的 CSS 属性值（扩展默认值检测）
 const SKIP_VALUES = new Set([
+  // 常见默认值
   "none",
   "normal",
   "0px",
   "auto",
   "static",
   "visible",
+  // 数值默认值
+  "1", // opacity:1
+  "0", // z-index:0
+  "relative", // position:relative in some contexts
+  // 继承/透明值
+  "inherit",
+  "initial",
+  "currentColor",
+  "transparent",
+  "rgba(0, 0, 0, 0)",
+  // 边框默认色（通常继承）
+  "rgb(31, 35, 40)", // GitHub等站点的默认border-color
 ]);
 
 // 相似元素折叠阈值
@@ -141,12 +171,135 @@ const ESSENTIAL_STYLE_PROPS = new Set([
 // CSS 选择器特征模式
 const SELECTOR_PATTERN = /[.#\[\]>+~:=]|^\w+\s+\w+/;
 
+// Obfuscated类名模式（React/Styled Components生成的随机hash）
+const OBFUSCATED_PATTERN = /^[a-z]{1,3}-[A-Za-z0-9]{6,}$/;
+
+// 随机ID模式（如 _R_apb_）
+const RANDOM_ID_PATTERN = /^_[A-Za-z0-9_]+$/;
+
+// CSS Class语义Hint推断映射
+const CLASS_HINTS_MAP = {
+  // 状态类
+  primary: "primary-action",
+  secondary: "secondary-action",
+  danger: "destructive",
+  warning: "warning",
+  success: "success",
+  error: "error",
+  disabled: "disabled",
+  active: "active",
+  selected: "selected",
+  hidden: "hidden",
+  loading: "loading",
+  collapsed: "collapsed",
+  expanded: "expanded",
+  // 尺寸类
+  large: "large",
+  small: "small",
+  compact: "compact",
+  // 结构类
+  card: "card",
+  hero: "hero",
+  modal: "modal",
+  notification: "notification",
+  badge: "badge",
+  sticky: "sticky",
+  // 导航/布局类
+  nav: "navigation",
+  navigation: "navigation",
+  menu: "menu",
+  sidebar: "sidebar",
+  header: "header",
+  footer: "footer",
+  main: "main",
+  content: "content",
+  // 交互类
+  button: "button",
+  btn: "button",
+  input: "input",
+  search: "search",
+  link: "link",
+  checkbox: "checkbox",
+  toggle: "toggle",
+  dropdown: "dropdown",
+  tab: "tab",
+  form: "form",
+  field: "field",
+};
+
 // === 辅助函数 ===
 
+// 从CSS类名推断语义hint
+function inferSemanticHint(className) {
+  if (!className || typeof className !== "string") return null;
+  const classes = className.split(/\s+/);
+  const hints = [];
+  for (const cls of classes) {
+    const clsLower = cls.toLowerCase();
+    for (const [pattern, hint] of Object.entries(CLASS_HINTS_MAP)) {
+      if (clsLower.includes(pattern) && !hints.includes(hint)) {
+        hints.push(hint);
+        if (hints.length >= 2) break; // 最多2个hint
+      }
+    }
+  }
+  return hints.length > 0 ? hints.join("/") : null;
+}
+
+// 提取元素的ARIA语义信息
+function extractAriaInfo(el) {
+  const info = {};
+
+  // 显式role
+  const role = el.getAttribute("role");
+  if (role) info.role = role;
+
+  // 隐式role推断
+  const implicitRoles = {
+    button: "button",
+    a: "link",
+    nav: "navigation",
+    header: "banner",
+    footer: "contentinfo",
+    main: "main",
+    article: "article",
+    section: "region",
+    aside: "complementary",
+    form: "form",
+    input: "textbox",
+    select: "listbox",
+    textarea: "textbox",
+    img: "img",
+  };
+
+  if (!role) {
+    const tag = el.tagName.toLowerCase();
+    if (implicitRoles[tag]) info.role = implicitRoles[tag];
+  }
+
+  // aria-label (截断)
+  const ariaLabel = el.getAttribute("aria-label");
+  if (ariaLabel) info.ariaLabel = ariaLabel.slice(0, 25);
+
+  // 状态属性
+  ["aria-expanded", "aria-selected", "aria-checked", "aria-disabled", "aria-hidden"].forEach(
+    (attr) => {
+      const val = el.getAttribute(attr);
+      if (val === "true" || val === "false") {
+        info[attr.replace("aria-", "")] = val;
+      }
+    },
+  );
+
+  return Object.keys(info).length > 0 ? info : null;
+}
+
 // 生成元素的最短选择器（不保证唯一性）
+// 过滤obfuscated类名和随机ID，优先选择语义化标识
 function shortSelector(el) {
   const tag = el.tagName.toLowerCase();
 
+  // data-testid优先（最可靠）
   const testAttr =
     el.getAttribute("data-testid") ||
     el.getAttribute("data-cy") ||
@@ -155,12 +308,20 @@ function shortSelector(el) {
     return `[data-testid="${testAttr}"]`;
   }
 
-  if (el.id) {
+  // ID过滤随机值（如 _R_apb_）
+  if (el.id && !RANDOM_ID_PATTERN.test(el.id)) {
     return `${tag}#${el.id}`;
   }
 
+  // Class过滤obfuscated + 选择语义类
   if (el.className && typeof el.className === "string") {
     const classes = el.className.split(/\s+/).filter(Boolean);
+    // 过滤obfuscated类名（如 prc-ButtonBase-9n-Xk）
+    const semanticClasses = classes.filter((c) => !OBFUSCATED_PATTERN.test(c));
+    if (semanticClasses.length > 0) {
+      return `${tag}.${semanticClasses[0]}`;
+    }
+    // 如果全部是obfuscated，取第一个（但会配合hint补充语义）
     if (classes.length > 0) {
       return `${tag}.${classes[0]}`;
     }
@@ -292,16 +453,102 @@ function summarizeChildren(childEls) {
 
 // === 计算样式提取 ===
 
-// 获取元素的计算样式
+// 样式值归一化函数：减少冗余、节省token
+function normalizeStyleValue(prop, value) {
+  if (!value) return null;
+
+  // 跳过默认值（扩展后的SKIP_VALUES）
+  if (SKIP_VALUES.has(value)) return null;
+
+  // 数值归一化: 1457.5px → 1458px，大值取整到十位
+  if (/^\d+\.?\d*px$/.test(value)) {
+    const num = parseFloat(value);
+    const rounded = Math.round(num);
+    if (rounded > 1000) return `${Math.round(rounded / 10) * 10}px`;
+    if (rounded > 100) return `${Math.round(rounded / 5) * 5}px`;
+    return `${rounded}px`;
+  }
+
+  // font-family: 只保留首个，系统栈简化为 system-ui
+  if (prop === "font-family") {
+    if (/apple-system|BlinkMacSystemFont|Segoe UI|Helvetica|Arial/i.test(value)) {
+      return "system-ui";
+    }
+    const firstFont = value.split(",")[0].trim().replace(/"/g, "");
+    return firstFont;
+  }
+
+  // color/background-color: rgba → hex，但保留透明度信息
+  if ((prop === "color" || prop === "background-color") && /rgba?\(/.test(value)) {
+    // 匹配 rgba(r, g, b, a) 或 rgb(r, g, b)
+    const match = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+    if (match) {
+      const r = parseInt(match[1]);
+      const g = parseInt(match[2]);
+      const b = parseInt(match[3]);
+      const a = match[4] ? parseFloat(match[4]) : 1;
+
+      // alpha = 0：完全透明，跳过输出
+      if (a === 0) return null;
+
+      // alpha = 1：转换为hex（更短）
+      if (a === 1) {
+        const hex =
+          "#" +
+          [r, g, b]
+            .map((n) => n.toString(16).padStart(2, "0"))
+            .join("");
+        return hex;
+      }
+
+      // alpha < 1：保留rgba格式（保留透明度信息）
+      return `rgba(${r},${g},${b},${a})`;
+    }
+  }
+
+  // border-radius: 只保留一个值如果四个相同
+  if (prop === "border-radius" && value.includes(" ")) {
+    const parts = value.split(" ").filter(Boolean);
+    if (parts.length === 4 && parts.every((p) => p === parts[0])) {
+      return parts[0];
+    }
+  }
+
+  return value;
+}
+
+// rgba转hex辅助函数（用于grep输出等场景）
+function rgbaToHex(rgba) {
+  const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+  if (!match) return rgba;
+  
+  const r = parseInt(match[1]);
+  const g = parseInt(match[2]);
+  const b = parseInt(match[3]);
+  const a = match[4] ? parseFloat(match[4]) : 1;
+  
+  // alpha = 0：返回null（应该跳过）
+  if (a === 0) return null;
+  
+  // alpha = 1：返回hex
+  if (a === 1) {
+    return "#" + [r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("");
+  }
+  
+  // alpha < 1：保留rgba
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// 获取元素的计算样式（使用归一化）
 function getComputedStyles(element, tag) {
   const cs = window.getComputedStyle(element);
   const pairs = [];
 
   for (const prop of STYLE_WHITELIST) {
-    const val = cs.getPropertyValue(prop);
-
-    if (val && !SKIP_VALUES.has(val)) {
-      pairs.push([prop, val]);
+    const rawVal = cs.getPropertyValue(prop);
+    const normVal = normalizeStyleValue(prop, rawVal);
+    if (normVal) {
+      pairs.push([prop, normVal]);
     }
   }
 
@@ -342,31 +589,39 @@ function estimateTokens(text) {
 
 // === 格式化输出 ===
 
-// 格式化树节点装饰信息
+// 格式化树节点装饰信息（增强版：包含ARIA和语义hint）
 function formatNodeDecoration(node, compact = false) {
   let deco = "";
 
+  // ARIA信息优先显示（语义价值最高）
+  if (node.aria) {
+    if (node.aria.role) deco += ` (${node.aria.role})`;
+    if (node.aria.ariaLabel) deco += ` [aria:"${node.aria.ariaLabel}"]`;
+    // 显示状态属性
+    if (node.aria.expanded) deco += ` [expanded:${node.aria.expanded}]`;
+    if (node.aria.selected) deco += ` [selected:${node.aria.selected}]`;
+  }
+
+  // 语义hint（语义价值次高）
+  if (node.hint) deco += ` [hint:${node.hint}]`;
+
+  // 样式（紧凑模式和非紧凑模式都保留属性名）
   if (node.styles?.length) {
-    if (!compact) {
-      deco += ` [${node.styles.map(([p, v]) => `${p}:${v}`).join("; ")}]`;
-    } else {
-      const essential = node.styles.filter(([p]) =>
-        ESSENTIAL_STYLE_PROPS.has(p),
-      );
-      if (essential.length) {
-        deco += ` [${essential.map(([p, v]) => `${p}:${v}`).join("; ")}]`;
-      }
-    }
+    deco += ` {${node.styles.map(([p, v]) => `${p}:${v}`).join("; ")}}`;
   }
 
+  // 折叠计数
   if (node.count) {
-    deco += ` × ${node.count}`;
+    deco += ` ×${node.count}`;
   }
 
+  // 文本内容（紧凑模式截断）
   if (node.text) {
-    deco += ` "${node.text}"`;
+    const displayText = compact ? node.text.slice(0, 20) : node.text;
+    deco += ` "${displayText}"`;
   }
 
+  // 子元素摘要
   if (node.summary) {
     deco += ` — ${node.summary}`;
   }
@@ -377,7 +632,7 @@ function formatNodeDecoration(node, compact = false) {
 // 渐进式紧凑的样式深度阈值
 const STYLE_DEPTH_CUTOFF = 7;
 
-// 格式化树节点（子节点）
+// 格式化树节点（子节点）- 紧凑格式
 function formatTreeNode(
   node,
   indent,
@@ -390,8 +645,9 @@ function formatTreeNode(
 
   const effectiveCompact = compact || currentDepth >= STYLE_DEPTH_CUTOFF;
 
-  const prefix = isLast ? "└── " : "├── ";
-  const childIndent = indent + (isLast ? "    " : "│   ");
+  // 紧凑模式使用更短的前缀
+  const prefix = isLast ? "└ " : "├ ";
+  const childIndent = indent + (isLast ? "  " : "│ ");
 
   let line = indent + prefix + node.selector;
   line += formatNodeDecoration(node, effectiveCompact);
@@ -413,7 +669,7 @@ function formatTreeNode(
   return result;
 }
 
-// 格式化树结构（根节点）
+// 格式化树结构（根节点）- 紧凑格式
 function formatTree(node, indent, isLast, maxDepth, compact = false) {
   if (!node) return "";
 
@@ -496,13 +752,17 @@ function buildTree(element, depth, maxDepth) {
   const text = getDirectText(current).slice(0, 40);
   const styles = getComputedStyles(current, actualTag);
 
+  // 提取语义信息
+  const aria = extractAriaInfo(current);
+  const hint = inferSemanticHint(current.className);
+
   const childEls = Array.from(current.children).filter(
     (c) => !SKIP_TAGS.has(c.tagName?.toLowerCase()) && !c.shadowRoot,
   );
 
   if (depth >= maxDepth || childEls.length === 0) {
     const summary = summarizeChildren(childEls);
-    return { selector, text, styles, summary };
+    return { selector, text, styles, aria, hint, summary };
   }
 
   const groups = groupSimilar(childEls);
@@ -522,7 +782,7 @@ function buildTree(element, depth, maxDepth) {
     }
   }
 
-  return { selector, text, styles, children };
+  return { selector, text, styles, aria, hint, children };
 }
 
 const TOKEN_LIMIT = 12000;
@@ -586,6 +846,8 @@ function nodeToSummary(node) {
   return {
     selector: node.selector,
     styles: node.styles,
+    aria: node.aria,
+    hint: node.hint,
     text: node.text,
     count: node.count,
     summary: summaryParts.join(", "),
@@ -798,14 +1060,15 @@ function groupSimilarElements(elements) {
   return groups;
 }
 
-// 获取元素的所有计算样式
+// 获取元素的所有计算样式（用于grep，也应用归一化）
 function getAllComputedStyles(el) {
   const cs = window.getComputedStyle(el);
   const pairs = [];
   for (const prop of STYLE_WHITELIST) {
-    const val = cs.getPropertyValue(prop);
-    if (val && !SKIP_VALUES.has(val)) {
-      pairs.push(`${prop}:${val}`);
+    const rawVal = cs.getPropertyValue(prop);
+    const normVal = normalizeStyleValue(prop, rawVal);
+    if (normVal) {
+      pairs.push(`${prop}:${normVal}`);
     }
   }
   return pairs.join("; ") || "";

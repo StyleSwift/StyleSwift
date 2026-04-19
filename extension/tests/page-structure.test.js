@@ -16,11 +16,19 @@ import path from 'path';
 
 // === 从 content.js 提取的常量和函数（复制以便测试） ===
 
-// 需要跳过的无意义标签（黑名单）
+// 需要跳过的无意义标签（黑名单）- 包含SVG等装饰性元素
 const SKIP_TAGS = new Set([
+  // 元数据和脚本
   "script", "style", "noscript", "meta", "link", "base", "head",
-  "title", "template", "slot", "br", "hr", "wbr", "embed", "param",
-  "source", "track", "area", "col", "colgroup",
+  "title", "template", "slot",
+  // 空元素
+  "br", "hr", "wbr", "embed", "param", "source", "track",
+  "area", "col", "colgroup",
+  // SVG图形元素（装饰性，对样式生成无价值）
+  "svg", "path", "g", "circle", "rect", "ellipse", "line",
+  "polygon", "polyline", "text", "use", "defs", "mask", "clippath",
+  // Canvas/WebGL
+  "canvas",
 ]);
 
 // 语义化地标标签
@@ -39,9 +47,18 @@ const STYLE_WHITELIST = [
   "text-decoration", "overflow",
 ];
 
-// 跳过的 CSS 属性值
+// 跳过的 CSS 属性值（扩展默认值检测）
 const SKIP_VALUES = new Set([
+  // 常见默认值
   "none", "normal", "0px", "auto", "static", "visible",
+  // 数值默认值
+  "1", // opacity:1
+  "0", // z-index:0
+  "relative",
+  // 继承/透明值
+  "inherit", "initial", "currentColor", "transparent", "rgba(0, 0, 0, 0)",
+  // 边框默认色
+  "rgb(31, 35, 40)",
 ]);
 
 // 相似元素折叠阈值
@@ -68,14 +85,142 @@ const TOKEN_LIMIT = 8000;
 const MAX_BUILD_DEPTH = 32;
 const MAX_CHAIN_LENGTH = 5;
 
+// Obfuscated类名模式（React/Styled Components生成的随机hash）
+const OBFUSCATED_PATTERN = /^[a-z]{1,3}-[A-Za-z0-9]{6,}$/;
+
+// 随机ID模式（如 _R_apb_）
+const RANDOM_ID_PATTERN = /^_[A-Za-z0-9_]+$/;
+
+// CSS Class语义Hint推断映射
+const CLASS_HINTS_MAP = {
+  primary: "primary-action",
+  secondary: "secondary-action",
+  danger: "destructive",
+  warning: "warning",
+  success: "success",
+  error: "error",
+  disabled: "disabled",
+  active: "active",
+  selected: "selected",
+  hidden: "hidden",
+  loading: "loading",
+  card: "card",
+  hero: "hero",
+  modal: "modal",
+  nav: "navigation",
+  menu: "menu",
+  sidebar: "sidebar",
+  header: "header",
+  footer: "footer",
+  button: "button",
+  btn: "button",
+  input: "input",
+  search: "search",
+  link: "link",
+};
+
 // === 辅助函数 ===
 
 /**
- * 生成元素的最短选择器
+ * 从CSS类名推断语义hint
+ */
+function inferSemanticHint(className) {
+  if (!className || typeof className !== "string") return null;
+  const classes = className.split(/\s+/);
+  const hints = [];
+  for (const cls of classes) {
+    const clsLower = cls.toLowerCase();
+    for (const [pattern, hint] of Object.entries(CLASS_HINTS_MAP)) {
+      if (clsLower.includes(pattern) && !hints.includes(hint)) {
+        hints.push(hint);
+        if (hints.length >= 2) break;
+      }
+    }
+  }
+  return hints.length > 0 ? hints.join("/") : null;
+}
+
+/**
+ * 提取元素的ARIA语义信息
+ */
+function extractAriaInfo(el) {
+  const info = {};
+  const role = el.getAttribute?.("role");
+  if (role) info.role = role;
+  
+  const implicitRoles = {
+    button: "button", a: "link", nav: "navigation",
+    header: "banner", footer: "contentinfo", main: "main",
+    article: "article", section: "region", aside: "complementary",
+    form: "form", input: "textbox", select: "listbox",
+    textarea: "textbox", img: "img",
+  };
+  
+  if (!role) {
+    const tag = el.tagName?.toLowerCase();
+    if (implicitRoles[tag]) info.role = implicitRoles[tag];
+  }
+  
+  const ariaLabel = el.getAttribute?.("aria-label");
+  if (ariaLabel) info.ariaLabel = ariaLabel.slice(0, 25);
+  
+  return Object.keys(info).length > 0 ? info : null;
+}
+
+/**
+ * 样式值归一化函数
+ */
+function normalizeStyleValue(prop, value) {
+  if (!value) return null;
+  if (SKIP_VALUES.has(value)) return null;
+  
+  // 数值归一化
+  if (/^\d+\.?\d*px$/.test(value)) {
+    const num = parseFloat(value);
+    const rounded = Math.round(num);
+    if (rounded > 1000) return `${Math.round(rounded / 10) * 10}px`;
+    if (rounded > 100) return `${Math.round(rounded / 5) * 5}px`;
+    return `${rounded}px`;
+  }
+  
+  // font-family简化
+  if (prop === "font-family") {
+    if (/apple-system|BlinkMacSystemFont|Segoe UI/i.test(value)) return "system-ui";
+    return value.split(",")[0].trim().replace(/"/g, "");
+  }
+  
+  // color/background-color: rgba → hex，但保留透明度信息
+  if ((prop === "color" || prop === "background-color") && /rgba?\(/.test(value)) {
+    const match = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+    if (match) {
+      const r = parseInt(match[1]);
+      const g = parseInt(match[2]);
+      const b = parseInt(match[3]);
+      const a = match[4] ? parseFloat(match[4]) : 1;
+
+      // alpha = 0：完全透明，跳过输出
+      if (a === 0) return null;
+
+      // alpha = 1：转换为hex（更短）
+      if (a === 1) {
+        return "#" + [r, g, b].map(n => n.toString(16).padStart(2, "0")).join("");
+      }
+
+      // alpha < 1：保留rgba格式（保留透明度信息）
+      return `rgba(${r},${g},${b},${a})`;
+    }
+  }
+  
+  return value;
+}
+
+/**
+ * 生成元素的最短选择器（过滤obfuscated类名和随机ID）
  */
 function shortSelector(el) {
   const tag = el.tagName.toLowerCase();
   
+  // data-testid优先
   const testAttr = el.getAttribute?.("data-testid") ||
     el.getAttribute?.("data-cy") ||
     el.getAttribute?.("data-test");
@@ -83,16 +228,25 @@ function shortSelector(el) {
     return `[data-testid="${testAttr}"]`;
   }
   
-  if (el.id) {
+  // ID过滤随机值
+  if (el.id && !RANDOM_ID_PATTERN.test(el.id)) {
     return `${tag}#${el.id}`;
   }
   
+  // Class过滤obfuscated
   if (el.className && typeof el.className === "string") {
     const classes = el.className.split(/\s+/).filter(Boolean);
+    const semanticClasses = classes.filter(c => !OBFUSCATED_PATTERN.test(c));
+    if (semanticClasses.length > 0) {
+      return `${tag}.${semanticClasses[0]}`;
+    }
     if (classes.length > 0) {
       return `${tag}.${classes[0]}`;
     }
   }
+  
+  return tag;
+}
   
   return tag;
 }
@@ -268,30 +422,36 @@ function estimateTokens(text) {
 
 const STYLE_DEPTH_CUTOFF = 7;
 
+// 格式化树节点装饰信息（增强版：包含ARIA和语义hint）
 function formatNodeDecoration(node, compact = false) {
   let deco = "";
 
+  // ARIA信息优先显示
+  if (node.aria) {
+    if (node.aria.role) deco += ` (${node.aria.role})`;
+    if (node.aria.ariaLabel) deco += ` [aria:"${node.aria.ariaLabel}"]`;
+  }
+
+  // 语义hint
+  if (node.hint) deco += ` [hint:${node.hint}]`;
+
+  // 样式（紧凑模式和非紧凑模式都保留属性名）
   if (node.styles?.length) {
-    if (!compact) {
-      deco += ` [${node.styles.map(([p, v]) => `${p}:${v}`).join("; ")}]`;
-    } else {
-      const essential = node.styles.filter(([p]) =>
-        ESSENTIAL_STYLE_PROPS.has(p),
-      );
-      if (essential.length) {
-        deco += ` [${essential.map(([p, v]) => `${p}:${v}`).join("; ")}]`;
-      }
-    }
+    deco += ` {${node.styles.map(([p, v]) => `${p}:${v}`).join("; ")}}`;
   }
 
+  // 折叠计数
   if (node.count) {
-    deco += ` × ${node.count}`;
+    deco += ` ×${node.count}`;
   }
 
+  // 文本内容
   if (node.text) {
-    deco += ` "${node.text}"`;
+    const displayText = compact ? node.text.slice(0, 20) : node.text;
+    deco += ` "${displayText}"`;
   }
 
+  // 子元素摘要
   if (node.summary) {
     deco += ` — ${node.summary}`;
   }
@@ -299,13 +459,15 @@ function formatNodeDecoration(node, compact = false) {
   return deco;
 }
 
+// 格式化树节点（子节点）- 紧凑格式
 function formatTreeNode(node, indent, isLast, maxDepth, compact = false, currentDepth = 0) {
   if (!node || maxDepth <= 0) return "";
 
   const effectiveCompact = compact || currentDepth >= STYLE_DEPTH_CUTOFF;
 
-  const prefix = isLast ? "└── " : "├── ";
-  const childIndent = indent + (isLast ? "    " : "│   ");
+  // 紧凑模式使用更短的前缀
+  const prefix = isLast ? "└ " : "├ ";
+  const childIndent = indent + (isLast ? "  " : "│ ");
 
   let line = indent + prefix + node.selector;
   line += formatNodeDecoration(node, effectiveCompact);
@@ -396,13 +558,17 @@ function buildTree(element, depth, maxDepth) {
   const text = getDirectText(current).slice(0, 40);
   const styles = getComputedStyles(current, actualTag);
 
+  // 提取语义信息
+  const aria = extractAriaInfo(current);
+  const hint = inferSemanticHint(current.className);
+
   const childEls = Array.from(current.children).filter(
     (c) => !SKIP_TAGS.has(c.tagName?.toLowerCase()) && !c.shadowRoot,
   );
 
   if (depth >= maxDepth || childEls.length === 0) {
     const summary = summarizeChildren(childEls);
-    return { selector, text, styles, summary };
+    return { selector, text, styles, aria, hint, summary };
   }
 
   const groups = groupSimilar(childEls);
@@ -422,7 +588,7 @@ function buildTree(element, depth, maxDepth) {
     }
   }
 
-  return { selector, text, styles, children };
+  return { selector, text, styles, aria, hint, children };
 }
 
 function extractMeta(document) {
@@ -477,6 +643,8 @@ function nodeToSummary(node) {
   return {
     selector: node.selector,
     styles: node.styles,
+    aria: node.aria,
+    hint: node.hint,
     text: node.text,
     count: node.count,
     summary: summaryParts.join(", "),
