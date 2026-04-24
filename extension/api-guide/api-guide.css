@@ -11,10 +11,10 @@
   --color-primary-active: oklch(51% 0.14 42);
   --color-primary-light: oklch(96% 0.04 42);
 
-  /* ---------- 背景：柔暖白（中性微暖，阅读友好） ---------- */
-  --color-bg-primary: oklch(98.5% 0.003 78);
-  --color-bg-secondary: oklch(95.5% 0.004 78);
-  --color-bg-tertiary: oklch(91% 0.005 78);
+  /* ---------- 背景：微暖白（接近纯白，阅读友好） ---------- */
+  --color-bg-primary: oklch(99% 0.002 78);
+  --color-bg-secondary: oklch(97% 0.003 78);
+  --color-bg-tertiary: oklch(94% 0.004 78);
 
   /* ---------- 文字色（暖调有机） ---------- */
   --color-text-primary: oklch(20% 0.01 60);
@@ -72,13 +72,13 @@
 /* 暗色模式 — 深暖有机 */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg-primary: oklch(14% 0.004 78);
-    --color-bg-secondary: oklch(18% 0.005 78);
-    --color-bg-tertiary: oklch(24% 0.006 78);
+    --color-bg-primary: oklch(15% 0.003 78);
+    --color-bg-secondary: oklch(19% 0.004 78);
+    --color-bg-tertiary: oklch(25% 0.005 78);
 
-    --color-text-primary: oklch(94% 0.004 78);
-    --color-text-secondary: oklch(70% 0.005 78);
-    --color-text-tertiary: oklch(55% 0.005 78);
+    --color-text-primary: oklch(95% 0.003 78);
+    --color-text-secondary: oklch(72% 0.004 78);
+    --color-text-tertiary: oklch(56% 0.005 78);
 
     --color-border: rgba(255, 255, 255, 0.06);
     --color-border-light: rgba(255, 255, 255, 0.04);
