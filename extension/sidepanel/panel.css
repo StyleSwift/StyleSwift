@@ -1,6 +1,6 @@
 /**
  * StyleSwift Side Panel CSS
- * 设计：苹果极简 + 金属质感 | 360-420px 宽度，单列纵向流布局
+ * 设计：亲和有机 + 轻度扁平 | 360-420px 宽度，单列纵向流布局
  * 支持：亮色/暗色主题，响应式设计
  *
  * 文件结构：
@@ -12,7 +12,7 @@
  */
 
 /* ============================================================
-   1. CSS Variables — 暖奶白 + 琥珀金品牌色
+   1. CSS Variables — 柔暖色调 + 圆润有机
    ============================================================ */
 
 :root {
@@ -22,29 +22,28 @@
   --color-primary-active: oklch(51% 0.14 42);
   --color-primary-light: oklch(96% 0.04 42);
 
-  /* ---------- 背景：暖奶白（向品牌色倾斜的中性）---------- */
-  --color-bg-primary: oklch(98.5% 0.004 80);
-  --color-bg-secondary: oklch(95.5% 0.006 80);
-  --color-bg-tertiary: oklch(91.5% 0.008 80);
-  --color-bg-hover: oklch(93.5% 0.007 80);
-  --color-bg-active: oklch(89% 0.009 80);
+  /* ---------- 背景：柔暖白（中性微暖，阅读友好）---------- */
+  --color-bg-primary: oklch(98.5% 0.003 78);
+  --color-bg-secondary: oklch(95.5% 0.004 78);
+  --color-bg-tertiary: oklch(91% 0.005 78);
+  --color-bg-hover: oklch(93% 0.005 78);
+  --color-bg-active: oklch(88% 0.006 78);
 
-  /* 质感辅助（高光/描边） */
-  --color-metal-highlight: rgba(255, 255, 255, 0.65);
-  --color-metal-mid: rgba(0, 0, 0, 0.04);
-  --color-metal-shadow: rgba(0, 0, 0, 0.06);
+  /* 柔和层次（替代金属质感） */
+  --color-surface-soft: oklch(97% 0.005 85);
+  --color-surface-warm: oklch(94% 0.01 75);
 
-  /* ---------- 文字色（暖调） ---------- */
-  --color-text-primary: oklch(18% 0.008 60);
-  --color-text-secondary: oklch(50% 0.008 60);
-  --color-text-tertiary: oklch(63% 0.007 60);
-  --color-text-disabled: oklch(74% 0.006 60);
+  /* ---------- 文字色（暖调有机） ---------- */
+  --color-text-primary: oklch(20% 0.01 60);
+  --color-text-secondary: oklch(45% 0.01 60);
+  --color-text-tertiary: oklch(60% 0.008 60);
+  --color-text-disabled: oklch(72% 0.006 60);
   --color-text-inverse: oklch(99% 0 0);
 
-  /* ---------- 边框 ---------- */
-  --color-border: rgba(0, 0, 0, 0.07);
-  --color-border-light: rgba(0, 0, 0, 0.045);
-  --color-border-strong: rgba(0, 0, 0, 0.11);
+  /* ---------- 边框（柔和边线） ---------- */
+  --color-border: rgba(0, 0, 0, 0.06);
+  --color-border-light: rgba(0, 0, 0, 0.04);
+  --color-border-strong: rgba(0, 0, 0, 0.09);
 
   /* ---------- 状态色 ---------- */
   --color-success: #34c759;
@@ -93,25 +92,25 @@
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.65;
 
-  /* ---------- 圆角 ---------- */
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* ---------- 圆角：圆润有机 ---------- */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
   --radius-full: 9999px;
 
-  /* ---------- 阴影：暖色调，与背景融合 ---------- */
-  --shadow-xs: 0 1px 2px oklch(18% 0.008 60 / 0.04);
-  --shadow-sm: 0 2px 8px oklch(18% 0.008 60 / 0.06);
-  --shadow-md: 0 4px 12px oklch(18% 0.008 60 / 0.07);
-  --shadow-lg: 0 8px 24px oklch(18% 0.008 60 / 0.08);
-  --shadow-xl: 0 12px 32px oklch(18% 0.008 60 / 0.1);
+  /* ---------- 阴影：柔和不突兀 ---------- */
+  --shadow-xs: 0 1px 3px oklch(20% 0.01 60 / 0.04);
+  --shadow-sm: 0 2px 6px oklch(20% 0.01 60 / 0.05);
+  --shadow-md: 0 4px 10px oklch(20% 0.01 60 / 0.06);
+  --shadow-lg: 0 6px 16px oklch(20% 0.01 60 / 0.07);
+  --shadow-xl: 0 10px 24px oklch(20% 0.01 60 / 0.08);
 
-  /* ---------- 渐变 ---------- */
-  --gradient-metal: linear-gradient(180deg, var(--color-metal-highlight) 0%, transparent 40%, var(--color-metal-mid) 100%);
-  --gradient-metal-surface: linear-gradient(180deg, oklch(99% 0.003 80) 0%, oklch(96.5% 0.005 80) 50%, oklch(93% 0.007 80) 100%);
-  --gradient-metal-border: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(0,0,0,0.04) 50%, rgba(0,0,0,0.03) 100%);
+  /* ---------- 渐变：柔和过渡 ---------- */
+  --gradient-surface: linear-gradient(180deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%);
+  --gradient-soft: linear-gradient(135deg, var(--color-bg-secondary) 0%, var(--color-bg-tertiary) 100%);
 
   /* ---------- 动画：自然减速，不使用 bounce ---------- */
   --duration-fast: 150ms;
@@ -140,27 +139,26 @@
 }
 
 /* ============================================================
-   暗色主题 — 深色金属
+   暗色主题 — 深暖有机
    ============================================================ */
 
 [data-theme="dark"],
 .dark-theme {
-  --color-bg-primary: oklch(13% 0.006 80);
-  --color-bg-secondary: oklch(17% 0.007 80);
-  --color-bg-tertiary: oklch(22% 0.008 80);
-  --color-bg-hover: oklch(26% 0.008 80);
-  --color-bg-active: oklch(30% 0.009 80);
-  --color-metal-highlight: rgba(255, 255, 255, 0.05);
-  --color-metal-mid: rgba(0, 0, 0, 0.25);
-  --color-metal-shadow: rgba(0, 0, 0, 0.35);
-  --color-text-primary: oklch(95% 0.005 80);
-  --color-text-secondary: oklch(68% 0.006 80);
-  --color-text-tertiary: oklch(55% 0.005 80);
-  --color-text-disabled: oklch(40% 0.004 80);
-  --color-text-inverse: oklch(13% 0.006 80);
-  --color-border: rgba(255, 255, 255, 0.07);
-  --color-border-light: rgba(255, 255, 255, 0.045);
-  --color-border-strong: rgba(255, 255, 255, 0.11);
+  --color-bg-primary: oklch(14% 0.004 78);
+  --color-bg-secondary: oklch(18% 0.005 78);
+  --color-bg-tertiary: oklch(24% 0.006 78);
+  --color-bg-hover: oklch(28% 0.006 78);
+  --color-bg-active: oklch(32% 0.007 78);
+  --color-surface-soft: oklch(16% 0.004 78);
+  --color-surface-warm: oklch(22% 0.008 70);
+  --color-text-primary: oklch(94% 0.004 78);
+  --color-text-secondary: oklch(70% 0.005 78);
+  --color-text-tertiary: oklch(55% 0.005 78);
+  --color-text-disabled: oklch(42% 0.004 78);
+  --color-text-inverse: oklch(14% 0.004 78);
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-light: rgba(255, 255, 255, 0.04);
+  --color-border-strong: rgba(255, 255, 255, 0.09);
   --color-primary: oklch(75% 0.11 42);
   --color-primary-hover: oklch(79% 0.10 42);
   --color-primary-active: oklch(69% 0.13 42);
@@ -169,32 +167,32 @@
   --color-warning-bg: oklch(22% 0.04 75);
   --color-error-bg: oklch(22% 0.05 25);
   --color-info-bg: oklch(20% 0.04 240);
-  --gradient-metal-surface: linear-gradient(180deg, oklch(15% 0.007 80) 0%, oklch(13% 0.006 80) 50%, oklch(11% 0.005 80) 100%);
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --gradient-surface: linear-gradient(180deg, oklch(16% 0.005 78) 0%, oklch(14% 0.004 78) 100%);
+  --gradient-soft: linear-gradient(135deg, oklch(18% 0.005 78) 0%, oklch(24% 0.006 78) 100%);
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 6px 16px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 10px 24px rgba(0, 0, 0, 0.45);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-bg-primary: oklch(13% 0.006 80);
-    --color-bg-secondary: oklch(17% 0.007 80);
-    --color-bg-tertiary: oklch(22% 0.008 80);
-    --color-bg-hover: oklch(26% 0.008 80);
-    --color-bg-active: oklch(30% 0.009 80);
-    --color-metal-highlight: rgba(255, 255, 255, 0.05);
-    --color-metal-mid: rgba(0, 0, 0, 0.25);
-    --color-metal-shadow: rgba(0, 0, 0, 0.35);
-    --color-text-primary: oklch(95% 0.005 80);
-    --color-text-secondary: oklch(68% 0.006 80);
-    --color-text-tertiary: oklch(55% 0.005 80);
-    --color-text-disabled: oklch(40% 0.004 80);
-    --color-text-inverse: oklch(13% 0.006 80);
-    --color-border: rgba(255, 255, 255, 0.07);
-    --color-border-light: rgba(255, 255, 255, 0.045);
-    --color-border-strong: rgba(255, 255, 255, 0.11);
+    --color-bg-primary: oklch(14% 0.004 78);
+    --color-bg-secondary: oklch(18% 0.005 78);
+    --color-bg-tertiary: oklch(24% 0.006 78);
+    --color-bg-hover: oklch(28% 0.006 78);
+    --color-bg-active: oklch(32% 0.007 78);
+    --color-surface-soft: oklch(16% 0.004 78);
+    --color-surface-warm: oklch(22% 0.008 70);
+    --color-text-primary: oklch(94% 0.004 78);
+    --color-text-secondary: oklch(70% 0.005 78);
+    --color-text-tertiary: oklch(55% 0.005 78);
+    --color-text-disabled: oklch(42% 0.004 78);
+    --color-text-inverse: oklch(14% 0.004 78);
+    --color-border: rgba(255, 255, 255, 0.06);
+    --color-border-light: rgba(255, 255, 255, 0.04);
+    --color-border-strong: rgba(255, 255, 255, 0.09);
     --color-primary: oklch(75% 0.11 42);
     --color-primary-hover: oklch(79% 0.10 42);
     --color-primary-active: oklch(69% 0.13 42);
@@ -203,12 +201,13 @@
     --color-warning-bg: oklch(22% 0.04 75);
     --color-error-bg: oklch(22% 0.05 25);
     --color-info-bg: oklch(20% 0.04 240);
-    --gradient-metal-surface: linear-gradient(180deg, oklch(15% 0.007 80) 0%, oklch(13% 0.006 80) 50%, oklch(11% 0.005 80) 100%);
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-    --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.55);
+    --gradient-surface: linear-gradient(180deg, oklch(16% 0.005 78) 0%, oklch(14% 0.004 78) 100%);
+    --gradient-soft: linear-gradient(135deg, oklch(18% 0.005 78) 0%, oklch(24% 0.006 78) 100%);
+    --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.25);
+    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 6px 16px rgba(0, 0, 0, 0.4);
+    --shadow-xl: 0 10px 24px rgba(0, 0, 0, 0.45);
   }
 }
 
@@ -301,7 +300,7 @@ body {
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-normal);
   color: var(--color-text-primary);
-  background: var(--gradient-metal-surface);
+  background: var(--gradient-surface);
   -webkit-font-smoothing: antialiased;
   width: 100%;
   min-width: var(--min-panel-width);
@@ -410,7 +409,7 @@ pre code {
   overflow: hidden;
 }
 
-/* 顶栏 — 金属条（含会话下拉，作为下拉的定位参考） */
+/* 顶栏 — 柔暖背景（含会话下拉，作为下拉的定位参考） */
 .topbar {
   flex-shrink: 0;
   height: var(--topbar-height);
@@ -418,9 +417,8 @@ pre code {
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--spacing-md);
-  background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, var(--color-bg-secondary) 100%);
-  border-bottom: 1px solid var(--color-border);
-  box-shadow: 0 1px 0 var(--color-metal-highlight);
+  background: var(--gradient-surface);
+  border-bottom: 1px solid var(--color-border-light);
   position: relative;
   top: 0;
   z-index: var(--z-dropdown);
@@ -429,8 +427,8 @@ pre code {
 
 [data-theme="dark"] .topbar,
 .dark-theme .topbar {
-  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, var(--color-bg-secondary) 100%);
-  box-shadow: 0 1px 0 var(--color-border);
+  background: var(--gradient-surface);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .topbar-left {
@@ -944,9 +942,8 @@ pre code {
 .confirmation-overlay {
   flex-shrink: 0;
   padding: var(--spacing-sm) var(--spacing-md);
-  background: linear-gradient(0deg, var(--color-bg-tertiary) 0%, var(--color-bg-secondary) 100%);
+  background: var(--color-bg-tertiary);
   border-top: 1px solid var(--color-border);
-  box-shadow: 0 -1px 0 var(--color-metal-highlight);
   animation: slideUp var(--duration-normal) var(--easing-default);
 }
 
@@ -1394,13 +1391,12 @@ pre code {
   color: var(--color-text-primary);
 }
 
-/* 输入区 — 顶部分割线 + 轻质金属感 */
+/* 输入区 — 柔暖容器 */
 .input-area {
   flex-shrink: 0;
   padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
   background: var(--color-bg-primary);
   border-top: 1px solid var(--color-border-light);
-  box-shadow: 0 -1px 0 var(--color-metal-highlight);
   transition: opacity var(--duration-normal) var(--easing-default);
 }
 
@@ -1413,9 +1409,7 @@ pre code {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   padding: var(--spacing-sm) var(--spacing-md) var(--spacing-xs);
-  box-shadow:
-    inset 0 1px 3px var(--color-metal-shadow),
-    0 1px 0 var(--color-metal-highlight);
+  box-shadow: var(--shadow-sm);
   transition:
     border-color var(--duration-fast) var(--easing-default),
     box-shadow var(--duration-fast) var(--easing-default);
@@ -1423,9 +1417,7 @@ pre code {
 
 .input-wrapper:focus-within {
   border-color: color-mix(in oklch, var(--color-primary) 50%, transparent);
-  box-shadow:
-    inset 0 1px 3px var(--color-metal-shadow),
-    0 0 0 2.5px color-mix(in oklch, var(--color-primary) 20%, transparent);
+  box-shadow: var(--shadow-md), 0 0 0 2.5px color-mix(in oklch, var(--color-primary) 20%, transparent);
 }
 
 /* 输入框 — 自动增高，默认单行，最大展开 */
@@ -1778,25 +1770,25 @@ pre code {
   background: var(--color-primary);
   color: var(--color-text-inverse);
   border: 1px solid transparent;
-  box-shadow: 0 1px 3px var(--color-primary-hover);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--color-primary-hover);
-  box-shadow: 0 2px 8px var(--color-primary-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-primary:active:not(:disabled) {
   background: var(--color-primary-active);
-  box-shadow: none;
+  box-shadow: var(--shadow-xs);
 }
 
-/* Secondary 按钮 — 金属面 */
+/* Secondary 按钮 — 柔暖背景 */
 .btn-secondary {
-  background: linear-gradient(180deg, var(--color-bg-secondary) 0%, var(--color-bg-tertiary) 100%);
+  background: var(--color-bg-secondary);
   color: var(--color-text-primary);
   border: 1px solid var(--color-border);
-  box-shadow: inset 0 1px 0 var(--color-metal-highlight);
+  box-shadow: var(--shadow-xs);
 }
 
 .btn-secondary:hover:not(:disabled) {
