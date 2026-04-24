@@ -84,12 +84,12 @@
 	--radius-2xl: 32px;
 	--radius-full: 9999px;
 
-	/* 阴影：柔和不突兀 */
-	--shadow-xs: 0 1px 3px oklch(20% 0.01 60 / 0.04);
-	--shadow-sm: 0 2px 6px oklch(20% 0.01 60 / 0.05);
-	--shadow-md: 0 4px 10px oklch(20% 0.01 60 / 0.06);
-	--shadow-lg: 0 6px 16px oklch(20% 0.01 60 / 0.07);
-	--shadow-xl: 0 10px 24px oklch(20% 0.01 60 / 0.08);
+	/* 阴影：轻盈柔和 */
+	--shadow-xs: 0 1px 2px oklch(20% 0.01 60 / 0.03);
+	--shadow-sm: 0 1px 4px oklch(20% 0.01 60 / 0.04);
+	--shadow-md: 0 2px 8px oklch(20% 0.01 60 / 0.05);
+	--shadow-lg: 0 4px 12px oklch(20% 0.01 60 / 0.06);
+	--shadow-xl: 0 6px 16px oklch(20% 0.01 60 / 0.07);
 
 	/* 动画 */
 	--duration-fast: 150ms;

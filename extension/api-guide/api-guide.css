@@ -39,9 +39,9 @@
   --radius-lg: 20px;
   --radius-xl: 24px;
 
-  /* ---------- 阴影：柔和不突兀 ---------- */
-  --shadow-sm: 0 2px 6px oklch(20% 0.01 60 / 0.05);
-  --shadow-md: 0 4px 10px oklch(20% 0.01 60 / 0.06);
+  /* ---------- 阴影：轻盈柔和 ---------- */
+  --shadow-sm: 0 1px 4px oklch(20% 0.01 60 / 0.04);
+  --shadow-md: 0 2px 8px oklch(20% 0.01 60 / 0.05);
 
   /* ---------- 字体 ---------- */
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
@@ -85,8 +85,8 @@
 
     --color-primary-light: oklch(25% 0.08 42);
 
-    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.35);
+    --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.22);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.26);
   }
 }
 
