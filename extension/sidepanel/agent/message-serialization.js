@@ -17,23 +17,36 @@ export function serializeToOpenAI(system, messages) {
 
   for (const msg of messages) {
     if (msg.role === "user") {
-      const userContent = Array.isArray(msg.content)
-        ? msg.content.map((c) => {
-            if (c.type === "text") return { type: "text", text: c.text };
-            if (c.type === "image_url") return { type: "image_url", image_url: c.image_url };
-            if (c.type === "tool_result") {
-              // OpenAI tool_result format
-              const toolContent = typeof c.content === "string"
-                ? c.content
-                : Array.isArray(c.content)
-                  ? c.content.filter((x) => x.type === "text").map((x) => x.text).join("\n")
-                  : JSON.stringify(c.content);
-              return { type: "text", text: toolContent };
-            }
-            return { type: "text", text: JSON.stringify(c) };
-          })
-        : msg.content;
-      result.push({ role: "user", content: userContent });
+      // 检查是否包含 tool_result（需要转换为独立的 tool 消息）
+      const contentArray = Array.isArray(msg.content) ? msg.content : [{ type: "text", text: msg.content }];
+      const toolResults = contentArray.filter((c) => c.type === "tool_result");
+      const nonToolContent = contentArray.filter((c) => c.type !== "tool_result");
+
+      // OpenAI 格式：tool_result 必须是独立的 role: "tool" 消息
+      // 每个 tool_result 对应一个 tool 消息，通过 tool_call_id 匹配
+      for (const tr of toolResults) {
+        const toolContent = typeof tr.content === "string"
+          ? tr.content
+          : Array.isArray(tr.content)
+            ? tr.content.filter((x) => x.type === "text").map((x) => x.text).join("\n")
+            : JSON.stringify(tr.content);
+        
+        result.push({
+          role: "tool",
+          tool_call_id: tr.tool_use_id, // ICF 的 tool_use_id → OpenAI 的 tool_call_id
+          content: toolContent
+        });
+      }
+
+      // 如果还有非 tool_result 内容（text, image_url），创建 user 消息
+      if (nonToolContent.length > 0) {
+        const userContent = nonToolContent.map((c) => {
+          if (c.type === "text") return { type: "text", text: c.text };
+          if (c.type === "image_url") return { type: "image_url", image_url: c.image_url };
+          return { type: "text", text: JSON.stringify(c) };
+        });
+        result.push({ role: "user", content: userContent });
+      }
     } else if (msg.role === "assistant") {
       // OpenAI assistant: text + tool_calls array + reasoning_content
       const textBlocks = (msg.content || []).filter((b) => b.type === "text");

@@ -105,28 +105,41 @@ describe('OpenAI API Format', () => {
     );
   });
 
-  it('应该正确转换工具结果为 OpenAI 格式', () => {
-    // 测试消息转换逻辑
-    const anthropicToolResult = {
-      role: 'user',
-      content: [
-        {
-          type: 'tool_result',
-          tool_use_id: 'call_123',
-          content: 'Tool execution result'
-        }
-      ]
-    };
+  it('应该正确转换工具结果为 OpenAI 格式', async () => {
+    // 导入实际的序列化函数
+    const { serializeToOpenAI } = await import('../sidepanel/agent/message-serialization.js');
 
-    // 预期的 OpenAI 格式
-    const expectedOpenAIFormat = {
-      role: 'tool',
-      tool_call_id: 'call_123',
-      content: 'Tool execution result'
-    };
+    // ICF 格式的输入：assistant 有 tool_calls，user 消息包含 tool_result
+    const messages = [
+      { 
+        role: 'assistant', 
+        content: [
+          { type: 'text', text: 'I will use a tool' },
+          { type: 'tool_use', id: 'call_123', name: 'test_tool', input: {} }
+        ]
+      },
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: 'call_123', content: 'Tool execution result' }
+        ]
+      }
+    ];
 
-    // 这个测试验证了转换逻辑的预期行为
-    expect(anthropicToolResult.content[0].type).toBe('tool_result');
-    expect(anthropicToolResult.content[0].tool_use_id).toBe('call_123');
+    // 转换为 OpenAI 格式
+    const openaiMessages = serializeToOpenAI(null, messages);
+
+    // 验证：assistant 消息应有 tool_calls
+    expect(openaiMessages[0].role).toBe('assistant');
+    expect(openaiMessages[0].tool_calls).toBeDefined();
+    expect(openaiMessages[0].tool_calls[0].id).toBe('call_123');
+
+    // 验证：紧接着必须是 role: "tool" 的独立消息（而非嵌套在 user 消息里）
+    expect(openaiMessages[1].role).toBe('tool');
+    expect(openaiMessages[1].tool_call_id).toBe('call_123');
+    expect(openaiMessages[1].content).toBe('Tool execution result');
+
+    // 这是 OpenAI API 要求的正确格式
+    // 参见：https://platform.openai.com/docs/api-reference/chat/create#chat-create-tool_calls
   });
 });
