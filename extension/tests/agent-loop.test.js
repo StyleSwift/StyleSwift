@@ -1295,4 +1295,106 @@ describe("deduplicateToolResults 函数", () => {
     // 但 tool_result 应被去重
     expect(result[1].content[0].content).toContain("已去重");
   });
+
+  test("TodoWrite 等状态更新工具，不同参数也只保留最新结果", () => {
+    const messages = [
+      {
+        role: "assistant",
+        content: [
+          {
+            type: "tool_use",
+            id: "todo_1",
+            name: "TodoWrite",
+            input: { todos: [{ content: "创建任务1", status: "pending" }] },
+          },
+        ],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "tool_result", tool_use_id: "todo_1", content: "计划已创建，等待确认" },
+        ],
+      },
+      {
+        role: "assistant",
+        content: [
+          {
+            type: "tool_use",
+            id: "todo_2",
+            name: "TodoWrite",
+            input: { todos: [{ id: "todo_1", status: "in_progress" }] },
+          },
+        ],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "tool_result", tool_use_id: "todo_2", content: "任务1已开始" },
+        ],
+      },
+      {
+        role: "assistant",
+        content: [
+          {
+            type: "tool_use",
+            id: "todo_3",
+            name: "TodoWrite",
+            input: { todos: [{ id: "todo_1", status: "completed" }] },
+          },
+        ],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "tool_result", tool_use_id: "todo_3", content: "任务1已完成" },
+        ],
+      },
+    ];
+
+    const result = deduplicateToolResults(messages);
+
+    // todo_1 和 todo_2 是更早的 TodoWrite 调用，应被去重
+    expect(result[1].content[0].content).toContain("已去重");
+    expect(result[1].content[0].content).toContain("TodoWrite");
+    expect(result[3].content[0].content).toContain("已去重");
+    expect(result[3].content[0].content).toContain("TodoWrite");
+
+    // todo_3 是最新的，保持原样
+    expect(result[5].content[0].content).toBe("任务1已完成");
+  });
+
+  test("普通工具（如 grep）不同参数仍不会被去重", () => {
+    const messages = [
+      {
+        role: "assistant",
+        content: [
+          { type: "tool_use", id: "call_1", name: "grep", input: { pattern: "color" } },
+        ],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "tool_result", tool_use_id: "call_1", content: "color 的结果" },
+        ],
+      },
+      {
+        role: "assistant",
+        content: [
+          { type: "tool_use", id: "call_2", name: "grep", input: { pattern: "font" } },
+        ],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "tool_result", tool_use_id: "call_2", content: "font 的结果" },
+        ],
+      },
+    ];
+
+    const result = deduplicateToolResults(messages);
+    // 不同参数的普通工具，不触发去重
+    expect(result).toBe(messages);
+    expect(result[1].content[0].content).toBe("color 的结果");
+    expect(result[3].content[0].content).toBe("font 的结果");
+  });
 });

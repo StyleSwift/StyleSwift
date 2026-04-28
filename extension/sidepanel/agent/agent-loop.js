@@ -618,6 +618,9 @@ export async function agentLoop(prompt, uiCallbacks) {
         ];
       }
       isFirstIteration = false;
+      // Deduplicate identical tool calls (same name + same params) to save context
+      // For state update tools like TodoWrite, only keep the latest call regardless of params
+      currentLlmHistory = deduplicateToolResults(currentLlmHistory);
       // Prune reasoning_content: only keep the last assistant message's reasoning
       // This mirrors Anthropic's clear_thinking_20251015 strategy to reduce token inflation
       currentLlmHistory = pruneReasoningContent(currentLlmHistory);

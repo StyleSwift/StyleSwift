@@ -650,6 +650,15 @@ export function truncateLargeToolResults(messages) {
 // For identical tool calls (same name + same parameters), only keep the latest result.
 // Earlier identical calls have their results replaced with a short dedup notice,
 // saving context window tokens while preserving conversation integrity.
+//
+// Special handling for "state update tools" like TodoWrite:
+// These tools are called multiple times with different parameters to update state,
+// but only the latest call result matters. Earlier calls can be deduplicated
+// based solely on tool name, regardless of parameters.
+
+const STATE_UPDATE_TOOLS = new Set([
+  "TodoWrite",
+]);
 
 /**
  * Sort object keys recursively for stable JSON serialization
@@ -668,11 +677,15 @@ function sortObjectKeys(obj) {
 
 /**
  * Generate a stable deduplication key from tool name and arguments
+ * For state update tools (like TodoWrite), only use tool name as key
  * @param {string} toolName - Tool name (e.g., "grep", "apply_style")
  * @param {Object} args - Tool arguments
  * @returns {string} - Stable key for deduplication
  */
 function generateToolDedupKey(toolName, args) {
+  if (STATE_UPDATE_TOOLS.has(toolName)) {
+    return toolName;
+  }
   try {
     const sortedArgs = sortObjectKeys(args);
     return `${toolName}:${JSON.stringify(sortedArgs)}`;
@@ -741,10 +754,10 @@ export function deduplicateToolResults(messages) {
       ) {
         changed = true;
         const key = toolUseIdToKey.get(block.tool_use_id) || "";
-        const toolName = key.includes(":") ? key.split(":")[0] : "unknown";
+        const toolName = key.includes(":") ? key.split(":")[0] : key;
         return {
           ...block,
-          content: `[Deduplicated: earlier call to ${toolName} with same parameters — only the latest result is kept]`,
+          content: `[已去重: 更早的 ${toolName} 调用— 仅保留最新结果]`,
         };
       }
       return block;
