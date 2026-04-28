@@ -580,33 +580,34 @@ pre code {
   color: var(--color-text-inverse);
 }
 
-/* 技能快捷区 — 紧凑无缝设计，支持换行 */
+/* 技能快捷区 — 对话区顶部，视觉中上方位置 */
 .skill-area {
   flex-shrink: 0;
   min-height: 0;
-  max-height: 120px; /* 允许多行显示，最大约2行 */
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: transparent;
-  border-bottom: none;
-  overflow-x: hidden;
-  overflow-y: auto;
+  max-height: none; /* 移除高度限制，自适应内容 */
+  padding: var(--spacing-lg) var(--spacing-md) var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-light);
+  overflow: visible; /* 移除滚动条 */
   transition: all var(--duration-normal) var(--easing-out-expo);
-  /* 默认显示，通过JS控制隐藏 */
 }
 
 /* 隐藏状态：当Agent处理后隐藏整个技能区 */
 .skill-area.hidden {
   max-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  opacity: 0;
+  padding: 0;
   margin: 0;
+  opacity: 0;
   overflow: hidden;
   pointer-events: none;
+  border: none;
 }
 
 .skill-area::-webkit-scrollbar {
-  height: 4px;
+  height: 0;
+  width: 0;
 }
 
 /* 技能区头部 — 隐藏（无缝设计不需要标题） */
@@ -616,8 +617,11 @@ pre code {
 
 /* 保留折叠功能但不再显示标题 */
 .skill-area.collapsed {
-  min-height: 0;
-  padding: 0 var(--spacing-md);
+  max-height: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  border: none;
 }
 
 .skill-area.collapsed .skill-chips {
@@ -640,7 +644,7 @@ pre code {
 .skill-chips-inner {
   display: flex;
   flex-wrap: wrap; /* 支持换行 */
-  gap: var(--spacing-xs);
+  gap: 6px; /* 舒适间距 */
   align-items: center;
   min-height: 0;
   overflow: visible;
@@ -1991,44 +1995,44 @@ pre code {
   box-shadow: var(--shadow-sm);
 }
 
-/* 工具调用卡片 — 金属卡片 */
+/* 工具调用卡片 — 扁平简洁风格 */
 .tool-card {
-  background: linear-gradient(180deg, var(--color-bg-secondary) 0%, var(--color-bg-tertiary) 100%);
+  background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  margin-bottom: var(--spacing-sm);
+  border-radius: 12px;
+  margin-bottom: 6px;
   overflow: hidden;
-  box-shadow: var(--shadow-xs), inset 0 1px 0 var(--color-metal-highlight);
+  box-shadow: none;
   transition: all var(--duration-fast) var(--easing-default);
 }
 
 /* 工具卡片组 - 聚合多个工具调用 */
 .tool-card-group {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
 }
 
 .tool-card-group .tool-card {
-  margin-bottom: 2px;
+  margin-bottom: 1px;
   border-radius: 0;
 }
 
 .tool-card-group .tool-card:first-child {
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-radius: 12px 12px 0 0;
 }
 
 .tool-card-group .tool-card:last-child {
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  border-radius: 0 0 12px 12px;
   margin-bottom: 0;
 }
 
 .tool-card-group .tool-card:only-child {
-  border-radius: var(--radius-md);
+  border-radius: 12px;
 }
 
 /* 处理中状态 */
 .tool-card.processing {
-  border-color: var(--color-warning);
-  background-color: var(--color-warning-bg);
+  border-color: var(--color-border);
+  background-color: var(--color-bg-secondary);
 }
 
 .tool-card.processing .tool-card-header {
@@ -2053,7 +2057,7 @@ pre code {
 
 .tool-card.completed:hover {
   border-color: var(--color-border-strong);
-  box-shadow: var(--shadow-xs);
+  background-color: var(--color-bg-hover);
 }
 
 /* 折叠状态 */
@@ -2078,7 +2082,7 @@ pre code {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: 6px 10px;
   cursor: pointer;
   transition: background-color var(--duration-fast) var(--easing-default);
   user-select: none;
@@ -2091,8 +2095,8 @@ pre code {
 .tool-card-title {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  font-size: var(--font-size-md);
+  gap: 6px;
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
 }
@@ -2102,8 +2106,8 @@ pre code {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 .tool-card-name {
@@ -2116,8 +2120,8 @@ pre code {
 .tool-card-status {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  font-size: var(--font-size-sm);
+  gap: 4px;
+  font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
 }
 
@@ -2133,14 +2137,14 @@ pre code {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   flex-shrink: 0;
 }
 
 .tool-card-expand {
   color: var(--color-text-tertiary);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   transition: transform var(--duration-fast) var(--easing-default);
   flex-shrink: 0;
 }
@@ -2150,14 +2154,14 @@ pre code {
 }
 
 .tool-card-body {
-  padding: var(--spacing-md);
-  border-top: 1px dashed var(--color-border);
+  padding: 8px 10px;
+  border-top: 1px solid var(--color-border-light);
   background-color: var(--color-bg-primary);
   animation: slideDown var(--duration-fast) var(--easing-default);
 }
 
 .tool-card-section {
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: 6px;
 }
 
 .tool-card-section:last-child {
@@ -2165,18 +2169,18 @@ pre code {
 }
 
 .tool-card-label {
-  font-size: var(--font-size-xs);
+  font-size: 10px;
   font-weight: var(--font-weight-medium);
   color: var(--color-text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: var(--spacing-xs);
+  letter-spacing: 0.3px;
+  margin-bottom: 3px;
 }
 
 .tool-card-content {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
-  line-height: var(--line-height-relaxed);
+  line-height: 1.5;
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
@@ -2184,10 +2188,10 @@ pre code {
 .tool-card-content code {
   display: block;
   background-color: var(--color-bg-tertiary);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+  border-radius: 6px;
   font-family: var(--font-family-mono);
-  font-size: var(--font-size-xs);
+  font-size: 11px;
   white-space: pre-wrap;
   word-break: break-all;
 }
@@ -2200,13 +2204,13 @@ pre code {
 .tool-card-text {
   display: block;
   font-family: var(--font-family-mono);
-  font-size: var(--font-size-xs);
+  font-size: 11px;
   background-color: var(--color-bg-tertiary);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+  border-radius: 6px;
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 200px;
+  max-height: 150px;
   overflow-y: auto;
 }
 
@@ -2214,20 +2218,16 @@ pre code {
   display: inline-block;
   font-style: italic;
   color: var(--color-text-tertiary);
-  font-size: var(--font-size-xs);
-  margin-top: var(--spacing-xs);
+  font-size: 10px;
+  margin-top: 4px;
 }
 
 /* ── Task 子任务卡片专属样式 ── */
 
-/* 子任务卡片：蓝色边框区分 */
+/* 子任务卡片：扁平蓝色边框 */
 .tool-card.task-card {
   border-color: var(--color-accent, #4f8ef7);
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--color-accent, #4f8ef7) 6%, var(--color-bg-secondary)) 0%,
-    var(--color-bg-secondary) 100%
-  );
+  background: color-mix(in srgb, var(--color-accent, #4f8ef7) 4%, var(--color-bg-secondary));
 }
 
 .tool-card.task-card .tool-card-header {
@@ -2236,13 +2236,13 @@ pre code {
 
 .tool-card.task-card:hover {
   border-color: var(--color-accent, #4f8ef7);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent, #4f8ef7) 30%, transparent);
+  box-shadow: none;
 }
 
-/* 处理中：子任务蓝色脉动 */
+/* 处理中：子任务扁平蓝色背景 */
 .tool-card.processing.task-card {
   border-color: var(--color-accent, #4f8ef7);
-  background-color: color-mix(in srgb, var(--color-accent, #4f8ef7) 8%, var(--color-bg-secondary));
+  background-color: color-mix(in srgb, var(--color-accent, #4f8ef7) 6%, var(--color-bg-secondary));
 }
 
 .tool-card.processing.task-card .tool-card-status {
@@ -2270,11 +2270,7 @@ pre code {
 
 .tool-card.think-card {
   border-color: color-mix(in srgb, #a855f7 60%, transparent);
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, #a855f7 4%, var(--color-bg-secondary)) 0%,
-    var(--color-bg-secondary) 100%
-  );
+  background: color-mix(in srgb, #a855f7 3%, var(--color-bg-secondary));
 }
 
 .tool-card.think-card .tool-card-header {
@@ -2283,7 +2279,7 @@ pre code {
 
 .tool-card.think-card:hover {
   border-color: #a855f7;
-  box-shadow: 0 0 0 1px color-mix(in srgb, #a855f7 25%, transparent);
+  box-shadow: none;
 }
 
 .tool-card.think-card .tool-card-icon {
@@ -2292,18 +2288,18 @@ pre code {
 
 /* Think 内容预览区域 */
 .think-content-preview {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
-  line-height: 1.5;
-  padding: var(--spacing-xs) 0;
+  line-height: 1.4;
+  padding: 2px 0;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-/* 处理中：think 卡片紫色脉动 */
+/* 处理中：think 卡片扁平紫色背景 */
 .tool-card.processing.think-card {
   border-color: #a855f7;
-  background-color: color-mix(in srgb, #a855f7 6%, var(--color-bg-secondary));
+  background-color: color-mix(in srgb, #a855f7 5%, var(--color-bg-secondary));
 }
 
 .tool-card.processing.think-card .tool-card-status {
@@ -2315,10 +2311,10 @@ pre code {
    ============================================================ */
 
 .subagent-panel {
-  margin: var(--spacing-xs) var(--spacing-sm) var(--spacing-xs) var(--spacing-md);
+  margin: 4px 8px 4px 10px;
   border: 1px solid color-mix(in srgb, var(--color-accent, #4f8ef7) 35%, transparent);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-accent, #4f8ef7) 4%, var(--color-bg-primary));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-accent, #4f8ef7) 3%, var(--color-bg-primary));
   overflow: hidden;
   transition: border-color 0.2s;
 }
@@ -2331,13 +2327,13 @@ pre code {
 .subagent-panel-header {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
+  gap: 4px;
+  padding: 4px 8px;
   cursor: pointer;
-  background: color-mix(in srgb, var(--color-accent, #4f8ef7) 8%, var(--color-bg-secondary));
-  border-bottom: 1px solid color-mix(in srgb, var(--color-accent, #4f8ef7) 20%, transparent);
+  background: color-mix(in srgb, var(--color-accent, #4f8ef7) 6%, var(--color-bg-secondary));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-accent, #4f8ef7) 15%, transparent);
   user-select: none;
-  font-size: var(--font-size-xs);
+  font-size: 11px;
   font-weight: var(--font-weight-medium);
 }
 
@@ -2354,8 +2350,8 @@ pre code {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   color: var(--color-text-secondary);
 }
 
@@ -2378,8 +2374,8 @@ pre code {
   color: var(--color-text-secondary);
   margin-left: auto;
   flex-shrink: 0;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   transition: transform 0.15s var(--easing-default);
 }
 
@@ -2388,10 +2384,10 @@ pre code {
 }
 
 .subagent-panel-body {
-  padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-sm);
+  padding: 4px 8px 6px;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: 4px;
   transition: max-height 0.25s ease, opacity 0.2s;
 }
 
@@ -2402,13 +2398,13 @@ pre code {
 /* 子智能体文本气泡 */
 .subagent-text-bubble {
   display: none;
-  font-size: var(--font-size-sm);
-  line-height: 1.55;
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
   color: var(--color-text-primary);
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: 4px 8px;
   background: var(--color-bg-secondary);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  border: 1px solid var(--color-border-light);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -2426,33 +2422,33 @@ pre code {
 .task-result-row {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-sm);
+  gap: 6px;
+  margin-bottom: 4px;
 }
 
 .task-result-badge {
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
-  border-radius: 999px;
-  font-size: var(--font-size-xs);
+  border-radius: 8px;
+  font-size: 10px;
   font-weight: var(--font-weight-medium);
 }
 
 .task-result-badge.pass {
-  background: color-mix(in srgb, var(--color-success, #34d399) 15%, transparent);
+  background: color-mix(in srgb, var(--color-success, #34d399) 12%, transparent);
   color: var(--color-success, #34d399);
-  border: 1px solid color-mix(in srgb, var(--color-success, #34d399) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success, #34d399) 25%, transparent);
 }
 
 .task-result-badge.fail {
-  background: color-mix(in srgb, var(--color-error, #f87171) 15%, transparent);
+  background: color-mix(in srgb, var(--color-error, #f87171) 12%, transparent);
   color: var(--color-error, #f87171);
-  border: 1px solid color-mix(in srgb, var(--color-error, #f87171) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-error, #f87171) 25%, transparent);
 }
 
 .task-result-score {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
 }
 
@@ -2463,54 +2459,54 @@ pre code {
 
 /* 摘要文本 */
 .task-result-summary {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
-  line-height: var(--line-height-relaxed);
-  margin-bottom: var(--spacing-sm);
+  line-height: 1.45;
+  margin-bottom: 4px;
 }
 
 /* Issues 数量统计 chip */
 .task-issue-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-sm);
+  gap: 4px;
+  margin-bottom: 4px;
 }
 
 .task-issue-chip {
   display: inline-flex;
   align-items: center;
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-size: var(--font-size-xs);
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 10px;
   font-weight: var(--font-weight-medium);
 }
 
 .task-issue-chip.high {
-  background: color-mix(in srgb, var(--color-error, #f87171) 12%, transparent);
+  background: color-mix(in srgb, var(--color-error, #f87171) 10%, transparent);
   color: var(--color-error, #f87171);
-  border: 1px solid color-mix(in srgb, var(--color-error, #f87171) 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-error, #f87171) 20%, transparent);
 }
 
 .task-issue-chip.medium {
-  background: color-mix(in srgb, var(--color-warning, #fbbf24) 12%, transparent);
+  background: color-mix(in srgb, var(--color-warning, #fbbf24) 10%, transparent);
   color: var(--color-warning-text, #b45309);
-  border: 1px solid color-mix(in srgb, var(--color-warning, #fbbf24) 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning, #fbbf24) 20%, transparent);
 }
 
 .task-issue-chip.low {
-  background: color-mix(in srgb, var(--color-text-tertiary) 10%, transparent);
+  background: color-mix(in srgb, var(--color-text-tertiary) 8%, transparent);
   color: var(--color-text-tertiary);
   border: 1px solid var(--color-border);
 }
 
 /* 折叠原始输出 details/summary */
 .task-raw-details {
-  margin-top: var(--spacing-xs);
+  margin-top: 4px;
 }
 
 .task-raw-details summary {
-  font-size: var(--font-size-xs);
+  font-size: 10px;
   color: var(--color-text-tertiary);
   cursor: pointer;
   user-select: none;
@@ -2518,12 +2514,12 @@ pre code {
   list-style: none;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .task-raw-details summary::before {
   content: "▸";
-  font-size: 10px;
+  font-size: 9px;
   transition: transform 0.15s ease;
 }
 
@@ -2536,15 +2532,15 @@ pre code {
 }
 
 .task-raw-output {
-  margin-top: var(--spacing-xs);
-  padding: var(--spacing-sm);
+  margin-top: 4px;
+  padding: 6px;
   background: var(--color-bg-tertiary);
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   font-family: var(--font-family-mono);
-  font-size: var(--font-size-xs);
+  font-size: 11px;
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 240px;
+  max-height: 180px;
   overflow-y: auto;
   color: var(--color-text-secondary);
   border: 1px solid var(--color-border);
@@ -2552,10 +2548,10 @@ pre code {
 
 /* 纯文本预览 */
 .task-text-preview {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
-  line-height: var(--line-height-relaxed);
-  margin-bottom: var(--spacing-xs);
+  line-height: 1.45;
+  margin-bottom: 4px;
 }
 
 
@@ -2988,12 +2984,12 @@ pre code {
   flex-direction: column;
   width: 100%;
   max-width: 100%;
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: 4px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   overflow: hidden;
-  background: linear-gradient(180deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%);
-  box-shadow: inset 0 1px 0 var(--color-metal-highlight);
+  background: var(--color-bg-secondary);
+  box-shadow: none;
 }
 
 .reasoning-block.visible {
@@ -3003,18 +2999,18 @@ pre code {
 .reasoning-header {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   width: 100%;
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: 5px 10px;
   background: none;
   border: none;
   cursor: pointer;
   color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
+  font-size: 11px;
   font-weight: var(--font-weight-medium);
   text-align: left;
   transition: background-color var(--duration-fast) var(--easing-default);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .reasoning-header:hover {
@@ -3025,8 +3021,8 @@ pre code {
 /* 推理中的旋转加载圆圈 */
 .reasoning-spinner {
   flex-shrink: 0;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border: 1.5px solid var(--color-border-strong);
   border-top-color: var(--color-primary);
   border-radius: 50%;
@@ -3034,7 +3030,6 @@ pre code {
 }
 
 .reasoning-block.finished .reasoning-spinner {
-  border-top-color: var(--color-text-tertiary);
   border-color: var(--color-text-tertiary);
   animation: none;
   opacity: 0.5;
@@ -3050,8 +3045,8 @@ pre code {
 /* 展开/收起箭头 */
 .reasoning-chevron {
   flex-shrink: 0;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3061,11 +3056,11 @@ pre code {
 .reasoning-chevron::after {
   content: '';
   display: block;
-  width: 8px;
-  height: 8px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: rotate(45deg) translate(-1px, -2px);
+  width: 6px;
+  height: 6px;
+  border-right: 1.2px solid currentColor;
+  border-bottom: 1.2px solid currentColor;
+  transform: rotate(45deg) translate(-1px, -1px);
 }
 
 .reasoning-block.collapsed .reasoning-chevron {
@@ -3073,9 +3068,9 @@ pre code {
 }
 
 .reasoning-content {
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-size-xs);
-  line-height: var(--line-height-relaxed);
+  padding: 6px 10px;
+  font-size: 11px;
+  line-height: 1.45;
   color: var(--color-text-secondary);
   font-style: italic;
   overflow-y: auto;
@@ -6166,6 +6161,385 @@ pre code {
   
   .compression-text {
     color: #60a5fa;
+  }
+}
+
+/* ============================================================
+   Todo 任务进度面板
+   使用品牌色系（陶土橙）
+   ============================================================ */
+
+/* 悬浮容器 - 输入框上方 */
+.todo-floating-container {
+  flex-shrink: 0;
+  padding: var(--spacing-md);
+  margin: var(--spacing-sm) var(--spacing-md);
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-bg-secondary) 100%);
+  border: 1px solid color-mix(in oklch, var(--color-primary) 30%, transparent);
+  border-radius: var(--radius-lg);
+  animation: todoSlideDown var(--duration-normal) var(--easing-default);
+}
+
+@keyframes todoSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 全部完成状态 - 渐隐动画 */
+.todo-floating-container.all-completed {
+  animation: todoFadeOut 0.8s var(--easing-default) forwards;
+}
+
+@keyframes todoFadeOut {
+  0% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+/* 确认模式 - 略深背景 */
+.todo-floating-container.todo-confirmation-mode {
+  background: linear-gradient(135deg, var(--color-bg-secondary) 0%, var(--color-bg-tertiary) 100%);
+  border-color: var(--color-border-strong);
+}
+
+/* 卡片头部 */
+.todo-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xs);
+}
+
+.todo-card-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary-active);
+  letter-spacing: -0.01em;
+}
+
+.todo-progress {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
+  padding: 2px 8px;
+  background: color-mix(in oklch, var(--color-primary) 12%, transparent);
+  border-radius: var(--radius-full);
+}
+
+.todo-step-count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+/* 提示文字 */
+.todo-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--spacing-sm);
+  opacity: 0.85;
+}
+
+/* 进度条 - 品牌色系 */
+.todo-progress-bar {
+  height: 4px;
+  background: color-mix(in oklch, var(--color-primary) 15%, transparent);
+  border-radius: var(--radius-full);
+  margin-bottom: var(--spacing-sm);
+  overflow: hidden;
+}
+
+.todo-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+  border-radius: var(--radius-full);
+  transition: width var(--duration-normal) var(--easing-out-expo);
+}
+
+/* 任务列表 */
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: visible;
+}
+
+/* 单个任务项 */
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 6px 8px;
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  transition: all var(--duration-fast) var(--easing-default);
+}
+
+/* 任务状态样式 */
+.todo-item-pending {
+  opacity: 0.7;
+}
+
+.todo-item-in_progress {
+  background: color-mix(in oklch, var(--color-primary) 8%, var(--color-bg-primary));
+  border: 1px solid color-mix(in oklch, var(--color-primary) 20%, transparent);
+}
+
+.todo-item-completed {
+  opacity: 0.6;
+  color: var(--color-text-tertiary);
+}
+
+/* 任务图标 */
+.todo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.todo-icon .icon {
+  width: 13px;
+  height: 13px;
+}
+
+.todo-item-in_progress .todo-icon {
+  color: var(--color-primary);
+}
+
+.todo-item-completed .todo-icon {
+  color: var(--color-success);
+}
+
+/* 任务内容 */
+.todo-content {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+/* ============ 确认模式样式 ============ */
+
+/* 可编辑列表 */
+.todo-list-editable {
+  gap: 2px;
+}
+
+.todo-item-editable {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-xs);
+  transition: all var(--duration-fast) var(--easing-default);
+}
+
+.todo-item-editable:focus-within {
+  background: color-mix(in oklch, var(--color-primary) 5%, var(--color-bg-primary));
+}
+
+/* 拖拽手柄 */
+.todo-drag-handle {
+  color: var(--color-text-tertiary);
+  cursor: grab;
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px;
+}
+
+.todo-drag-handle:hover {
+  color: var(--color-text-secondary);
+}
+
+/* 编辑输入框 */
+.todo-edit-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  outline: none;
+  padding: 0;
+  min-width: 0;
+}
+
+.todo-edit-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* 删除按钮 */
+.todo-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--duration-fast) var(--easing-default);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.todo-delete-btn:hover {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+/* 添加步骤按钮 */
+.todo-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 6px;
+  margin-top: var(--spacing-xs);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--easing-default);
+}
+
+.todo-add-btn:hover {
+  border-color: var(--color-primary);
+  border-style: solid;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+/* 确认按钮组 */
+.todo-confirm-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid color-mix(in oklch, var(--color-primary) 20%, transparent);
+}
+
+/* 取消按钮 */
+.todo-cancel-btn {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-primary);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--easing-default);
+}
+
+.todo-cancel-btn:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-strong);
+}
+
+/* 确认执行按钮 - 品牌色 */
+.todo-confirm-btn {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--easing-default);
+  box-shadow: 0 1px 4px color-mix(in oklch, var(--color-primary) 40%, transparent);
+}
+
+.todo-confirm-btn:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px color-mix(in oklch, var(--color-primary) 35%, transparent);
+}
+
+.todo-confirm-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* ============ 暗色模式适配 ============ */
+
+[data-theme="dark"] .todo-floating-container,
+.dark-theme .todo-floating-container {
+  background: linear-gradient(135deg, color-mix(in oklch, var(--color-primary) 8%, var(--color-bg-secondary)) 0%, var(--color-bg-tertiary) 100%);
+  border-color: color-mix(in oklch, var(--color-primary) 25%, transparent);
+}
+
+[data-theme="dark"] .todo-progress-bar,
+.dark-theme .todo-progress-bar {
+  background: color-mix(in oklch, var(--color-primary) 20%, transparent);
+}
+
+[data-theme="dark"] .todo-progress-fill,
+.dark-theme .todo-progress-fill {
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+}
+
+[data-theme="dark"] .todo-item-in_progress,
+.dark-theme .todo-item-in_progress {
+  background: color-mix(in oklch, var(--color-primary) 10%, var(--color-bg-primary));
+  border-color: color-mix(in oklch, var(--color-primary) 25%, transparent);
+}
+
+[data-theme="dark"] .todo-confirm-btn,
+.dark-theme .todo-confirm-btn {
+  box-shadow: 0 1px 4px color-mix(in oklch, var(--color-primary) 30%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .todo-floating-container {
+    background: linear-gradient(135deg, color-mix(in oklch, var(--color-primary) 8%, var(--color-bg-secondary)) 0%, var(--color-bg-tertiary) 100%);
+    border-color: color-mix(in oklch, var(--color-primary) 25%, transparent);
+  }
+  
+  :root:not([data-theme="light"]) .todo-progress-bar {
+    background: color-mix(in oklch, var(--color-primary) 20%, transparent);
+  }
+  
+  :root:not([data-theme="light"]) .todo-progress-fill {
+    background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+  }
+  
+  :root:not([data-theme="light"]) .todo-item-in_progress {
+    background: color-mix(in oklch, var(--color-primary) 10%, var(--color-bg-primary));
+    border-color: color-mix(in oklch, var(--color-primary) 25%, transparent);
+  }
+  
+  :root:not([data-theme="light"]) .todo-confirm-btn {
+    box-shadow: 0 1px 4px color-mix(in oklch, var(--color-primary) 30%, transparent);
   }
 }
 

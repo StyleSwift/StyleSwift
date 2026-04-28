@@ -2921,7 +2921,10 @@ async function renderSkillChips() {
 
 	// Get recently used skills
 	const recentSkills = await StyleSkillStore.getRecent();
-	const recentIds = new Set(recentSkills.map((r) => r.id));
+	// 用于排序：所有最近使用的技能（最多5个）
+	const allRecentIds = new Set(recentSkills.map((r) => r.id));
+	// 用于显示标签：只最近一个使用的技能
+	const mostRecentId = recentSkills.length > 0 ? recentSkills[0].id : null;
 
 	// Collect all skills with their recency info
 	const allSkillData = [];
@@ -2935,7 +2938,8 @@ async function renderSkillChips() {
 		allSkillData.push({
 			skill,
 			type: "built-in",
-			isRecent: recentIds.has(skill.id),
+			isRecent: mostRecentId === skill.id,
+			isInRecentList: allRecentIds.has(skill.id),
 			timestamp: recentInfo?.timestamp || 0,
 		});
 	}
@@ -2952,7 +2956,8 @@ async function renderSkillChips() {
 			allSkillData.push({
 				skill,
 				type: "user",
-				isRecent: recentIds.has(skill.id),
+				isRecent: mostRecentId === skill.id,
+				isInRecentList: allRecentIds.has(skill.id),
 				timestamp: recentInfo?.timestamp || 0,
 			});
 		}
@@ -2968,12 +2973,12 @@ async function renderSkillChips() {
 
 	// 3. Sort: recently used first (by timestamp desc), then others
 	allSkillData.sort((a, b) => {
-		// Recent skills first
-		if (a.isRecent !== b.isRecent) {
-			return a.isRecent ? -1 : 1;
+		// Recent skills first (检查是否在最近列表中，用于排序)
+		if (a.isInRecentList !== b.isInRecentList) {
+			return a.isInRecentList ? -1 : 1;
 		}
 		// Among recent, sort by timestamp desc
-		if (a.isRecent && b.isRecent) {
+		if (a.isInRecentList && b.isInRecentList) {
 			return b.timestamp - a.timestamp;
 		}
 		// Non-recent skills: keep original order
@@ -4568,12 +4573,24 @@ async function renderUserSkillList() {
 	container.innerHTML = "";
 
 	try {
+		// 添加"添加新技能"按钮
+		const addBtn = document.createElement("button");
+		addBtn.className = "btn-secondary btn-add-skill";
+		addBtn.innerHTML = `
+			<span class="icon icon-plus" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px" aria-hidden="true"></span>
+			<span>${getMessage("addNewSkill") || "添加新技能"}</span>
+		`;
+		addBtn.addEventListener("click", openNewSkillEditor);
+		container.appendChild(addBtn);
+
 		const userSkills = await StyleSkillStore.list();
 		const disabledUserSkills = await getDisabledUserSkills();
 
 		if (userSkills.length === 0) {
-			container.innerHTML =
-				'<p class="hint">' + getMessage("noStyleSkills") + "</p>";
+			const emptyHint = document.createElement("p");
+			emptyHint.className = "hint";
+			emptyHint.textContent = getMessage("noStyleSkills");
+			container.appendChild(emptyHint);
 			return;
 		}
 
@@ -4790,6 +4807,104 @@ async function openSkillEditor(skill) {
 	});
 
 	document.body.appendChild(modal);
+}
+
+/**
+ * 打开新建技能编辑器模态框
+ */
+function openNewSkillEditor() {
+	// 创建模态框
+	const modal = document.createElement("div");
+	modal.className = "skill-editor-modal";
+	modal.innerHTML = `
+    <div class="modal-content skill-editor-content">
+      <div class="modal-header">
+        <h3>${getMessage("newStyleSkill") || "新建风格技能"}</h3>
+        <button class="modal-close-btn" title="${getMessage("close")}">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="new-skill-name">名称</label>
+          <input type="text" id="new-skill-name" data-i18n-placeholder="styleNamePlaceholder">
+        </div>
+        <div class="form-group">
+          <label for="new-skill-mood">描述</label>
+          <input type="text" id="new-skill-mood" data-i18n-placeholder="styleDescPlaceholder">
+        </div>
+        <div class="form-group">
+          <label for="new-skill-content">内容</label>
+          <textarea id="new-skill-content" class="settings-textarea skill-editor-textarea" data-i18n-placeholder="skillContentPlaceholder"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-cancel">取消</button>
+        <button class="btn btn-primary">保存</button>
+      </div>
+    </div>
+  `;
+
+	// 绑定事件
+	const closeBtn = modal.querySelector(".modal-close-btn");
+	const cancelBtn = modal.querySelector(".btn-cancel");
+	const saveBtn = modal.querySelector(".btn-primary");
+
+	const closeModal = () => modal.remove();
+
+	closeBtn.addEventListener("click", closeModal);
+	cancelBtn.addEventListener("click", closeModal);
+	modal.addEventListener("click", (e) => {
+		if (e.target === modal) closeModal();
+	});
+
+	saveBtn.addEventListener("click", async () => {
+		const nameInput = modal.querySelector("#new-skill-name");
+		const moodInput = modal.querySelector("#new-skill-mood");
+		const contentInput = modal.querySelector("#new-skill-content");
+
+		const name = nameInput.value.trim();
+		const mood = moodInput.value.trim();
+		const newContent = contentInput.value.trim();
+
+		if (!name) {
+			nameInput.focus();
+			return;
+		}
+
+		try {
+			saveBtn.disabled = true;
+			saveBtn.textContent = getMessage("saving");
+
+			// 生成新的技能 ID
+			const newId = crypto.randomUUID().slice(0, 8);
+			const currentDomain = stateManager.get("currentDomain") || "manual";
+
+			await StyleSkillStore.save(
+				newId,
+				name,
+				mood,
+				currentDomain,
+				newContent,
+			);
+
+			closeModal();
+			await renderUserSkillList();
+			await renderSkillChips();
+			console.log("[Panel] New skill created:", name);
+		} catch (err) {
+			console.error("[Panel] Failed to create skill:", err);
+			saveBtn.disabled = false;
+			saveBtn.textContent = getMessage("save");
+			alert(getMessage("saveFailed") + ": " + err.message);
+		}
+	});
+
+	document.body.appendChild(modal);
+
+	// 自动聚焦到名称输入框
+	const nameInput = modal.querySelector("#new-skill-name");
+	if (nameInput) {
+		nameInput.focus();
+	}
 }
 
 /**
@@ -6507,7 +6622,7 @@ class TodoCardManager {
 
 		this.todoContainer.innerHTML = `
       <div class="todo-card-header">
-        <span class="todo-card-title">📋 请确认任务计划</span>
+        <span class="todo-card-title">请确认任务计划</span>
         <span class="todo-step-count">${todos.length} 个步骤</span>
       </div>
       <div class="todo-hint">可编辑、增删步骤后确认执行</div>
@@ -6658,7 +6773,7 @@ class TodoCardManager {
 
 		this.todoContainer.innerHTML = `
       <div class="todo-card-header">
-        <span class="todo-card-title">📋 任务进度</span>
+        <span class="todo-card-title">任务进度</span>
         <span class="todo-progress">${completed}/${total}</span>
       </div>
       <div class="todo-progress-bar">

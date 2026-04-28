@@ -1098,5 +1098,13 @@
   "items": {
     "message": "items",
     "description": "Items count unit"
+  },
+  "addNewSkill": {
+    "message": "Add New Skill",
+    "description": "Add new skill button text"
+  },
+  "newStyleSkill": {
+    "message": "New Style Skill",
+    "description": "New style skill modal title"
   }
 }

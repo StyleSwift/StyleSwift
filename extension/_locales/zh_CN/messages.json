@@ -1098,5 +1098,13 @@
   "items": {
     "message": "个",
     "description": "Items count unit"
+  },
+  "addNewSkill": {
+    "message": "添加新技能",
+    "description": "Add new skill button text"
+  },
+  "newStyleSkill": {
+    "message": "新建风格技能",
+    "description": "New style skill modal title"
   }
 }
