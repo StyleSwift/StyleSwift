@@ -1086,5 +1086,17 @@
   "guideFooter": {
     "message": "StyleSwift - Transform any webpage with a single sentence",
     "description": "API guide footer"
+  },
+  "showMore": {
+    "message": "Show more",
+    "description": "Show more items button text"
+  },
+  "showLess": {
+    "message": "Show less",
+    "description": "Show less items button text"
+  },
+  "items": {
+    "message": "items",
+    "description": "Items count unit"
   }
 }

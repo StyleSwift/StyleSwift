@@ -4455,10 +4455,58 @@ async function renderStaticSkillList() {
 			return;
 		}
 
-		for (const skill of allSkills) {
+		const MAX_VISIBLE = 5;
+		const shouldCollapse = allSkills.length > MAX_VISIBLE;
+
+		allSkills.forEach((skill, index) => {
 			const isEnabled = !disabledSkills.includes(skill.name);
 			const item = createStaticSkillItem(skill, isEnabled);
+
+			if (shouldCollapse && index >= MAX_VISIBLE) {
+				item.classList.add("static-skill-item-collapsible");
+				item.style.display = "none";
+			}
+
 			container.appendChild(item);
+		});
+
+		if (shouldCollapse) {
+			const toggleBtn = document.createElement("button");
+			toggleBtn.className = "btn-expand-collapse";
+			toggleBtn.dataset.expanded = "false";
+			toggleBtn.innerHTML = `
+				<span class="expand-text">${getMessage("showMore") || "展开更多"}</span>
+				<span class="expand-count">(${allSkills.length - MAX_VISIBLE} ${getMessage("items") || "个"})</span>
+				<span class="expand-icon">▼</span>
+			`;
+
+			toggleBtn.addEventListener("click", () => {
+				const isExpanded = toggleBtn.dataset.expanded === "true";
+				const collapsibleItems = container.querySelectorAll(
+					".static-skill-item-collapsible",
+				);
+				const expandText = toggleBtn.querySelector(".expand-text");
+				const expandIcon = toggleBtn.querySelector(".expand-icon");
+				const expandCount = toggleBtn.querySelector(".expand-count");
+
+				collapsibleItems.forEach((item) => {
+					item.style.display = isExpanded ? "none" : "flex";
+				});
+
+				toggleBtn.dataset.expanded = isExpanded ? "false" : "true";
+				expandText.textContent = isExpanded
+					? getMessage("showMore") || "展开更多"
+					: getMessage("showLess") || "收起";
+				expandIcon.textContent = isExpanded ? "▼" : "▲";
+
+				if (!isExpanded) {
+					expandCount.style.display = "none";
+				} else {
+					expandCount.style.display = "inline";
+				}
+			});
+
+			container.appendChild(toggleBtn);
 		}
 	} catch (err) {
 		console.error("[Panel] Failed to load static skills:", err);
@@ -4529,10 +4577,58 @@ async function renderUserSkillList() {
 			return;
 		}
 
-		for (const skill of userSkills) {
+		const MAX_VISIBLE = 5;
+		const shouldCollapse = userSkills.length > MAX_VISIBLE;
+
+		userSkills.forEach((skill, index) => {
 			const isEnabled = !disabledUserSkills.includes(skill.id);
 			const item = createUserSkillItem(skill, isEnabled);
+
+			if (shouldCollapse && index >= MAX_VISIBLE) {
+				item.classList.add("user-skill-item-collapsible");
+				item.style.display = "none";
+			}
+
 			container.appendChild(item);
+		});
+
+		if (shouldCollapse) {
+			const toggleBtn = document.createElement("button");
+			toggleBtn.className = "btn-expand-collapse";
+			toggleBtn.dataset.expanded = "false";
+			toggleBtn.innerHTML = `
+				<span class="expand-text">${getMessage("showMore") || "展开更多"}</span>
+				<span class="expand-count">(${userSkills.length - MAX_VISIBLE} ${getMessage("items") || "个"})</span>
+				<span class="expand-icon">▼</span>
+			`;
+
+			toggleBtn.addEventListener("click", () => {
+				const isExpanded = toggleBtn.dataset.expanded === "true";
+				const collapsibleItems = container.querySelectorAll(
+					".user-skill-item-collapsible",
+				);
+				const expandText = toggleBtn.querySelector(".expand-text");
+				const expandIcon = toggleBtn.querySelector(".expand-icon");
+				const expandCount = toggleBtn.querySelector(".expand-count");
+
+				collapsibleItems.forEach((item) => {
+					item.style.display = isExpanded ? "none" : "flex";
+				});
+
+				toggleBtn.dataset.expanded = isExpanded ? "false" : "true";
+				expandText.textContent = isExpanded
+					? getMessage("showMore") || "展开更多"
+					: getMessage("showLess") || "收起";
+				expandIcon.textContent = isExpanded ? "▼" : "▲";
+
+				if (!isExpanded) {
+					expandCount.style.display = "none";
+				} else {
+					expandCount.style.display = "inline";
+				}
+			});
+
+			container.appendChild(toggleBtn);
 		}
 	} catch (err) {
 		console.error("[Panel] Failed to render user skill list:", err);

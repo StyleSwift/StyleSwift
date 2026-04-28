@@ -1086,5 +1086,17 @@
   "guideFooter": {
     "message": "StyleSwift - 一句话，给常逛的网页换皮肤",
     "description": "API guide footer"
+  },
+  "showMore": {
+    "message": "展开更多",
+    "description": "Show more items button text"
+  },
+  "showLess": {
+    "message": "收起",
+    "description": "Show less items button text"
+  },
+  "items": {
+    "message": "个",
+    "description": "Items count unit"
   }
 }

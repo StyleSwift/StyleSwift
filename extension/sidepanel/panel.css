@@ -5447,6 +5447,67 @@ pre code {
   max-width: 200px;
 }
 
+/* 展开/收起按钮样式 */
+.btn-expand-collapse {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-top: var(--spacing-xs);
+  background: linear-gradient(180deg, var(--color-bg-secondary) 0%, var(--color-bg-tertiary) 100%);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  transition: all var(--duration-fast) var(--easing-default);
+}
+
+.btn-expand-collapse:hover {
+  background: linear-gradient(180deg, var(--color-bg-hover) 0%, var(--color-bg-tertiary) 100%);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.btn-expand-collapse:active {
+  transform: scale(0.98);
+}
+
+.btn-expand-collapse .expand-text {
+  display: inline;
+}
+
+.btn-expand-collapse .expand-count {
+  display: inline;
+  color: var(--color-text-tertiary);
+}
+
+.btn-expand-collapse:hover .expand-count {
+  color: var(--color-primary);
+}
+
+.btn-expand-collapse .expand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  transition: transform var(--duration-fast) var(--easing-default);
+}
+
+.btn-expand-collapse:hover .expand-icon {
+  color: var(--color-primary);
+}
+
+/* 可折叠项目的过渡效果 */
+.static-skill-item-collapsible,
+.user-skill-item-collapsible {
+  transition: all var(--duration-normal) var(--easing-out-quart);
+}
+
 /* ============================================================
    10.7 技能编辑器模态框样式
    ============================================================ */
