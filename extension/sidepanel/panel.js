@@ -154,8 +154,8 @@ class TypewriterEffect {
 		this.isDeleting = false;
 		this.isPaused = false;
 		this.timeoutId = null;
-		this.typeSpeed = 60; // 打字速度 (ms)
-		this.deleteSpeed = 30; // 删除速度 (ms)
+		this.typeSpeed = 120; // 打字速度 (ms)
+		this.deleteSpeed = 60; // 删除速度 (ms)
 		this.pauseDelay = 2000; // 完成后暂停时间 (ms)
 		this.switchDelay = 500; // 切换示例前的暂停时间 (ms)
 	}
