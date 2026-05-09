@@ -187,26 +187,6 @@ tags: reference, ux, writing
 
 # UX 写作参考`,
 
-    "skills/style-templates/dark-mode.md": `---
-name: dark-mode-template
-description: 深色模式模板 - 深色背景+高对比度文字的护眼风格
-tags: template, dark-mode
----
-
-# 深色模式模板
-
-> 内置知识：深色背景 + 高对比度文字的护眼风格`,
-
-    "skills/style-templates/minimal.md": `---
-name: minimal-template
-description: 极简风格模板 - 简洁、留白、功能导向的设计风格
-tags: template, minimal, clean
----
-
-# 极简风格模板
-
-> 内置知识：简洁、留白、功能导向的设计风格`,
-
     "skills/no-frontmatter.md": `# 无 Frontmatter 技能
 
 > 这是一个没有 frontmatter 的技能文件

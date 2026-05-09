@@ -1059,8 +1059,6 @@ body { background-color: #0a0a1a !important; }
 describe("runLoadSkill", () => {
   // Mock Skill Paths
   const SKILL_PATHS = {
-    "dark-mode-template": "skills/style-templates/dark-mode.md",
-    "minimal-template": "skills/style-templates/minimal.md",
     "design-principles": "skills/design-principles.md",
     "color-theory": "skills/color-theory.md",
     "css-selectors": "skills/css-selectors-guide.md",
@@ -1161,22 +1159,6 @@ describe("runLoadSkill", () => {
   }
 
   describe("加载内置技能", () => {
-    test("加载 dark-mode-template 返回 markdown 内容", async () => {
-      const content = await runLoadSkill("dark-mode-template");
-
-      expect(content).toContain("# dark-mode-template");
-      expect(content).toContain("This is the content");
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining("skills/style-templates/dark-mode.md"),
-      );
-    });
-
-    test("加载 minimal-template 返回 markdown 内容", async () => {
-      const content = await runLoadSkill("minimal-template");
-
-      expect(content).toContain("# minimal-template");
-    });
-
     test("加载 design-principles 返回 markdown 内容", async () => {
       const content = await runLoadSkill("design-principles");
 
@@ -1196,10 +1178,10 @@ describe("runLoadSkill", () => {
     });
 
     test("使用 chrome.runtime.getURL 生成正确 URL", async () => {
-      await runLoadSkill("dark-mode-template");
+      await runLoadSkill("design-principles");
 
       expect(fetch).toHaveBeenCalledWith(
-        "chrome-extension://test-id/skills/style-templates/dark-mode.md",
+        "chrome-extension://test-id/skills/design-principles.md",
       );
     });
   });
@@ -1252,8 +1234,6 @@ body { background: #000; }`;
       const content = await runLoadSkill("unknown-skill");
 
       expect(content).toContain("未知知识: unknown-skill");
-      expect(content).toContain("dark-mode-template");
-      expect(content).toContain("minimal-template");
       expect(content).toContain("design-principles");
       expect(content).toContain("color-theory");
       expect(content).toContain("css-selectors");
@@ -1293,8 +1273,8 @@ body { background: #000; }`;
   describe("集成测试", () => {
     test("完整场景：内置技能 -> 用户技能 -> 未知名称", async () => {
       // 步骤 1: 加载内置技能
-      let content = await runLoadSkill("dark-mode-template");
-      expect(content).toContain("# dark-mode-template");
+      let content = await runLoadSkill("design-principles");
+      expect(content).toContain("# design-principles");
 
       // 步骤 2: 添加用户技能并加载
       mockStyleSkillStore.skills["custom"] = "# Custom Style";
@@ -1709,8 +1689,8 @@ describe("executeTool 统一分派器", () => {
 
     // Mock fetch for load_skill
     global.fetch = vi.fn(async (url) => {
-      if (url.includes("dark-mode.md")) {
-        return { ok: true, text: async () => "# Dark Mode\n\n深色模式模板..." };
+      if (url.includes("design-principles.md")) {
+        return { ok: true, text: async () => "# design-principles\n\n设计原则..." };
       }
       return { ok: false, text: async () => "" };
     });
@@ -1748,7 +1728,7 @@ describe("executeTool 统一分派器", () => {
   }
 
   const SKILL_PATHS = {
-    "dark-mode-template": "skills/style-templates/dark-mode.md",
+    "design-principles": "skills/design-principles.md",
   };
 
   async function runLoadSkill(skillName) {
@@ -1921,10 +1901,10 @@ describe("executeTool 统一分派器", () => {
 
     test("load_skill 内置技能正确路由", async () => {
       const result = await executeTool("load_skill", {
-        skill_name: "dark-mode-template",
+        skill_name: "design-principles",
       });
 
-      expect(result).toContain("# Dark Mode");
+      expect(result).toContain("# design-principles");
     });
 
     test("load_skill 用户技能正确路由", async () => {
@@ -1996,7 +1976,7 @@ describe("executeTool 统一分派器", () => {
         { name: "apply_styles", args: { mode: "rollback_all" } },
         { name: "get_user_profile", args: {} },
         { name: "update_user_profile", args: { content: "test" } },
-        { name: "load_skill", args: { skill_name: "dark-mode-template" } },
+        { name: "load_skill", args: { skill_name: "design-principles" } },
         { name: "list_style_skills", args: {} },
         { name: "TodoWrite", args: { todos: [] } },
       ];
@@ -2023,9 +2003,9 @@ describe("executeTool 统一分派器", () => {
 
       // load_skill 的参数
       const loadResult = await executeTool("load_skill", {
-        skill_name: "dark-mode-template",
+        skill_name: "design-principles",
       });
-      expect(loadResult).toContain("Dark Mode");
+      expect(loadResult).toContain("design-principles");
     });
   });
 });

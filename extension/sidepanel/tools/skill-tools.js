@@ -25,10 +25,6 @@ Built-in knowledge (auto-discovered):
 - adapt: Adapt designs for different screen sizes, devices, or contexts
 - bolder: Amplify safe or boring designs to increase visual impact
 
-Skill templates (in style-templates/):
-- dark-mode-template: Dark mode CSS template with best practices
-- minimal-template: Minimalist style template
-
 Reference knowledge (load from sub-skills):
 - reference/typography: Font selection, scaling, and pairing
 - reference/color-and-contrast: OKLCH, palettes, and dark mode

@@ -126,8 +126,16 @@ export async function buildSkillDescriptions() {
 
 async function getDisabledSkills() {
   const DISABLED_SKILLS_KEY = "settings:disabledSkills";
-  const { [DISABLED_SKILLS_KEY]: disabled = [] } =
+  const DEFAULT_ENABLED = ["frontend-design", "audit", "colorize"];
+  const ALL_SKILLS = [
+    "frontend-design", "audit", "colorize", "polish", "normalize",
+    "distill", "delight", "critique", "animate", "adapt", "bolder",
+  ];
+  const { [DISABLED_SKILLS_KEY]: disabled } =
     await chrome.storage.local.get(DISABLED_SKILLS_KEY);
+  if (disabled === undefined) {
+    return ALL_SKILLS.filter((name) => !DEFAULT_ENABLED.includes(name));
+  }
   return disabled;
 }
 

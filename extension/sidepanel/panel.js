@@ -2781,20 +2781,7 @@ function hasAttachedImages() {
  * Built-in skill definitions
  * These are static skills bundled with the extension
  */
-const BUILT_IN_SKILLS = [
-	{
-		id: "dark-mode-template",
-		name: "Dark Mode",
-		icon: iconHtml("moon", 14),
-		prompt: "Apply dark mode style",
-	},
-	{
-		id: "minimal-template",
-		name: "Minimal",
-		icon: iconHtml("sparkles", 14),
-		prompt: "Apply minimal style",
-	},
-];
+const BUILT_IN_SKILLS = [];
 
 /**
  * Initialize skill chips area
@@ -2845,12 +2832,41 @@ const DISABLED_SKILLS_KEY = "settings:disabledSkills";
 const DISABLED_USER_SKILLS_KEY = "settings:disabledUserSkills";
 
 /**
+ * Default enabled static skills (all others are disabled by default)
+ */
+const DEFAULT_ENABLED_SKILLS = ["frontend-design", "audit", "colorize"];
+
+/**
+ * All known static skill names (must match skill-loader.js knownFiles)
+ */
+const ALL_STATIC_SKILLS = [
+	"frontend-design",
+	"audit",
+	"colorize",
+	"polish",
+	"normalize",
+	"distill",
+	"delight",
+	"critique",
+	"animate",
+	"adapt",
+	"bolder",
+];
+
+/**
  * Get list of disabled static skill IDs
+ * Returns a default disabled list when no user preference is stored yet
  * @returns {Promise<string[]>}
  */
 async function getDisabledSkills() {
-	const { [DISABLED_SKILLS_KEY]: disabled = [] } =
+	const { [DISABLED_SKILLS_KEY]: disabled } =
 		await chrome.storage.local.get(DISABLED_SKILLS_KEY);
+	// If user hasn't set preferences yet, use default (disable non-default skills)
+	if (disabled === undefined) {
+		return ALL_STATIC_SKILLS.filter(
+			(name) => !DEFAULT_ENABLED_SKILLS.includes(name),
+		);
+	}
 	return disabled;
 }
 

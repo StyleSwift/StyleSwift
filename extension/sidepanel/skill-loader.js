@@ -97,9 +97,6 @@ class SkillLoader {
       "skills/reference/spatial-design.md",
       "skills/reference/typography.md",
       "skills/reference/ux-writing.md",
-      // Style templates
-      "skills/style-templates/dark-mode.md",
-      "skills/style-templates/minimal.md",
     ];
 
     // Skip HEAD verification - Chrome extension resources don't support HEAD method
@@ -227,8 +224,8 @@ class SkillLoader {
    * @returns {string|null} Skill content or null if not found
    *
    * @example
-   * const content = loader.getContent('dark-mode-template');
-   * // '<skill name="dark-mode-template">\n# 深色模式模板\n...\n</skill>'
+   * const content = loader.getContent('frontend-design');
+   * // '<skill name="frontend-design">\n# Frontend Design\n...\n</skill>'
    */
   getContent(name) {
     const skill = this.skills.get(name);
@@ -424,7 +421,7 @@ class UnifiedSkillManager {
  *
  * const manager = await createSkillManager(chrome.runtime.id, StyleSkillStore);
  * const descriptions = await manager.getDescriptions();
- * const content = await manager.getContent('dark-mode-template');
+ * const content = await manager.getContent('frontend-design');
  */
 async function createSkillManager(extensionId, userStore) {
   const baseUrl = `chrome-extension://${extensionId}`;

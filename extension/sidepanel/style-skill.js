@@ -212,7 +212,7 @@ class StyleSkillStore {
    * 
    * @example
    * const recent = await StyleSkillStore.getRecent();
-   * // [{ id: 'dark-mode-template', type: 'built-in', timestamp: 1709510400000 }, ...]
+   * // [{ id: 'frontend-design', type: 'built-in', timestamp: 1709510400000 }, ...]
    */
   static async getRecent() {
     const { [this.RECENT_KEY]: recent = [] } = await chrome.storage.local.get(this.RECENT_KEY);
@@ -229,7 +229,7 @@ class StyleSkillStore {
    * @returns {Promise<void>}
    * 
    * @example
-   * await StyleSkillStore.recordUsage('dark-mode-template', 'built-in');
+   * await StyleSkillStore.recordUsage('frontend-design', 'built-in');
    */
   static async recordUsage(id, type) {
     // 获取当前最近使用列表
