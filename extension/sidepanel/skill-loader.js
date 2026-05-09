@@ -89,6 +89,12 @@ class SkillLoader {
       "skills/animate.md",
       "skills/adapt.md",
       "skills/bolder.md",
+      "skills/CozyStyle.md",
+      "skills/9xRetro.md",
+      "skills/bauhaus.md",
+      "skills/cyberpunk-2077.md",
+      "skills/MatrixTerminal.md",
+      "skills/NewspaperStyle.md",
       // Reference skills
       "skills/reference/color-and-contrast.md",
       "skills/reference/interaction-design.md",

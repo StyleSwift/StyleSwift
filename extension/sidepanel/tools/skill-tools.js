@@ -24,6 +24,12 @@ Built-in knowledge (auto-discovered):
 - animate: Enhance with purposeful animations and micro-interactions
 - adapt: Adapt designs for different screen sizes, devices, or contexts
 - bolder: Amplify safe or boring designs to increase visual impact
+- Cozy style: 温馨可爱、童趣十足，柔和粉嫩配色，圆润边角，温暖色调
+- Windows 9x Retro: 复古Windows 9x系统界面风格，经典灰色系配色与3D立体边框
+- BauhausStyle: 包豪斯设计风格，激进排版、严格几何网格、原色点缀
+- cyberpunk-2077: 赛博朋克风格，霓虹黄 accent、故障效果、扫描线叠加、HUD 界面
+- MatrixTerminal: 黑客帝国终端风格，深黑背景、霓虹绿色文字、等宽字体
+- Newspaper Style: 经典英式报纸排版风格，衬线字体主导、墨色浓重、金色点缀
 
 Reference knowledge (load from sub-skills):
 - reference/typography: Font selection, scaling, and pairing

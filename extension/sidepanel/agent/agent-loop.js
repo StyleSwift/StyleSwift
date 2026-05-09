@@ -126,15 +126,25 @@ export async function buildSkillDescriptions() {
 
 async function getDisabledSkills() {
   const DISABLED_SKILLS_KEY = "settings:disabledSkills";
-  const DEFAULT_ENABLED = ["frontend-design", "audit", "colorize"];
+  const INIT_KEY = "settings:disabledSkillsInitialized";
+  const DEFAULT_ENABLED = [
+    "frontend-design", "audit", "colorize", "Cozy style",
+    "Windows 9x Retro", "BauhausStyle", "cyberpunk-2077", "MatrixTerminal", "Newspaper Style",
+  ];
   const ALL_SKILLS = [
     "frontend-design", "audit", "colorize", "polish", "normalize",
-    "distill", "delight", "critique", "animate", "adapt", "bolder",
+    "distill", "delight", "critique", "animate", "adapt", "bolder", "Cozy style",
+    "Windows 9x Retro", "BauhausStyle", "cyberpunk-2077", "MatrixTerminal", "Newspaper Style",
   ];
-  const { [DISABLED_SKILLS_KEY]: disabled } =
-    await chrome.storage.local.get(DISABLED_SKILLS_KEY);
-  if (disabled === undefined) {
-    return ALL_SKILLS.filter((name) => !DEFAULT_ENABLED.includes(name));
+  const { [DISABLED_SKILLS_KEY]: disabled, [INIT_KEY]: initialized } =
+    await chrome.storage.local.get([DISABLED_SKILLS_KEY, INIT_KEY]);
+  if (!initialized) {
+    const defaultDisabled = ALL_SKILLS.filter((name) => !DEFAULT_ENABLED.includes(name));
+    await chrome.storage.local.set({
+      [DISABLED_SKILLS_KEY]: defaultDisabled,
+      [INIT_KEY]: true,
+    });
+    return defaultDisabled;
   }
   return disabled;
 }

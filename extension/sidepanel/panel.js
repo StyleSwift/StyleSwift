@@ -2781,7 +2781,44 @@ function hasAttachedImages() {
  * Built-in skill definitions
  * These are static skills bundled with the extension
  */
-const BUILT_IN_SKILLS = [];
+const BUILT_IN_SKILLS = [
+	{
+		id: "Cozy style",
+		name: "Cozy Style",
+		icon: "",
+		prompt: "Apply cozy cherry-momoko style",
+	},
+	{
+		id: "Windows 9x Retro",
+		name: "Windows 9x Retro",
+		icon: "",
+		prompt: "Apply Windows 9x retro style",
+	},
+	{
+		id: "BauhausStyle",
+		name: "Bauhaus",
+		icon: "",
+		prompt: "Apply Bauhaus design style",
+	},
+	{
+		id: "cyberpunk-2077",
+		name: "Cyberpunk 2077",
+		icon: "",
+		prompt: "Apply Cyberpunk 2077 style",
+	},
+	{
+		id: "MatrixTerminal",
+		name: "Matrix Terminal",
+		icon: "",
+		prompt: "Apply Matrix terminal style",
+	},
+	{
+		id: "Newspaper Style",
+		name: "Newspaper",
+		icon: "",
+		prompt: "Apply British newspaper style",
+	},
+];
 
 /**
  * Initialize skill chips area
@@ -2834,7 +2871,11 @@ const DISABLED_USER_SKILLS_KEY = "settings:disabledUserSkills";
 /**
  * Default enabled static skills (all others are disabled by default)
  */
-const DEFAULT_ENABLED_SKILLS = ["frontend-design", "audit", "colorize"];
+const DEFAULT_ENABLED_SKILLS = [
+	"frontend-design", "audit", "colorize",
+	"Cozy style", "Windows 9x Retro", "BauhausStyle",
+	"cyberpunk-2077", "MatrixTerminal", "Newspaper Style",
+];
 
 /**
  * All known static skill names (must match skill-loader.js knownFiles)
@@ -2851,6 +2892,12 @@ const ALL_STATIC_SKILLS = [
 	"animate",
 	"adapt",
 	"bolder",
+	"Cozy style",
+	"Windows 9x Retro",
+	"BauhausStyle",
+	"cyberpunk-2077",
+	"MatrixTerminal",
+	"Newspaper Style",
 ];
 
 /**
@@ -2859,13 +2906,20 @@ const ALL_STATIC_SKILLS = [
  * @returns {Promise<string[]>}
  */
 async function getDisabledSkills() {
-	const { [DISABLED_SKILLS_KEY]: disabled } =
-		await chrome.storage.local.get(DISABLED_SKILLS_KEY);
-	// If user hasn't set preferences yet, use default (disable non-default skills)
-	if (disabled === undefined) {
-		return ALL_STATIC_SKILLS.filter(
+	const INIT_KEY = "settings:disabledSkillsInitialized";
+	const { [DISABLED_SKILLS_KEY]: disabled, [INIT_KEY]: initialized } =
+		await chrome.storage.local.get([DISABLED_SKILLS_KEY, INIT_KEY]);
+
+	// First time or migrated from old code (no init flag yet) — apply defaults
+	if (!initialized) {
+		const defaultDisabled = ALL_STATIC_SKILLS.filter(
 			(name) => !DEFAULT_ENABLED_SKILLS.includes(name),
 		);
+		await chrome.storage.local.set({
+			[DISABLED_SKILLS_KEY]: defaultDisabled,
+			[INIT_KEY]: true,
+		});
+		return defaultDisabled;
 	}
 	return disabled;
 }
@@ -3283,7 +3337,7 @@ function createBuiltInChip(skill, isRecent = false) {
 
 	chip.innerHTML = `
     ${isRecent ? '<span class="skill-recent-badge">' + getMessage("recentBadge") + "</span>" : ""}
-    <span class="skill-icon">${skill.icon}</span>
+    ${skill.icon ? `<span class="skill-icon">${skill.icon}</span>` : ""}
     <span class="skill-name">${skill.name}</span>
   `;
 
