@@ -4,7 +4,7 @@
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
 /**
- * 保存技能到本地存储
+ * 保存技能到本地存储，并可选地将 CSS Snippet 应用到目标域名
  */
 function installSkill(slug, data, sourceDomain) {
 	const id = slug || crypto.randomUUID().slice(0, 8);
@@ -14,8 +14,10 @@ function installSkill(slug, data, sourceDomain) {
 	const cssContent = data.css_content || "";
 	const contentType = data.content_type || "style_dna";
 	const exampleUrl = data.example_url || null;
+	const installDna = data.installDna !== false;  // default true
+	const installCss = data.installCss !== false;   // default true
 
-	console.log("[StyleSwift] Installing skill:", id, name, "type:", contentType);
+	console.log("[StyleSwift] Installing skill:", id, name, "type:", contentType, "dna:", installDna, "css:", installCss);
 
 	const INDEX_KEY = "skills:user:index";
 	return chrome.storage.local.get(INDEX_KEY).then((result) => {
@@ -31,19 +33,90 @@ function installSkill(slug, data, sourceDomain) {
 		}
 
 		const storageData = { [INDEX_KEY]: index };
-		storageData[`skills:user:${id}`] = content;
-		if (cssContent) {
+		if (installDna) {
+			storageData[`skills:user:${id}`] = content;
+		}
+		if (installCss && cssContent) {
 			storageData[`skills:user:${id}:css`] = cssContent;
 		}
 
 		return chrome.storage.local.set(storageData);
-	}).then(() => {
+	}).then(async () => {
 		console.log("[StyleSwift] Skill installed:", id);
+
+		// If CSS snippet selected, apply to target domain
+		if (installCss && cssContent && exampleUrl) {
+			try {
+				const targetDomain = new URL(exampleUrl).hostname;
+				if (targetDomain) {
+					await applyCssToDomain(targetDomain, cssContent);
+					console.log("[StyleSwift] CSS applied to domain:", targetDomain);
+				}
+			} catch (err) {
+				console.warn("[StyleSwift] Failed to apply CSS to domain:", err.message);
+			}
+		}
+
 		return { success: true, id };
 	}).catch((err) => {
 		console.error("[StyleSwift] Install failed:", err);
 		return { success: false, error: err.message };
 	});
+}
+
+/**
+ * 在目标域名下新建会话，通过 apply_styles 流程应用 CSS
+ * 复刻 sidepanel runApplyStyles("save") 的核心逻辑
+ */
+async function applyCssToDomain(domain, css) {
+	const sessionId = crypto.randomUUID();
+	const now = Date.now();
+
+	// 1. 创建新会话索引
+	const indexKey = `sessions:${domain}:index`;
+	const { [indexKey]: existingIndex = [] } = await chrome.storage.local.get(indexKey);
+	const newIndex = [...existingIndex, { id: sessionId, created_at: now }];
+	const activeKey = `sessions:${domain}:active`;
+	const stylesKey = `sessions:${domain}:${sessionId}:styles`;
+	const historyKey = `sessions:${domain}:${sessionId}:styles_history`;
+	const metaKey = `sessions:${domain}:${sessionId}:meta`;
+	const activeStylesKey = `active_styles:${domain}`;
+
+	// 2. 写入会话数据：索引、激活、样式、历史、元数据
+	await chrome.storage.local.set({
+		[indexKey]: newIndex,
+		[activeKey]: sessionId,
+		[stylesKey]: css,
+		[historyKey]: [css],
+		[metaKey]: {
+			created_at: now,
+			updated_at: now,
+			rule_count: (css.match(/\{/g) || []).length,
+			source: "community-install",
+		},
+		[activeStylesKey]: css,
+	});
+
+	console.log("[StyleSwift] Session created:", sessionId, "for domain:", domain);
+
+	// 3. 注入到已打开的目标域名标签页
+	try {
+		const tabs = await chrome.tabs.query({});
+		for (const tab of tabs) {
+			if (tab.url && new URL(tab.url).hostname === domain && tab.id) {
+				try {
+					await chrome.tabs.sendMessage(tab.id, {
+						tool: "inject_css",
+						args: { css },
+					});
+				} catch {
+					// Content script may not be loaded on this tab
+				}
+			}
+		}
+	} catch (err) {
+		console.warn("[StyleSwift] Failed to inject into open tabs:", err.message);
+	}
 }
 
 /**

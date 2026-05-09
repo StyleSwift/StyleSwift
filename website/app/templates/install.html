@@ -25,7 +25,7 @@
             box-shadow: 0 4px 24px rgba(0,0,0,0.08);
         }
         .card h1 { font-size: 1.3rem; margin-bottom: 0.25rem; }
-        .card .subtitle { color: #888; font-size: 0.85rem; margin-bottom: 1.5rem; }
+        .card .subtitle { color: #888; font-size: 0.85rem; margin-bottom: 1rem; }
         .badge {
             display: inline-block;
             padding: 0.15rem 0.6rem;
@@ -57,8 +57,7 @@
         .btn-secondary:hover { background: #d9d0c6; }
         .btn-ext { background: #1a56db; color: white; }
         .btn-ext:hover { background: #1642a8; }
-        .btn-link { background: none; color: #c46a3a; font-weight: 500; font-size: 0.85rem; }
-        .btn-link:hover { text-decoration: underline; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .status {
             text-align: center;
             padding: 0.75rem;
@@ -87,8 +86,32 @@
         .divider::before { left: 0; }
         .divider::after { right: 0; }
         .hint { font-size: 0.8rem; color: #888; text-align: center; margin-top: 0.5rem; }
-        .install-parts { font-size: 0.8rem; color: #666; margin-bottom: 1rem; }
-        .install-parts span { display: inline-block; margin-right: 0.5rem; }
+        .install-options {
+            background: #f8f5f2;
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+        }
+        .install-options label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .install-options input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #c46a3a;
+        }
+        .install-options .option-hint {
+            font-size: 0.75rem;
+            color: #888;
+            margin-left: 1.6rem;
+            margin-top: -0.15rem;
+            margin-bottom: 0.25rem;
+        }
     </style>
 </head>
 <body>
@@ -101,10 +124,19 @@
         <h1>{{ skill.title }}</h1>
         <p class="subtitle">{{ skill.description[:80] }}{% if skill.description|length > 80 %}...{% endif %}</p>
 
-        <div class="install-parts">
-            {% if skill.content %}<span>&#10003; Style DNA</span>{% endif %}
-            {% if skill.css_content %}<span>&#10003; CSS Snippet</span>{% endif %}
+        {% if skill.content and skill.css_content and skill.example_url %}
+        <div class="install-options" id="install-options">
+            <label>
+                <input type="checkbox" id="opt-dna" checked>
+                Install Style DNA
+            </label>
+            <label>
+                <input type="checkbox" id="opt-css" checked>
+                Apply CSS Snippet
+            </label>
+            <div class="option-hint">CSS will be applied to {{ skill.example_url | replace('https://','') | replace('http://','') | replace('/','') }}</div>
         </div>
+        {% endif %}
 
         <div id="ext-status" class="status info" hidden></div>
 
@@ -127,12 +159,35 @@
 
     <script>
         var slug = '{{ skill.slug }}';
+        var hasDna = {{ 'true' if skill.content else 'false' }};
+        var hasCss = {{ 'true' if skill.css_content else 'false' }};
+        var exampleUrl = '{{ skill.example_url or "" }}';
         var extBtn = document.getElementById('btn-ext-install');
         var extStatus = document.getElementById('ext-status');
         var hint = document.getElementById('hint');
         var requestId = 0;
 
-        // 通过 postMessage 与 content script 通信
+        var optDna = document.getElementById('opt-dna');
+        var optCss = document.getElementById('opt-css');
+
+        // Update button state when checkboxes change
+        function updateButtons() {
+            if (!optDna && !optCss) return;
+            var anyChecked = (optDna ? optDna.checked : hasDna) || (optCss ? optCss.checked : hasCss);
+            document.getElementById('btn-copy').disabled = !anyChecked;
+            if (extBtn) extBtn.disabled = !anyChecked;
+        }
+        if (optDna) optDna.addEventListener('change', updateButtons);
+        if (optCss) optCss.addEventListener('change', updateButtons);
+
+        function getInstallFlags() {
+            return {
+                installDna: optDna ? optDna.checked : hasDna,
+                installCss: optCss ? optCss.checked : hasCss
+            };
+        }
+
+        // postMessage bridge to content script
         function sendToExtension(payload, callback, timeout) {
             var id = ++requestId;
             var timer = setTimeout(function() {
@@ -153,7 +208,6 @@
             window.postMessage(Object.assign({ type: 'STYLESWIFT_INSTALL_SKILL', requestId: id }, payload), '*');
         }
 
-        // 检测扩展是否安装
         function checkExtension() {
             sendToExtension({ action: 'ping' }, function(response) {
                 if (response && response.success) {
@@ -164,6 +218,9 @@
         }
 
         function tryExtInstall() {
+            var flags = getInstallFlags();
+            if (!flags.installDna && !flags.installCss) return;
+
             extStatus.hidden = false;
             extStatus.className = 'status info';
             extStatus.textContent = 'Installing...';
@@ -171,11 +228,16 @@
             fetch('/api/skill/' + slug + '/raw')
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
+                    // Attach install flags to the data
+                    data.installDna = flags.installDna;
+                    data.installCss = flags.installCss;
                     sendToExtension({ action: 'installSkill', slug: slug, data: data }, function(response) {
                         if (response && response.success) {
                             extStatus.className = 'status success';
-                            extStatus.textContent = 'Installed successfully!';
-                            setTimeout(function() { window.close(); }, 1500);
+                            var msg = 'Installed!';
+                            if (flags.installCss && data.css_content) msg += ' CSS applied to target site.';
+                            extStatus.textContent = msg;
+                            setTimeout(function() { window.close(); }, 2000);
                         } else {
                             extStatus.className = 'status error';
                             extStatus.textContent = 'Install failed. Use Copy or Download instead.';
@@ -186,13 +248,15 @@
 
         function copyContent() {
             var btn = document.getElementById('btn-copy');
+            var flags = getInstallFlags();
+            if (!flags.installDna && !flags.installCss) return;
+
             fetch('/api/skill/' + slug + '/raw')
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
-                    // Copy both content pieces
                     var parts = [];
-                    if (data.content) parts.push(data.content);
-                    if (data.css_content) parts.push('/* CSS Snippet */\n' + data.css_content);
+                    if (flags.installDna && data.content) parts.push(data.content);
+                    if (flags.installCss && data.css_content) parts.push('/* CSS Snippet */\n' + data.css_content);
                     return navigator.clipboard.writeText(parts.join('\n\n'));
                 })
                 .then(function() {
