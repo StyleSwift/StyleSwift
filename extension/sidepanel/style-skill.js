@@ -1,11 +1,11 @@
 /**
  * StyleSwift - Style Skill Storage Module
- * 
+ *
  * 用户动态创建的风格技能（Style Skill）的 CRUD 封装
  * 使用 chrome.storage.local 存储
- * 
- * 索引结构: skills:user:index - Array<{id, name, mood, sourceDomain, createdAt}>
- * 内容存储: skills:user:{id} - string (markdown)
+ *
+ * 索引结构: skills:user:index - Array<{id, name, mood, sourceDomain, contentType, exampleUrl, createdAt}>
+ * 内容存储: skills:user:{id} - string (markdown 或 css)
  */
 
 // ============================================================================
@@ -97,67 +97,67 @@ class StyleSkillStore {
 
   /**
    * 保存技能
-   * 
+   *
    * 保存技能内容到 chrome.storage.local，并更新索引。
    * 如果技能 ID 已存在，则更新该技能；否则创建新技能。
-   * 
+   *
    * @param {string} id - 技能 ID（建议使用 crypto.randomUUID().slice(0, 8)）
    * @param {string} name - 风格名称，如"赛博朋克"、"清新日式"
    * @param {string} mood - 一句话风格描述
    * @param {string} sourceDomain - 创建时所在的网站
-   * @param {string} content - 技能文档内容（markdown 格式）
+   * @param {string} content - 技能文档内容（markdown 或 css）
+   * @param {Object} [options] - 可选参数
+   * @param {string} [options.contentType='style_dna'] - 内容类型: 'style_dna' | 'css_snippet' | 'mixed'
+   * @param {string} [options.cssContent] - CSS Snippet 内容
+   * @param {string} [options.exampleUrl] - CSS Snippet 对应的示例网站 URL
    * @returns {Promise<void>}
-   * 
-   * @example
-   * const id = crypto.randomUUID().slice(0, 8);
-   * await StyleSkillStore.save(
-   *   id,
-   *   '赛博朋克',
-   *   '深色背景+霓虹色调的高科技感',
-   *   'github.com',
-   *   '# 赛博朋克\n\n## 风格描述\n...'
-   * );
    */
-  static async save(id, name, mood, sourceDomain, content) {
+  static async save(id, name, mood, sourceDomain, content, options = {}) {
     // 1. 获取当前索引
     const index = await this.list();
-    
+
     // 2. 检查是否已存在该 ID
     const existingIndex = index.findIndex(s => s.id === id);
-    
+
     // 3. 创建索引条目
     const entry = {
       id,
       name,
       mood,
       sourceDomain,
+      contentType: options.contentType || 'style_dna',
+      cssContent: !!options.cssContent,
+      exampleUrl: options.exampleUrl || null,
       createdAt: Date.now()
     };
-    
+
     // 4. 更新或添加到索引
     if (existingIndex >= 0) {
-      // 保留原有的 createdAt（如果是更新）
       entry.createdAt = index[existingIndex].createdAt;
       index[existingIndex] = entry;
     } else {
       index.push(entry);
     }
-    
+
     // 5. 保存索引和内容
-    await chrome.storage.local.set({
+    const storageData = {
       [this.INDEX_KEY]: index,
       [this.skillKey(id)]: content,
-    });
+    };
+    if (options.cssContent) {
+      storageData[`skills:user:${id}:css`] = options.cssContent;
+    }
+    await chrome.storage.local.set(storageData);
   }
 
   /**
    * 加载技能内容
-   * 
+   *
    * 从 chrome.storage.local 读取指定技能的内容。
-   * 
+   *
    * @param {string} id - 技能 ID
    * @returns {Promise<string|null>} 技能内容（markdown 格式），不存在时返回 null
-   * 
+   *
    * @example
    * const content = await StyleSkillStore.load('a1b2c3d4');
    * if (content) {
@@ -168,6 +168,18 @@ class StyleSkillStore {
    */
   static async load(id) {
     const { [this.skillKey(id)]: content } = await chrome.storage.local.get(this.skillKey(id));
+    return content || null;
+  }
+
+  /**
+   * 加载技能的 CSS 内容
+   *
+   * @param {string} id - 技能 ID
+   * @returns {Promise<string|null>} CSS 内容，不存在时返回 null
+   */
+  static async loadCss(id) {
+    const key = `skills:user:${id}:css`;
+    const { [key]: content } = await chrome.storage.local.get(key);
     return content || null;
   }
 
@@ -187,16 +199,16 @@ class StyleSkillStore {
   static async remove(id) {
     // 1. 获取当前索引
     const index = await this.list();
-    
+
     // 2. 从索引中移除该 ID
     const filtered = index.filter(s => s.id !== id);
-    
+
     // 3. 更新索引
     await chrome.storage.local.set({ [this.INDEX_KEY]: filtered });
-    
-    // 4. 删除技能内容
-    await chrome.storage.local.remove(this.skillKey(id));
-    
+
+    // 4. 删除技能内容（包括 CSS）
+    await chrome.storage.local.remove([this.skillKey(id), `skills:user:${id}:css`]);
+
     // 5. 从最近使用列表中移除
     await this.removeFromRecent(id);
   }

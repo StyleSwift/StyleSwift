@@ -1,0 +1,27 @@
+<article class="skill-card">
+    <header>
+        <div class="card-header-row">
+            <span class="badge badge-{{ skill.content_type }}">
+                {% if skill.content_type == 'style_dna' %}Style DNA
+                {% elif skill.content_type == 'css_snippet' %}CSS Snippet
+                {% else %}Style DNA + CSS{% endif %}
+            </span>
+            {% if skill.source == 'bundled' %}
+            <span class="badge badge-official">Official</span>
+            {% endif %}
+        </div>
+        <h3><a href="/skill/{{ skill.slug }}">{{ skill.title }}</a></h3>
+    </header>
+    <p class="card-desc">{{ skill.description[:120] }}{% if skill.description|length > 120 %}...{% endif %}</p>
+    <footer class="card-footer">
+        <div class="card-tags">
+            {% for tag in skill.tags[:3] %}
+            <a href="/browse?tag={{ tag }}" class="tag-pill">{{ tag }}</a>
+            {% endfor %}
+        </div>
+        <div class="card-meta">
+            <span title="Downloads">&#8595; {{ skill.downloads_count }}</span>
+            <span class="card-author">{{ skill.author_name }}</span>
+        </div>
+    </footer>
+</article>

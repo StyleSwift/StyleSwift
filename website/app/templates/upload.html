@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Style - StyleSwift Community{% endblock %}
+
+{% block content %}
+<section class="upload-page">
+    <h1>Upload a Style</h1>
+    <p>Share your style skill with the community. Style DNA is the main content; CSS Snippet is an optional example/preview.</p>
+
+    {% if errors.get('content') %}
+    <small class="error">{{ errors.content }}</small>
+    {% endif %}
+
+    <form method="post" action="/upload" class="upload-form" id="upload-form">
+        <div class="form-group">
+            <label for="title">Title</label>
+            <input type="text" id="title" name="title" value="{{ form_data.get('title', '') }}" placeholder="e.g. Cyberpunk 2077" required>
+            {% if errors.get('title') %}
+            <small class="error">{{ errors.title }}</small>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="2" placeholder="Short description of the style">{{ form_data.get('description', '') }}</textarea>
+        </div>
+
+        <!-- Style DNA: Markdown content (primary) -->
+        <div class="form-group">
+            <label for="dna_content">Style DNA — Markdown Content <small>(optional if CSS Snippet provided)</small></label>
+            <textarea id="dna_content" name="dna_content" rows="16" class="code-textarea" placeholder="---
+name: MyStyle
+description: A cool visual style
+---
+# My Style
+
+## Color Scheme
+- Background: #000000
+...">{{ form_data.get('dna_content', '') }}</textarea>
+        </div>
+
+        <!-- CSS Snippet: optional example/preview -->
+        <div class="form-group">
+            <label for="css_content">CSS Snippet — Example/Preview <small>(optional)</small></label>
+            <textarea id="css_content" name="css_content" rows="10" class="code-textarea" placeholder="body {
+  background: #0d1117;
+  color: #c9d1d9;
+}
+
+header {
+  border-bottom: 1px solid #30363d;
+}">{{ form_data.get('css_content', '') }}</textarea>
+        </div>
+
+        <div class="form-group" id="example-url-group">
+            <label for="example_url">Example Website URL <small>(for CSS Snippet)</small></label>
+            <input type="url" id="example_url" name="example_url" value="{{ form_data.get('example_url', '') }}" placeholder="https://example.com">
+            {% if errors.get('example_url') %}
+            <small class="error">{{ errors.example_url }}</small>
+            {% endif %}
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="tags">Tags (comma-separated)</label>
+                <input type="text" id="tags" name="tags" value="{{ form_data.get('tags', '') }}" placeholder="dark, cyberpunk, neon">
+            </div>
+            <div class="form-group">
+                <label for="author_name">Your Name</label>
+                <input type="text" id="author_name" name="author_name" value="{{ form_data.get('author_name', 'Anonymous') }}" placeholder="Anonymous">
+            </div>
+        </div>
+
+        <div class="form-group" id="preview-group">
+            <label>Preview</label>
+            <div id="preview" class="preview-box">
+                <p class="preview-empty">Paste content above to see a preview</p>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-submit">Upload</button>
+    </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/upload.js?v=4"></script>
+{% endblock %}

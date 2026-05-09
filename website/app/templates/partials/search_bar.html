@@ -1,0 +1,20 @@
+<div class="search-container">
+    <form action="/browse" method="get" class="search-form">
+        <input
+            type="search"
+            name="q"
+            placeholder="Search styles..."
+            value="{{ q or '' }}"
+            autocomplete="off"
+            id="search-input"
+        >
+        {% if content_type %}
+        <input type="hidden" name="type" value="{{ content_type }}">
+        {% endif %}
+        {% if tag %}
+        <input type="hidden" name="tag" value="{{ tag }}">
+        {% endif %}
+        <button type="submit">Search</button>
+    </form>
+    <div id="search-dropdown" class="search-dropdown" hidden></div>
+</div>

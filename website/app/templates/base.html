@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}StyleSwift Community{% endblock %}</title>
+    <meta name="description" content="{% block description %}Share and discover styles for the web{% endblock %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/themes.css">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <nav class="container-fluid">
+        <ul>
+            <li><a href="/" class="brand">
+                <svg class="logo" viewBox="0 0 32 32" width="28" height="28">
+                    <circle cx="16" cy="16" r="14" fill="var(--pico-primary)" opacity="0.9"/>
+                    <text x="16" y="21" text-anchor="middle" fill="white" font-size="14" font-weight="bold">S</text>
+                </svg>
+                <strong>StyleSwift</strong>
+            </a></li>
+        </ul>
+        <ul>
+            <li><a href="/browse">Browse</a></li>
+            <li><a href="/upload">Upload</a></li>
+            <li>
+                <a href="#" id="theme-toggle" aria-label="Toggle theme">
+                    <span class="theme-icon-light">&#9789;</span>
+                    <span class="theme-icon-dark">&#9788;</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="container-fluid">
+        <p><small>StyleSwift Community &mdash; Share and discover styles for the web</small></p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <script src="/static/js/app.js?v=2"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

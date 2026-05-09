@@ -1,0 +1,8 @@
+<div class="tag-list">
+    {% for t in tags %}
+    <a href="/browse?tag={{ t.tag }}{% if content_type %}&type={{ content_type }}{% endif %}"
+       class="tag-pill {% if tag == t.tag %}tag-active{% endif %}">
+        {{ t.tag }} <span class="tag-count">{{ t.count }}</span>
+    </a>
+    {% endfor %}
+</div>

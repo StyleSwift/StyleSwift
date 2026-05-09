@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}StyleSwift Community - Share and Discover Web Styles{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h1>Share and discover styles for the web</h1>
+    <p>Browse community-created style skills for StyleSwift, or upload your own.</p>
+    <div class="hero-actions">
+        {% include "partials/search_bar.html" %}
+    </div>
+    <div class="hero-stats">
+        <span><strong>{{ stats.total }}</strong> styles</span>
+        <span><strong>{{ stats.downloads }}</strong> installs</span>
+    </div>
+</section>
+
+{% if featured %}
+<section>
+    <h2>Featured</h2>
+    <div class="card-grid">
+        {% for skill in featured %}
+        {% include "partials/card.html" %}
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<section>
+    <div class="section-header">
+        <h2>Latest</h2>
+        <a href="/browse" class="secondary">View all &rarr;</a>
+    </div>
+    <div class="card-grid">
+        {% for skill in latest %}
+        {% include "partials/card.html" %}
+        {% endfor %}
+    </div>
+</section>
+
+{% if tags %}
+<section>
+    <h2>Browse by tag</h2>
+    <div class="tag-list tag-list-large">
+        {% for t in tags[:12] %}
+        <a href="/browse?tag={{ t.tag }}" class="tag-pill">
+            {{ t.tag }} <span class="tag-count">{{ t.count }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/search.js?v=2"></script>
+{% endblock %}

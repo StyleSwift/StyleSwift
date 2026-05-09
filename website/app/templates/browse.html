@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if q %}Search: {{ q }} - {% endif %}{% if tag %}Tag: {{ tag }} - {% endif %}Browse Styles - StyleSwift
+{% endblock %}
+
+{% block content %}
+<section class="browse-header">
+    <h1>Browse Styles</h1>
+    {% include "partials/search_bar.html" %}
+</section>
+
+<div class="browse-layout">
+    <aside class="browse-sidebar">
+        <div class="filter-section">
+            <h3>Type</h3>
+            <div class="filter-options">
+                <a href="/browse?q={{ q }}&tag={{ tag }}&sort={{ sort }}" class="filter-btn {% if not content_type %}filter-active{% endif %}">All</a>
+                <a href="/browse?q={{ q }}&type=style_dna&tag={{ tag }}&sort={{ sort }}" class="filter-btn {% if content_type == 'style_dna' %}filter-active{% endif %}">Style DNA</a>
+                <a href="/browse?q={{ q }}&type=mixed&tag={{ tag }}&sort={{ sort }}" class="filter-btn {% if content_type == 'mixed' %}filter-active{% endif %}">With CSS</a>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <h3>Sort</h3>
+            <div class="filter-options">
+                <a href="/browse?q={{ q }}&type={{ content_type }}&tag={{ tag }}&sort=latest" class="filter-btn {% if sort == 'latest' %}filter-active{% endif %}">Latest</a>
+                <a href="/browse?q={{ q }}&type={{ content_type }}&tag={{ tag }}&sort=popular" class="filter-btn {% if sort == 'popular' %}filter-active{% endif %}">Popular</a>
+            </div>
+        </div>
+
+        {% if tags %}
+        <div class="filter-section">
+            <h3>Tags</h3>
+            {% include "partials/tag_list.html" %}
+        </div>
+        {% endif %}
+    </aside>
+
+    <div class="browse-main">
+        <div class="browse-results-header">
+            <span>{{ total }} result{{ 's' if total != 1 else '' }}</span>
+            {% if q or content_type or tag %}
+            <a href="/browse" class="secondary">Clear filters</a>
+            {% endif %}
+        </div>
+
+        {% if skills %}
+        <div class="card-grid">
+            {% for skill in skills %}
+            {% include "partials/card.html" %}
+            {% endfor %}
+        </div>
+        {% include "partials/pagination.html" %}
+        {% else %}
+        <div class="empty-state">
+            <p>No styles found.</p>
+            <a href="/upload" class="secondary">Be the first to upload one &rarr;</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/search.js?v=2"></script>
+{% endblock %}

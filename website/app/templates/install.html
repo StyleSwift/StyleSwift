@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Install {{ skill.title }} - StyleSwift</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #f8f5f2;
+            color: #2d2a26;
+            padding: 1rem;
+        }
+        .card {
+            max-width: 400px;
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+        }
+        .card h1 { font-size: 1.3rem; margin-bottom: 0.25rem; }
+        .card .subtitle { color: #888; font-size: 0.85rem; margin-bottom: 1.5rem; }
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.6rem;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        .badge-dna { background: #e8f0fe; color: #1a56db; }
+        .badge-css { background: #e6f7ed; color: #15803d; }
+        .badge-mixed { background: #f3e8ff; color: #7c3aed; }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 0.7rem 1rem;
+            border-radius: 100px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-align: center;
+            text-decoration: none;
+            margin-bottom: 0.6rem;
+            transition: background 0.2s;
+        }
+        .btn-primary { background: #c46a3a; color: white; }
+        .btn-primary:hover { background: #a85530; }
+        .btn-secondary { background: #e8e2db; color: #2d2a26; }
+        .btn-secondary:hover { background: #d9d0c6; }
+        .btn-ext { background: #1a56db; color: white; }
+        .btn-ext:hover { background: #1642a8; }
+        .btn-link { background: none; color: #c46a3a; font-weight: 500; font-size: 0.85rem; }
+        .btn-link:hover { text-decoration: underline; }
+        .status {
+            text-align: center;
+            padding: 0.75rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+        }
+        .status.success { background: #e6f7ed; color: #15803d; }
+        .status.info { background: #e8f0fe; color: #1a56db; }
+        .status.error { background: #fef2f2; color: #b91c1c; }
+        .divider {
+            text-align: center;
+            color: #aaa;
+            font-size: 0.8rem;
+            margin: 1rem 0;
+            position: relative;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: #ddd;
+        }
+        .divider::before { left: 0; }
+        .divider::after { right: 0; }
+        .hint { font-size: 0.8rem; color: #888; text-align: center; margin-top: 0.5rem; }
+        .install-parts { font-size: 0.8rem; color: #666; margin-bottom: 1rem; }
+        .install-parts span { display: inline-block; margin-right: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <span class="badge {% if skill.content_type == 'mixed' %}badge-mixed{% elif skill.content_type == 'style_dna' %}badge-dna{% else %}badge-css{% endif %}">
+            {% if skill.content_type == 'mixed' %}Style DNA + CSS
+            {% elif skill.content_type == 'style_dna' %}Style DNA
+            {% else %}CSS Snippet{% endif %}
+        </span>
+        <h1>{{ skill.title }}</h1>
+        <p class="subtitle">{{ skill.description[:80] }}{% if skill.description|length > 80 %}...{% endif %}</p>
+
+        <div class="install-parts">
+            {% if skill.content %}<span>&#10003; Style DNA</span>{% endif %}
+            {% if skill.css_content %}<span>&#10003; CSS Snippet</span>{% endif %}
+        </div>
+
+        <div id="ext-status" class="status info" hidden></div>
+
+        <button class="btn btn-primary" id="btn-copy" onclick="copyContent()">
+            Copy to Clipboard
+        </button>
+
+        <a class="btn btn-secondary" href="/download/{{ skill.slug }}">
+            Download File
+        </a>
+
+        <div class="divider">or</div>
+
+        <button class="btn btn-ext" id="btn-ext-install" onclick="tryExtInstall()" hidden>
+            Install via StyleSwift Extension
+        </button>
+
+        <p class="hint" id="hint"></p>
+    </div>
+
+    <script>
+        var slug = '{{ skill.slug }}';
+        var extBtn = document.getElementById('btn-ext-install');
+        var extStatus = document.getElementById('ext-status');
+        var hint = document.getElementById('hint');
+        var requestId = 0;
+
+        // 通过 postMessage 与 content script 通信
+        function sendToExtension(payload, callback, timeout) {
+            var id = ++requestId;
+            var timer = setTimeout(function() {
+                window.removeEventListener('message', handler);
+                callback(null);
+            }, timeout || 3000);
+
+            function handler(event) {
+                if (event.source !== window) return;
+                if (event.data && event.data.type === 'STYLESWIFT_INSTALL_RESULT' && event.data.requestId === id) {
+                    clearTimeout(timer);
+                    window.removeEventListener('message', handler);
+                    callback(event.data.response);
+                }
+            }
+
+            window.addEventListener('message', handler);
+            window.postMessage(Object.assign({ type: 'STYLESWIFT_INSTALL_SKILL', requestId: id }, payload), '*');
+        }
+
+        // 检测扩展是否安装
+        function checkExtension() {
+            sendToExtension({ action: 'ping' }, function(response) {
+                if (response && response.success) {
+                    extBtn.hidden = false;
+                    hint.textContent = 'StyleSwift extension detected!';
+                }
+            }, 2000);
+        }
+
+        function tryExtInstall() {
+            extStatus.hidden = false;
+            extStatus.className = 'status info';
+            extStatus.textContent = 'Installing...';
+
+            fetch('/api/skill/' + slug + '/raw')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    sendToExtension({ action: 'installSkill', slug: slug, data: data }, function(response) {
+                        if (response && response.success) {
+                            extStatus.className = 'status success';
+                            extStatus.textContent = 'Installed successfully!';
+                            setTimeout(function() { window.close(); }, 1500);
+                        } else {
+                            extStatus.className = 'status error';
+                            extStatus.textContent = 'Install failed. Use Copy or Download instead.';
+                        }
+                    }, 5000);
+                });
+        }
+
+        function copyContent() {
+            var btn = document.getElementById('btn-copy');
+            fetch('/api/skill/' + slug + '/raw')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    // Copy both content pieces
+                    var parts = [];
+                    if (data.content) parts.push(data.content);
+                    if (data.css_content) parts.push('/* CSS Snippet */\n' + data.css_content);
+                    return navigator.clipboard.writeText(parts.join('\n\n'));
+                })
+                .then(function() {
+                    btn.textContent = 'Copied!';
+                    btn.style.background = '#15803d';
+                    setTimeout(function() {
+                        btn.textContent = 'Copy to Clipboard';
+                        btn.style.background = '';
+                    }, 2000);
+                })
+                .catch(function() {
+                    btn.textContent = 'Copy failed — use Download';
+                    setTimeout(function() {
+                        btn.textContent = 'Copy to Clipboard';
+                    }, 2000);
+                });
+        }
+
+        checkExtension();
+    </script>
+</body>
+</html>

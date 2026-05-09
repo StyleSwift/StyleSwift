@@ -11,6 +11,13 @@
 	},
 	"permissions": ["activeTab", "storage", "sidePanel", "scripting"],
 
+	"externally_connectable": {
+		"matches": [
+			"https://styleswift.dev/*",
+			"https://www.styleswift.dev/*"
+		]
+	},
+
 	"host_permissions": ["<all_urls>"],
 
 	"background": {

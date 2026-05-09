@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}{{ skill.title }} - StyleSwift Community{% endblock %}
+{% block description %}{{ skill.description[:160] }}{% endblock %}
+
+{% block content %}
+<article class="detail-page">
+    <header class="detail-header">
+        <div class="detail-badges">
+            <span class="badge badge-{{ skill.content_type }}">
+                {% if skill.content_type == 'style_dna' %}Style DNA
+                {% elif skill.content_type == 'css_snippet' %}CSS Snippet
+                {% else %}Style DNA + CSS{% endif %}
+            </span>
+            {% if skill.source == 'bundled' %}
+            <span class="badge badge-official">Official</span>
+            {% endif %}
+        </div>
+        <h1>{{ skill.title }}</h1>
+        {% if skill.description %}
+        <p class="detail-desc">{{ skill.description }}</p>
+        {% endif %}
+        <div class="detail-meta">
+            <span>By <strong>{{ skill.author_name }}</strong></span>
+            <span>{{ skill.created_at[:10] }}</span>
+            <span>&#8595; {{ skill.downloads_count }} installs</span>
+        </div>
+        {% if skill.tags %}
+        <div class="detail-tags">
+            {% for t in skill.tags %}
+            <a href="/browse?tag={{ t }}" class="tag-pill">{{ t }}</a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </header>
+
+    <div class="detail-actions">
+        <button id="install-btn" class="btn-install" data-slug="{{ skill.slug }}">
+            Install in StyleSwift
+        </button>
+        <button id="copy-btn" class="btn-copy" data-slug="{{ skill.slug }}">
+            Copy to Clipboard
+        </button>
+        <a href="/download/{{ skill.slug }}" class="btn-download">Download</a>
+        {% if skill.example_url %}
+        <a href="{{ skill.example_url }}" target="_blank" rel="noopener" class="btn-example">
+            View Example Site
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="detail-content">
+        {% if skill.content %}
+        <div class="content-section">
+            <h2 class="content-section-title">Style DNA</h2>
+            {% if rendered_content %}
+            <div class="markdown-body">{{ rendered_content | safe }}</div>
+            {% else %}
+            <pre><code>{{ skill.content }}</code></pre>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if skill.css_content %}
+        <div class="content-section">
+            <h2 class="content-section-title">CSS Snippet</h2>
+            <pre><code class="language-css">{{ skill.css_content }}</code></pre>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if related %}
+    <section class="related-section">
+        <h2>Related Styles</h2>
+        <div class="card-grid">
+            {% for skill in related %}
+            {% include "partials/card.html" %}
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</article>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/detail.js?v=3"></script>
+{% endblock %}

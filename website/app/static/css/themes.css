@@ -1,0 +1,30 @@
+[data-theme="dark"] {
+    --color-primary: oklch(68% 0.12 42);
+    --color-primary-hover: oklch(73% 0.12 42);
+    --color-bg: oklch(18% 0.01 60);
+    --color-bg-secondary: oklch(22% 0.01 60);
+    --color-bg-tertiary: oklch(28% 0.01 60);
+    --color-text: oklch(92% 0.005 78);
+    --color-text-secondary: oklch(68% 0.01 78);
+    --color-border: oklch(32% 0.01 60);
+}
+
+[data-theme="dark"] nav { background: var(--color-bg-secondary); border-color: var(--color-border); }
+[data-theme="dark"] .search-form input[type="search"] { background: var(--color-bg-tertiary); border-color: var(--color-border); color: var(--color-text); }
+[data-theme="dark"] .form-group input, [data-theme="dark"] .form-group textarea { background: var(--color-bg-tertiary); border-color: var(--color-border); color: var(--color-text); }
+[data-theme="dark"] .search-dropdown { background: var(--color-bg-secondary); border-color: var(--color-border); }
+[data-theme="dark"] .toast { background: oklch(25% 0.04 50); border-color: oklch(35% 0.06 50); }
+[data-theme="dark"] .preview-box { background: var(--color-bg-tertiary); border-color: var(--color-border); }
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --color-primary: oklch(68% 0.12 42);
+        --color-primary-hover: oklch(73% 0.12 42);
+        --color-bg: oklch(18% 0.01 60);
+        --color-bg-secondary: oklch(22% 0.01 60);
+        --color-bg-tertiary: oklch(28% 0.01 60);
+        --color-text: oklch(92% 0.005 78);
+        --color-text-secondary: oklch(68% 0.01 78);
+        --color-border: oklch(32% 0.01 60);
+    }
+}

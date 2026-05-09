@@ -1637,4 +1637,24 @@ if (document.body) {
 
 window.addEventListener("popstate", notifyNavigation);
 
+// === 社区网站技能安装桥接 ===
+// 网页通过 window.postMessage 发送安装请求，content script 转发给 service worker
+window.addEventListener("message", (event) => {
+  if (event.source !== window) return;
+  if (!event.data || event.data.type !== "STYLESWIFT_INSTALL_SKILL") return;
+
+  const { requestId, action, slug, data } = event.data;
+
+  chrome.runtime.sendMessage(
+    { action: "installSkillFromWeb", installAction: action, slug, data },
+    (response) => {
+      window.postMessage({
+        type: "STYLESWIFT_INSTALL_RESULT",
+        requestId,
+        response: response || { success: false, error: "No response from extension" },
+      }, "*");
+    }
+  );
+});
+
 })();
