@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "__MSG_extName__",
-	"version": "1.0.5",
+	"version": "1.0.6",
 	"description": "__MSG_extDescription__",
 	"default_locale": "en",
 	"icons": {
@@ -13,8 +13,8 @@
 
 	"externally_connectable": {
 		"matches": [
-			"https://styleswift.dev/*",
-			"https://www.styleswift.dev/*"
+			"https://stylesswift.com/*",
+			"https://47.107.151.65/*"
 		]
 	},
 

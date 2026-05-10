@@ -3630,8 +3630,9 @@ async function deleteSkillWithConfirmation(skill) {
 			// Close modal
 			closeModal();
 
-			// Refresh skill chips
+			// Refresh skill chips and settings list
 			await renderSkillChips();
+			await renderUserSkillList();
 
 			// Show success message
 			console.log("[Panel] Skill deleted:", skill.name);
@@ -4270,13 +4271,21 @@ async function initSettingsView() {
 	);
 	DOM.settingsVisionModel = document.getElementById("settings-vision-model");
 
+	// 动态填充版本号
+	const versionEl = document.getElementById("about-version");
+	if (versionEl) {
+		versionEl.textContent = `StyleSwift v${chrome.runtime.getManifest().version}`;
+	}
+
 	// 防止重复绑定事件监听器（使用 data 属性标记）
 	const settingsView = document.getElementById("settings-view");
 	if (settingsView && settingsView.dataset.listenersAttached === "true") {
-		// 仅重新加载数据，不重复绑定事件
+		// 重新加载数据，不重复绑定事件
 		await loadCurrentSettings();
 		await loadUserProfile();
 		await loadStorageUsage();
+		await renderStaticSkillList();
+		await renderUserSkillList();
 		return;
 	}
 	if (settingsView) settingsView.dataset.listenersAttached = "true";
