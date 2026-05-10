@@ -4,8 +4,10 @@
 
 {% block content %}
 <section class="error-page">
+    <span class="icon icon-search" style="width:64px;height:64px;color:var(--color-text-tertiary)"></span>
     <h1>404</h1>
-    <p>The page you're looking for doesn't exist.</p>
-    <a href="/" class="secondary">Go home &rarr;</a>
+    <p class="error-page-subtitle">The page you're looking for doesn't exist or has been moved.</p>
+    <a href="/" class="btn-install" style="margin-right:0.75rem"><span class="icon icon-home" style="width:16px;height:16px"></span> Go home</a>
+    <a href="/browse" class="btn-copy"><span class="icon icon-grid" style="width:16px;height:16px"></span> Browse Styles</a>
 </section>
 {% endblock %}

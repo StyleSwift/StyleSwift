@@ -4,7 +4,7 @@
 
 {% block content %}
 <section class="upload-page">
-    <h1>Upload a Style</h1>
+    <h1><span class="icon icon-upload" style="width:28px;height:28px;color:var(--color-primary)"></span> Upload a Style</h1>
     <p>Share your style skill with the community. Style DNA is the main content; CSS Snippet is an optional example/preview.</p>
 
     {% if errors.get('content') %}
@@ -78,11 +78,11 @@ header {
             </div>
         </div>
 
-        <button type="submit" class="btn-submit">Upload</button>
+        <button type="submit" class="btn-submit"><span class="icon icon-upload" style="width:16px;height:16px"></span> Upload</button>
     </form>
 </section>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/upload.js?v=4"></script>
+<script src="/static/js/upload.js?v=5"></script>
 {% endblock %}

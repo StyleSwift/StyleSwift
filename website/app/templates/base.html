@@ -5,30 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}StyleSwift Community{% endblock %}</title>
     <meta name="description" content="{% block description %}Share and discover styles for the web{% endblock %}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/img/icon-16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/img/icon-32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="/static/img/icon-48.png">
+    <!-- Apple touch icon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/img/icon-48.png">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/themes.css">
     {% block head %}{% endblock %}
 </head>
 <body>
-    <nav class="container-fluid">
+    <nav class="container-fluid" role="navigation" aria-label="Main navigation">
         <ul>
             <li><a href="/" class="brand">
-                <svg class="logo" viewBox="0 0 32 32" width="28" height="28">
-                    <circle cx="16" cy="16" r="14" fill="var(--pico-primary)" opacity="0.9"/>
-                    <text x="16" y="21" text-anchor="middle" fill="white" font-size="14" font-weight="bold">S</text>
-                </svg>
+                <img class="logo" src="/static/img/icon-48.png" alt="StyleSwift Logo" width="32" height="32">
                 <strong>StyleSwift</strong>
             </a></li>
         </ul>
         <ul>
-            <li><a href="/browse">Browse</a></li>
-            <li><a href="/upload">Upload</a></li>
+            <li><a href="/browse"><span class="icon icon-grid" style="width:16px;height:16px"></span> Browse</a></li>
+            <li><a href="/upload"><span class="icon icon-upload" style="width:16px;height:16px"></span> Upload</a></li>
+            <li>
+                <a href="https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli" target="_blank" class="install-btn">
+                    <span class="icon icon-download" style="width:16px;height:16px"></span> Install Extension
+                </a>
+            </li>
             <li>
                 <a href="#" id="theme-toggle" aria-label="Toggle theme">
-                    <span class="theme-icon-light">&#9789;</span>
-                    <span class="theme-icon-dark">&#9788;</span>
+                    <span class="icon icon-moon theme-icon-light" style="width:20px;height:20px"></span>
+                    <span class="icon icon-sun theme-icon-dark" style="width:20px;height:20px"></span>
                 </a>
             </li>
         </ul>
@@ -39,13 +47,17 @@
     </main>
 
     <footer class="container-fluid">
-        <p><small>StyleSwift Community &mdash; Share and discover styles for the web</small></p>
+        <div class="footer-content">
+            <p>StyleSwift Community</p>
+            <p class="footer-tagline">Share and discover styles for the web</p>
+            <p class="footer-copy"><small>&copy; 2024-2026 StyleSwift</small></p>
+        </div>
     </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
     <script>hljs.highlightAll();</script>
-    <script src="/static/js/app.js?v=2"></script>
+    <script src="/static/js/app.js?v=3"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

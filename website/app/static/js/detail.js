@@ -11,7 +11,7 @@
 
             // Open install page in a small popup
             var width = 420;
-            var height = 360;
+            var height = 400;
             var left = (screen.width - width) / 2;
             var top = (screen.height - height) / 2;
             window.open(
@@ -25,6 +25,7 @@
     if (copyBtn) {
         copyBtn.addEventListener('click', function() {
             var slug = this.getAttribute('data-slug');
+            var btn = this;
 
             fetch('/api/skill/' + slug + '/raw')
                 .then(function(r) { return r.json(); })
@@ -35,15 +36,15 @@
                     return navigator.clipboard.writeText(parts.join('\n\n'));
                 })
                 .then(function() {
-                    copyBtn.textContent = 'Copied!';
+                    btn.innerHTML = '<span class="icon icon-check" style="width:16px;height:16px"></span> Copied!';
                     setTimeout(function() {
-                        copyBtn.textContent = 'Copy to Clipboard';
+                        btn.innerHTML = '<span class="icon icon-copy" style="width:16px;height:16px"></span> Copy to Clipboard';
                     }, 2000);
                 })
                 .catch(function() {
-                    copyBtn.textContent = 'Failed to copy';
+                    btn.textContent = 'Failed to copy';
                     setTimeout(function() {
-                        copyBtn.textContent = 'Copy to Clipboard';
+                        btn.innerHTML = '<span class="icon icon-copy" style="width:16px;height:16px"></span> Copy to Clipboard';
                     }, 2000);
                 });
         });

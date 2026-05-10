@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: styleswift
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m seeds.seed && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: STYLESWIFT_DEBUG
+        value: "0"
+    disk:
+      name: styleswift-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1

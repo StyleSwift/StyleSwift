@@ -1,30 +1,94 @@
+/**
+ * StyleSwift Dark Theme — Deep Warm Organic
+ * Tokens aligned with extension/sidepanel/panel.css
+ */
+
 [data-theme="dark"] {
-    --color-primary: oklch(68% 0.12 42);
-    --color-primary-hover: oklch(73% 0.12 42);
-    --color-bg: oklch(18% 0.01 60);
-    --color-bg-secondary: oklch(22% 0.01 60);
-    --color-bg-tertiary: oklch(28% 0.01 60);
-    --color-text: oklch(92% 0.005 78);
-    --color-text-secondary: oklch(68% 0.01 78);
-    --color-border: oklch(32% 0.01 60);
+  /* Backgrounds: Deep warm tones */
+  --color-bg-primary: oklch(15% 0.003 78);
+  --color-bg-secondary: oklch(19% 0.004 78);
+  --color-bg-tertiary: oklch(25% 0.005 78);
+  --color-bg-hover: oklch(29% 0.005 78);
+  --color-bg-active: oklch(33% 0.006 78);
+
+  /* Surfaces */
+  --color-surface-soft: oklch(17% 0.004 78);
+  --color-surface-warm: oklch(23% 0.008 70);
+
+  /* Text: Light warm tones */
+  --color-text-primary: oklch(95% 0.003 78);
+  --color-text-secondary: oklch(72% 0.004 78);
+  --color-text-tertiary: oklch(56% 0.005 78);
+  --color-text-disabled: oklch(43% 0.004 78);
+  --color-text-inverse: oklch(15% 0.003 78);
+
+  /* Borders: White-based rgba */
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-light: rgba(255, 255, 255, 0.04);
+  --color-border-strong: rgba(255, 255, 255, 0.09);
+
+  /* Primary: Brightened terracotta */
+  --color-primary: oklch(75% 0.11 42);
+  --color-primary-hover: oklch(79% 0.10 42);
+  --color-primary-active: oklch(69% 0.13 42);
+  --color-primary-light: oklch(63% 0.12 42 / 0.18);
+
+  /* Status backgrounds: Dark variants */
+  --color-success-bg: oklch(22% 0.04 145);
+  --color-warning-bg: oklch(22% 0.04 75);
+  --color-error-bg: oklch(22% 0.05 25);
+  --color-info-bg: oklch(20% 0.04 240);
+
+  /* Metallic: Subtle dark-mode insets */
+  --color-metal-highlight: rgba(255, 255, 255, 0.05);
+  --color-metal-shadow: rgba(0, 0, 0, 0.2);
+
+  /* Gradients: Dark range */
+  --gradient-surface: linear-gradient(180deg, oklch(17% 0.004 78) 0%, oklch(15% 0.003 78) 100%);
+  --gradient-soft: linear-gradient(135deg, oklch(19% 0.004 78) 0%, oklch(25% 0.005 78) 100%);
+
+  /* Shadows: Darker */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.22);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.26);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 6px 16px rgba(0, 0, 0, 0.34);
 }
 
-[data-theme="dark"] nav { background: var(--color-bg-secondary); border-color: var(--color-border); }
-[data-theme="dark"] .search-form input[type="search"] { background: var(--color-bg-tertiary); border-color: var(--color-border); color: var(--color-text); }
-[data-theme="dark"] .form-group input, [data-theme="dark"] .form-group textarea { background: var(--color-bg-tertiary); border-color: var(--color-border); color: var(--color-text); }
-[data-theme="dark"] .search-dropdown { background: var(--color-bg-secondary); border-color: var(--color-border); }
-[data-theme="dark"] .toast { background: oklch(25% 0.04 50); border-color: oklch(35% 0.06 50); }
-[data-theme="dark"] .preview-box { background: var(--color-bg-tertiary); border-color: var(--color-border); }
-
+/* Auto-detection via system preference */
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-        --color-primary: oklch(68% 0.12 42);
-        --color-primary-hover: oklch(73% 0.12 42);
-        --color-bg: oklch(18% 0.01 60);
-        --color-bg-secondary: oklch(22% 0.01 60);
-        --color-bg-tertiary: oklch(28% 0.01 60);
-        --color-text: oklch(92% 0.005 78);
-        --color-text-secondary: oklch(68% 0.01 78);
-        --color-border: oklch(32% 0.01 60);
-    }
+  :root:not([data-theme="light"]) {
+    --color-bg-primary: oklch(15% 0.003 78);
+    --color-bg-secondary: oklch(19% 0.004 78);
+    --color-bg-tertiary: oklch(25% 0.005 78);
+    --color-bg-hover: oklch(29% 0.005 78);
+    --color-bg-active: oklch(33% 0.006 78);
+    --color-surface-soft: oklch(17% 0.004 78);
+    --color-surface-warm: oklch(23% 0.008 70);
+    --color-text-primary: oklch(95% 0.003 78);
+    --color-text-secondary: oklch(72% 0.004 78);
+    --color-text-tertiary: oklch(56% 0.005 78);
+    --color-text-disabled: oklch(43% 0.004 78);
+    --color-text-inverse: oklch(15% 0.003 78);
+    --color-border: rgba(255, 255, 255, 0.06);
+    --color-border-light: rgba(255, 255, 255, 0.04);
+    --color-border-strong: rgba(255, 255, 255, 0.09);
+    --color-primary: oklch(75% 0.11 42);
+    --color-primary-hover: oklch(79% 0.10 42);
+    --color-primary-active: oklch(69% 0.13 42);
+    --color-primary-light: oklch(63% 0.12 42 / 0.18);
+    --color-success-bg: oklch(22% 0.04 145);
+    --color-warning-bg: oklch(22% 0.04 75);
+    --color-error-bg: oklch(22% 0.05 25);
+    --color-info-bg: oklch(20% 0.04 240);
+    --color-metal-highlight: rgba(255, 255, 255, 0.05);
+    --color-metal-shadow: rgba(0, 0, 0, 0.2);
+    --gradient-surface: linear-gradient(180deg, oklch(17% 0.004 78) 0%, oklch(15% 0.003 78) 100%);
+    --gradient-soft: linear-gradient(135deg, oklch(19% 0.004 78) 0%, oklch(25% 0.005 78) 100%);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.18);
+    --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.22);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.26);
+    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-xl: 0 6px 16px rgba(0, 0, 0, 0.34);
+  }
 }

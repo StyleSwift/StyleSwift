@@ -1,8 +1,19 @@
 import json
 import sqlite3
+import re
 
 from app.database import get_connection
 from app.models import SkillCard
+
+
+def _contains_cjk(text: str) -> bool:
+    """Check if text contains Chinese/Japanese/Korean characters."""
+    # CJK Unicode ranges: U+4E00-U+9FFF (CJK), U+3400-U+4DBF (CJK Ext A), U+20000-U+2A6DF (CJK Ext B)
+    # Also includes Japanese Hiragana/Katakana and Korean Hangul
+    cjk_pattern = re.compile(
+        r"[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]"
+    )
+    return bool(cjk_pattern.search(text))
 
 
 def _row_to_card(row: sqlite3.Row) -> SkillCard:
@@ -33,18 +44,24 @@ def search_skills(
     try:
         if not query.strip():
             from app.services.skill_service import list_skills
+
             return list_skills(content_type, tag, "latest", page, per_page)
 
         where_clauses = []
         params: list = []
 
+        # Try FTS search first
         fts_query = " OR ".join(f'"{w}"' for w in query.strip().split() if w)
-        where_clauses.append("s.id IN (SELECT rowid FROM skills_fts WHERE skills_fts MATCH ?)")
+        where_clauses.append(
+            "s.id IN (SELECT rowid FROM skills_fts WHERE skills_fts MATCH ?)"
+        )
         params.append(fts_query)
 
         if content_type:
             if content_type == "has_css":
-                where_clauses.append("s.css_content IS NOT NULL AND s.css_content != ''")
+                where_clauses.append(
+                    "s.css_content IS NOT NULL AND s.css_content != ''"
+                )
             else:
                 where_clauses.append("s.content_type = ?")
                 params.append(content_type)
@@ -70,7 +87,45 @@ def search_skills(
             params + [per_page, offset],
         ).fetchall()
 
-        return [_row_to_card(r) for r in rows], total
+        results = [_row_to_card(r) for r in rows]
+
+        # LIKE fallback for CJK queries if FTS returns no results
+        if total == 0 and _contains_cjk(query):
+            where_clauses_like = ["(s.title LIKE ? OR s.description LIKE ?)"]
+            params_like = [f"%{query}%", f"%{query}%"]
+
+            if content_type:
+                if content_type == "has_css":
+                    where_clauses_like.append(
+                        "s.css_content IS NOT NULL AND s.css_content != ''"
+                    )
+                else:
+                    where_clauses_like.append("s.content_type = ?")
+                    params_like.append(content_type)
+
+            if tag:
+                where_clauses_like.append(
+                    "EXISTS (SELECT 1 FROM json_each(s.tags) WHERE json_each.value = ?)"
+                )
+                params_like.append(tag)
+
+            where_sql_like = " WHERE " + " AND ".join(where_clauses_like)
+
+            count_row_like = conn.execute(
+                f"SELECT COUNT(*) as cnt FROM skills s{where_sql_like}", params_like
+            ).fetchone()
+            total = count_row_like["cnt"]
+
+            rows_like = conn.execute(
+                f"""SELECT s.* FROM skills s{where_sql_like}
+                    ORDER BY s.downloads_count DESC
+                    LIMIT ? OFFSET ?""",
+                params_like + [per_page, offset],
+            ).fetchall()
+
+            results = [_row_to_card(r) for r in rows_like]
+
+        return results, total
     finally:
         conn.close()
 
@@ -95,6 +150,7 @@ def quick_search(query: str, limit: int = 8) -> list[SkillCard]:
         if not query.strip():
             return []
 
+        # Try FTS search first
         fts_query = " OR ".join(f'"{w}"' for w in query.strip().split() if w)
         rows = conn.execute(
             """SELECT s.* FROM skills s
@@ -103,6 +159,20 @@ def quick_search(query: str, limit: int = 8) -> list[SkillCard]:
                LIMIT ?""",
             (fts_query, limit),
         ).fetchall()
-        return [_row_to_card(r) for r in rows]
+
+        results = [_row_to_card(r) for r in rows]
+
+        # LIKE fallback for CJK queries if FTS returns no results
+        if len(results) == 0 and _contains_cjk(query):
+            rows_like = conn.execute(
+                """SELECT s.* FROM skills s
+                   WHERE s.title LIKE ? OR s.description LIKE ?
+                   ORDER BY s.downloads_count DESC
+                   LIMIT ?""",
+                (f"%{query}%", f"%{query}%", limit),
+            ).fetchall()
+            results = [_row_to_card(r) for r in rows_like]
+
+        return results
     finally:
         conn.close()

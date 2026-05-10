@@ -20,6 +20,11 @@
     toggle.addEventListener('click', function(e) {
         e.preventDefault();
         const current = root.getAttribute('data-theme');
-        setTheme(current === 'dark' ? 'light' : 'dark');
+        const next = current === 'dark' ? 'light' : 'dark';
+
+        // Smooth transition
+        root.style.transition = 'background-color 0.3s ease, color 0.3s ease';
+        setTheme(next);
+        setTimeout(function() { root.style.transition = ''; }, 300);
     });
 })();

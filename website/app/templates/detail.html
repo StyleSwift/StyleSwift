@@ -21,9 +21,9 @@
         <p class="detail-desc">{{ skill.description }}</p>
         {% endif %}
         <div class="detail-meta">
-            <span>By <strong>{{ skill.author_name }}</strong></span>
-            <span>{{ skill.created_at[:10] }}</span>
-            <span>&#8595; {{ skill.downloads_count }} installs</span>
+            <span><span class="icon icon-user" style="width:14px;height:14px"></span> <strong>{{ skill.author_name }}</strong></span>
+            <span><span class="icon icon-calendar" style="width:14px;height:14px"></span> {{ skill.created_at[:10] }}</span>
+            <span><span class="icon icon-arrow-down" style="width:14px;height:14px"></span> {{ skill.downloads_count }} installs</span>
         </div>
         {% if skill.tags %}
         <div class="detail-tags">
@@ -36,15 +36,17 @@
 
     <div class="detail-actions">
         <button id="install-btn" class="btn-install" data-slug="{{ skill.slug }}">
-            Install in StyleSwift
+            <span class="icon icon-download" style="width:16px;height:16px"></span> Install in StyleSwift
         </button>
         <button id="copy-btn" class="btn-copy" data-slug="{{ skill.slug }}">
-            Copy to Clipboard
+            <span class="icon icon-copy" style="width:16px;height:16px"></span> Copy to Clipboard
         </button>
-        <a href="/download/{{ skill.slug }}" class="btn-download">Download</a>
+        <a href="/download/{{ skill.slug }}" class="btn-download">
+            <span class="icon icon-download" style="width:16px;height:16px"></span> Download
+        </a>
         {% if skill.example_url %}
         <a href="{{ skill.example_url }}" target="_blank" rel="noopener" class="btn-example">
-            View Example Site
+            <span class="icon icon-external-link" style="width:16px;height:16px"></span> View Example Site
         </a>
         {% endif %}
     </div>
@@ -52,7 +54,7 @@
     <div class="detail-content">
         {% if skill.content %}
         <div class="content-section">
-            <h2 class="content-section-title">Style DNA</h2>
+            <h2 class="content-section-title"><span class="icon icon-file-text" style="width:18px;height:18px"></span> Style DNA</h2>
             {% if rendered_content %}
             <div class="markdown-body">{{ rendered_content | safe }}</div>
             {% else %}
@@ -63,7 +65,7 @@
 
         {% if skill.css_content %}
         <div class="content-section">
-            <h2 class="content-section-title">CSS Snippet</h2>
+            <h2 class="content-section-title"><span class="icon icon-code" style="width:18px;height:18px"></span> CSS Snippet</h2>
             <pre><code class="language-css">{{ skill.css_content }}</code></pre>
         </div>
         {% endif %}
@@ -83,5 +85,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/detail.js?v=3"></script>
+<script src="/static/js/detail.js?v=4"></script>
 {% endblock %}

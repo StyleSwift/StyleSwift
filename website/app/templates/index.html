@@ -4,20 +4,60 @@
 
 {% block content %}
 <section class="hero">
-    <h1>Share and discover styles for the web</h1>
+    <h1><span class="icon icon-sparkles" style="width:32px;height:32px;color:var(--color-primary)"></span> Share and discover styles for the web</h1>
     <p>Browse community-created style skills for StyleSwift, or upload your own.</p>
     <div class="hero-actions">
         {% include "partials/search_bar.html" %}
     </div>
     <div class="hero-stats">
         <span><strong>{{ stats.total }}</strong> styles</span>
-        <span><strong>{{ stats.downloads }}</strong> installs</span>
+        <span><span class="icon icon-arrow-down" style="width:14px;height:14px"></span> <strong>{{ stats.downloads }}</strong> installs</span>
+    </div>
+</section>
+
+<section class="get-started">
+    <div class="section-header">
+        <h2><span class="icon icon-rocket" style="width:20px;height:20px"></span> Get Started</h2>
+    </div>
+    <div class="steps-grid">
+        <div class="step-card">
+            <div class="step-icon">
+                <span class="icon icon-download" style="width:32px;height:32px;color:var(--color-primary)"></span>
+            </div>
+            <h3>Install Extension</h3>
+            <p>Download StyleSwift from Chrome Web Store</p>
+            <a href="https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli" target="_blank" class="step-link">
+                Install Now <span class="icon icon-external-link" style="width:14px;height:14px"></span>
+            </a>
+        </div>
+        <div class="step-card">
+            <div class="step-icon">
+                <span class="icon icon-settings" style="width:32px;height:32px;color:var(--color-primary)"></span>
+            </div>
+            <h3>Configure API</h3>
+            <p>Enter your API key to activate AI styling</p>
+            <a href="https://github.com/StyleSwift/StyleSwift#quick-start" target="_blank" class="step-link secondary">
+                Quick Start Guide <span class="icon icon-arrow-right" style="width:14px;height:14px"></span>
+            </a>
+        </div>
+        <div class="step-card">
+            <div class="step-icon">
+                <span class="icon icon-sparkles" style="width:32px;height:32px;color:var(--color-primary)"></span>
+            </div>
+            <h3>Create Your Style</h3>
+            <p>Describe your vision and transform any website</p>
+            <a href="/browse" class="step-link secondary">
+                Explore Styles <span class="icon icon-arrow-right" style="width:14px;height:14px"></span>
+            </a>
+        </div>
     </div>
 </section>
 
 {% if featured %}
 <section>
-    <h2>Featured</h2>
+    <div class="section-header">
+        <h2><span class="icon icon-sparkles" style="width:20px;height:20px"></span> Featured</h2>
+    </div>
     <div class="card-grid">
         {% for skill in featured %}
         {% include "partials/card.html" %}
@@ -28,7 +68,7 @@
 
 <section>
     <div class="section-header">
-        <h2>Latest</h2>
+        <h2><span class="icon icon-clock" style="width:20px;height:20px"></span> Latest</h2>
         <a href="/browse" class="secondary">View all &rarr;</a>
     </div>
     <div class="card-grid">
@@ -40,7 +80,9 @@
 
 {% if tags %}
 <section>
-    <h2>Browse by tag</h2>
+    <div class="section-header">
+        <h2><span class="icon icon-tag" style="width:20px;height:20px"></span> Browse by tag</h2>
+    </div>
     <div class="tag-list tag-list-large">
         {% for t in tags[:12] %}
         <a href="/browse?tag={{ t.tag }}" class="tag-pill">
@@ -53,5 +95,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/search.js?v=2"></script>
+<script src="/static/js/search.js?v=3"></script>
 {% endblock %}

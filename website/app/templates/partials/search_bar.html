@@ -1,5 +1,6 @@
 <div class="search-container">
     <form action="/browse" method="get" class="search-form">
+        <span class="icon icon-search search-icon"></span>
         <input
             type="search"
             name="q"
@@ -14,7 +15,7 @@
         {% if tag %}
         <input type="hidden" name="tag" value="{{ tag }}">
         {% endif %}
-        <button type="submit">Search</button>
+        <button type="submit"><span class="icon icon-search" style="width:16px;height:16px"></span> Search</button>
     </form>
     <div id="search-dropdown" class="search-dropdown" hidden></div>
 </div>

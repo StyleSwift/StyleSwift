@@ -7,13 +7,14 @@
 {% block content %}
 <section class="browse-header">
     <h1>Browse Styles</h1>
+    <p class="browse-subtitle">Discover community-created style skills</p>
     {% include "partials/search_bar.html" %}
 </section>
 
 <div class="browse-layout">
     <aside class="browse-sidebar">
         <div class="filter-section">
-            <h3>Type</h3>
+            <h3><span class="icon icon-palette" style="width:14px;height:14px"></span> Type</h3>
             <div class="filter-options">
                 <a href="/browse?q={{ q }}&tag={{ tag }}&sort={{ sort }}" class="filter-btn {% if not content_type %}filter-active{% endif %}">All</a>
                 <a href="/browse?q={{ q }}&type=style_dna&tag={{ tag }}&sort={{ sort }}" class="filter-btn {% if content_type == 'style_dna' %}filter-active{% endif %}">Style DNA</a>
@@ -22,7 +23,7 @@
         </div>
 
         <div class="filter-section">
-            <h3>Sort</h3>
+            <h3><span class="icon icon-grid" style="width:14px;height:14px"></span> Sort</h3>
             <div class="filter-options">
                 <a href="/browse?q={{ q }}&type={{ content_type }}&tag={{ tag }}&sort=latest" class="filter-btn {% if sort == 'latest' %}filter-active{% endif %}">Latest</a>
                 <a href="/browse?q={{ q }}&type={{ content_type }}&tag={{ tag }}&sort=popular" class="filter-btn {% if sort == 'popular' %}filter-active{% endif %}">Popular</a>
@@ -31,7 +32,7 @@
 
         {% if tags %}
         <div class="filter-section">
-            <h3>Tags</h3>
+            <h3><span class="icon icon-tag" style="width:14px;height:14px"></span> Tags</h3>
             {% include "partials/tag_list.html" %}
         </div>
         {% endif %}
@@ -41,7 +42,7 @@
         <div class="browse-results-header">
             <span>{{ total }} result{{ 's' if total != 1 else '' }}</span>
             {% if q or content_type or tag %}
-            <a href="/browse" class="secondary">Clear filters</a>
+            <a href="/browse" class="secondary"><span class="icon icon-x" style="width:12px;height:12px"></span> Clear filters</a>
             {% endif %}
         </div>
 
@@ -54,6 +55,7 @@
         {% include "partials/pagination.html" %}
         {% else %}
         <div class="empty-state">
+            <span class="icon icon-search" style="width:48px;height:48px;color:var(--color-text-tertiary)"></span>
             <p>No styles found.</p>
             <a href="/upload" class="secondary">Be the first to upload one &rarr;</a>
         </div>
@@ -63,5 +65,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/search.js?v=2"></script>
+<script src="/static/js/search.js?v=3"></script>
 {% endblock %}

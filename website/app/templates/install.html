@@ -1,78 +1,229 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Install {{ skill.title }} - StyleSwift</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        /* Embedded design tokens — matches main.css */
+        :root {
+            --color-primary: oklch(63% 0.12 42);
+            --color-primary-hover: oklch(57% 0.13 42);
+            --color-primary-active: oklch(51% 0.14 42);
+            --color-primary-light: oklch(96% 0.04 42);
+            --color-bg-primary: oklch(99% 0.002 78);
+            --color-bg-secondary: oklch(97% 0.003 78);
+            --color-bg-tertiary: oklch(94% 0.004 78);
+            --color-bg-hover: oklch(96% 0.003 78);
+            --color-text-primary: oklch(20% 0.01 60);
+            --color-text-secondary: oklch(45% 0.01 60);
+            --color-text-tertiary: oklch(60% 0.008 60);
+            --color-border: rgba(0, 0, 0, 0.06);
+            --color-border-light: rgba(0, 0, 0, 0.04);
+            --color-border-strong: rgba(0, 0, 0, 0.09);
+            --color-success: #34c759;
+            --color-success-bg: #e8f8ec;
+            --color-error: #ef4444;
+            --color-error-bg: #fee2e2;
+            --color-info: #3b82f6;
+            --color-info-bg: #eff6ff;
+            --color-metal-highlight: rgba(255, 255, 255, 0.6);
+            --color-metal-shadow: rgba(0, 0, 0, 0.04);
+            --radius-xs: 6px;
+            --radius-sm: 10px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-full: 9999px;
+            --shadow-xs: 0 1px 2px oklch(20% 0.01 60 / 0.03);
+            --shadow-sm: 0 1px 4px oklch(20% 0.01 60 / 0.04);
+            --shadow-md: 0 2px 8px oklch(20% 0.01 60 / 0.05);
+            --shadow-lg: 0 4px 12px oklch(20% 0.01 60 / 0.06);
+            --gradient-surface: linear-gradient(180deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%);
+            --gradient-soft: linear-gradient(135deg, var(--color-bg-secondary) 0%, var(--color-bg-tertiary) 100%);
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+            --font-size-xs: 11px;
+            --font-size-sm: 12px;
+            --font-size-md: 14px;
+            --font-size-body: 16px;
+            --font-weight-normal: 400;
+            --font-weight-medium: 500;
+            --font-weight-semibold: 600;
+            --font-weight-bold: 700;
+            --duration-fast: 150ms;
+            --duration-normal: 220ms;
+            --easing-default: cubic-bezier(0.25, 0.1, 0.25, 1);
+            --easing-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 12px;
+            --spacing-lg: 16px;
+            --spacing-xl: 24px;
+            --spacing-2xl: 32px;
+        }
+
+        [data-theme="dark"] {
+            --color-primary: oklch(75% 0.11 42);
+            --color-primary-hover: oklch(79% 0.10 42);
+            --color-primary-active: oklch(69% 0.13 42);
+            --color-primary-light: oklch(63% 0.12 42 / 0.18);
+            --color-bg-primary: oklch(15% 0.003 78);
+            --color-bg-secondary: oklch(19% 0.004 78);
+            --color-bg-tertiary: oklch(25% 0.005 78);
+            --color-bg-hover: oklch(29% 0.005 78);
+            --color-text-primary: oklch(95% 0.003 78);
+            --color-text-secondary: oklch(72% 0.004 78);
+            --color-text-tertiary: oklch(56% 0.005 78);
+            --color-border: rgba(255, 255, 255, 0.06);
+            --color-border-light: rgba(255, 255, 255, 0.04);
+            --color-border-strong: rgba(255, 255, 255, 0.09);
+            --color-success-bg: oklch(22% 0.04 145);
+            --color-error-bg: oklch(22% 0.05 25);
+            --color-info-bg: oklch(20% 0.04 240);
+            --color-metal-highlight: rgba(255, 255, 255, 0.05);
+            --color-metal-shadow: rgba(0, 0, 0, 0.2);
+            --gradient-surface: linear-gradient(180deg, oklch(17% 0.004 78) 0%, oklch(15% 0.003 78) 100%);
+            --gradient-soft: linear-gradient(135deg, oklch(19% 0.004 78) 0%, oklch(25% 0.005 78) 100%);
+            --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.18);
+            --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.22);
+            --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.26);
+            --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --color-primary: oklch(75% 0.11 42);
+                --color-primary-hover: oklch(79% 0.10 42);
+                --color-primary-active: oklch(69% 0.13 42);
+                --color-primary-light: oklch(63% 0.12 42 / 0.18);
+                --color-bg-primary: oklch(15% 0.003 78);
+                --color-bg-secondary: oklch(19% 0.004 78);
+                --color-bg-tertiary: oklch(25% 0.005 78);
+                --color-bg-hover: oklch(29% 0.005 78);
+                --color-text-primary: oklch(95% 0.003 78);
+                --color-text-secondary: oklch(72% 0.004 78);
+                --color-text-tertiary: oklch(56% 0.005 78);
+                --color-border: rgba(255, 255, 255, 0.06);
+                --color-border-light: rgba(255, 255, 255, 0.04);
+                --color-border-strong: rgba(255, 255, 255, 0.09);
+                --color-success-bg: oklch(22% 0.04 145);
+                --color-error-bg: oklch(22% 0.05 25);
+                --color-info-bg: oklch(20% 0.04 240);
+                --color-metal-highlight: rgba(255, 255, 255, 0.05);
+                --color-metal-shadow: rgba(0, 0, 0, 0.2);
+                --gradient-surface: linear-gradient(180deg, oklch(17% 0.004 78) 0%, oklch(15% 0.003 78) 100%);
+                --gradient-soft: linear-gradient(135deg, oklch(19% 0.004 78) 0%, oklch(25% 0.005 78) 100%);
+                --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.18);
+                --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.22);
+                --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.26);
+                --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        /* Icon system */
+        .icon {
+            display: inline-block; flex-shrink: 0; vertical-align: middle;
+            background-color: currentColor;
+            -webkit-mask-image: var(--icon-src); mask-image: var(--icon-src);
+            -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+            -webkit-mask-size: contain; mask-size: contain;
+            -webkit-mask-position: center; mask-position: center;
+        }
+        .icon-copy { --icon-src: url("https://api.iconify.design/lucide/copy.svg"); }
+        .icon-download { --icon-src: url("https://api.iconify.design/lucide/download.svg"); }
+        .icon-sparkles { --icon-src: url("https://api.iconify.design/lucide/sparkles.svg"); }
+        .icon-check { --icon-src: url("https://api.iconify.design/lucide/check.svg"); }
+        .icon-moon { --icon-src: url("https://api.iconify.design/lucide/moon.svg"); }
+        .icon-sun { --icon-src: url("https://api.iconify.design/lucide/sun.svg"); }
+
+        /* Base */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: system-ui, -apple-system, sans-serif;
+            font-family: var(--font-family);
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background: #f8f5f2;
-            color: #2d2a26;
-            padding: 1rem;
+            background: var(--gradient-surface);
+            color: var(--color-text-primary);
+            padding: var(--spacing-lg);
+            -webkit-font-smoothing: antialiased;
         }
+
+        ::selection { background-color: var(--color-primary-light); color: var(--color-primary-active); }
+
         .card {
             max-width: 400px;
             width: 100%;
-            background: white;
-            border-radius: 16px;
-            padding: 2rem;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            background: var(--gradient-soft);
+            border: 1px solid var(--color-border-light);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-2xl);
+            box-shadow: var(--shadow-lg), inset 0 1px 0 var(--color-metal-highlight);
+            animation: fadeIn var(--duration-normal) var(--easing-default);
         }
-        .card h1 { font-size: 1.3rem; margin-bottom: 0.25rem; }
-        .card .subtitle { color: #888; font-size: 0.85rem; margin-bottom: 1rem; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card h1 { font-size: 1.3rem; margin-bottom: var(--spacing-xs); }
+        .card .subtitle { color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-lg); }
+
         .badge {
             display: inline-block;
             padding: 0.15rem 0.6rem;
-            border-radius: 100px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-semibold);
+            margin-bottom: var(--spacing-lg);
         }
-        .badge-dna { background: #e8f0fe; color: #1a56db; }
-        .badge-css { background: #e6f7ed; color: #15803d; }
-        .badge-mixed { background: #f3e8ff; color: #7c3aed; }
+        .badge-dna { background: var(--color-info-bg); color: var(--color-info); }
+        .badge-css { background: var(--color-success-bg); color: var(--color-success); }
+        .badge-mixed { background: oklch(90% 0.05 300); color: oklch(35% 0.1 300); }
+
         .btn {
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-xs);
             width: 100%;
-            padding: 0.7rem 1rem;
-            border-radius: 100px;
+            padding: 0.7rem var(--spacing-lg);
+            border-radius: var(--radius-full);
             border: none;
             cursor: pointer;
-            font-size: 0.95rem;
-            font-weight: 600;
+            font-size: var(--font-size-body);
+            font-weight: var(--font-weight-semibold);
+            font-family: var(--font-family);
             text-align: center;
             text-decoration: none;
             margin-bottom: 0.6rem;
-            transition: background 0.2s;
+            transition: all var(--duration-fast) var(--easing-default);
         }
-        .btn-primary { background: #c46a3a; color: white; }
-        .btn-primary:hover { background: #a85530; }
-        .btn-secondary { background: #e8e2db; color: #2d2a26; }
-        .btn-secondary:hover { background: #d9d0c6; }
-        .btn-ext { background: #1a56db; color: white; }
-        .btn-ext:hover { background: #1642a8; }
+        .btn-primary { background: var(--color-primary); color: white; box-shadow: var(--shadow-sm); }
+        .btn-primary:hover { background: var(--color-primary-hover); box-shadow: var(--shadow-md); }
+        .btn-secondary { background: var(--color-bg-tertiary); color: var(--color-text-primary); box-shadow: var(--shadow-xs), inset 0 1px 0 var(--color-metal-highlight); }
+        .btn-secondary:hover { background: var(--color-bg-hover); }
+        .btn-ext { background: var(--color-info); color: white; box-shadow: var(--shadow-sm); }
+        .btn-ext:hover { background: oklch(50% 0.18 250); box-shadow: var(--shadow-md); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
         .status {
             text-align: center;
-            padding: 0.75rem;
-            border-radius: 10px;
-            margin-bottom: 1rem;
-            font-size: 0.85rem;
+            padding: var(--spacing-md);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--spacing-lg);
+            font-size: var(--font-size-sm);
         }
-        .status.success { background: #e6f7ed; color: #15803d; }
-        .status.info { background: #e8f0fe; color: #1a56db; }
-        .status.error { background: #fef2f2; color: #b91c1c; }
+        .status.success { background: var(--color-success-bg); color: var(--color-success); }
+        .status.info { background: var(--color-info-bg); color: var(--color-info); }
+        .status.error { background: var(--color-error-bg); color: var(--color-error); }
+
         .divider {
             text-align: center;
-            color: #aaa;
-            font-size: 0.8rem;
-            margin: 1rem 0;
+            color: var(--color-text-tertiary);
+            font-size: var(--font-size-sm);
+            margin: var(--spacing-lg) 0;
             position: relative;
         }
         .divider::before, .divider::after {
@@ -81,37 +232,51 @@
             top: 50%;
             width: 40%;
             height: 1px;
-            background: #ddd;
+            background: var(--color-border);
         }
         .divider::before { left: 0; }
         .divider::after { right: 0; }
-        .hint { font-size: 0.8rem; color: #888; text-align: center; margin-top: 0.5rem; }
+
+        .hint { font-size: var(--font-size-sm); color: var(--color-text-tertiary); text-align: center; margin-top: var(--spacing-sm); }
+
         .install-options {
-            background: #f8f5f2;
-            border-radius: 12px;
-            padding: 0.75rem 1rem;
-            margin-bottom: 1rem;
+            background: var(--color-bg-tertiary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md) var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
         }
         .install-options label {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.35rem 0;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-xs) 0;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: var(--font-size-body);
         }
         .install-options input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-            accent-color: #c46a3a;
+            width: 16px; height: 16px;
+            accent-color: var(--color-primary);
         }
         .install-options .option-hint {
-            font-size: 0.75rem;
-            color: #888;
+            font-size: var(--font-size-xs);
+            color: var(--color-text-tertiary);
             margin-left: 1.6rem;
             margin-top: -0.15rem;
-            margin-bottom: 0.25rem;
+            margin-bottom: var(--spacing-xs);
         }
+
+        /* Theme toggle */
+        .theme-toggle-row { text-align: center; margin-top: var(--spacing-md); }
+        .theme-toggle-btn {
+            background: none; border: none; cursor: pointer;
+            color: var(--color-text-tertiary); padding: var(--spacing-xs);
+            border-radius: var(--radius-sm);
+            transition: color var(--duration-fast) var(--easing-default);
+        }
+        .theme-toggle-btn:hover { color: var(--color-text-primary); }
+        .theme-toggle-btn .icon { width: 16px; height: 16px; }
+        [data-theme="light"] .theme-icon-dark { display: none; }
+        [data-theme="dark"] .theme-icon-light { display: none; }
     </style>
 </head>
 <body>
@@ -140,24 +305,35 @@
 
         <div id="ext-status" class="status info" hidden></div>
 
-        <button class="btn btn-primary" id="btn-copy" onclick="copyContent()">
-            Copy to Clipboard
-        </button>
-
-        <a class="btn btn-secondary" href="/download/{{ skill.slug }}">
-            Download File
-        </a>
-
-        <div class="divider">or</div>
-
-        <button class="btn btn-ext" id="btn-ext-install" onclick="tryExtInstall()" hidden>
-            Install via StyleSwift Extension
+        <button class="btn btn-primary" id="btn-ext-install" onclick="tryExtInstall()">
+            <span class="icon icon-sparkles" style="width:16px;height:16px"></span> Install via StyleSwift Extension
         </button>
 
         <p class="hint" id="hint"></p>
+
+        <div class="theme-toggle-row">
+            <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle theme">
+                <span class="icon icon-moon theme-icon-light"></span>
+                <span class="icon icon-sun theme-icon-dark"></span>
+            </button>
+        </div>
     </div>
 
     <script>
+        // Theme detection
+        (function() {
+            var root = document.documentElement;
+            var stored = localStorage.getItem('theme');
+            if (stored) { root.setAttribute('data-theme', stored); }
+            else if (window.matchMedia('(prefers-color-scheme: dark)').matches) { root.setAttribute('data-theme', 'dark'); }
+            document.getElementById('theme-toggle').addEventListener('click', function() {
+                var current = root.getAttribute('data-theme');
+                var next = current === 'dark' ? 'light' : 'dark';
+                root.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+            });
+        })();
+
         var slug = '{{ skill.slug }}';
         var hasDna = {{ 'true' if skill.content else 'false' }};
         var hasCss = {{ 'true' if skill.css_content else 'false' }};
@@ -170,11 +346,9 @@
         var optDna = document.getElementById('opt-dna');
         var optCss = document.getElementById('opt-css');
 
-        // Update button state when checkboxes change
         function updateButtons() {
             if (!optDna && !optCss) return;
             var anyChecked = (optDna ? optDna.checked : hasDna) || (optCss ? optCss.checked : hasCss);
-            document.getElementById('btn-copy').disabled = !anyChecked;
             if (extBtn) extBtn.disabled = !anyChecked;
         }
         if (optDna) optDna.addEventListener('change', updateButtons);
@@ -187,7 +361,6 @@
             };
         }
 
-        // postMessage bridge to content script
         function sendToExtension(payload, callback, timeout) {
             var id = ++requestId;
             var timer = setTimeout(function() {
@@ -228,7 +401,6 @@
             fetch('/api/skill/' + slug + '/raw')
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
-                    // Attach install flags to the data
                     data.installDna = flags.installDna;
                     data.installCss = flags.installCss;
                     sendToExtension({ action: 'installSkill', slug: slug, data: data }, function(response) {
@@ -243,35 +415,6 @@
                             extStatus.textContent = 'Install failed. Use Copy or Download instead.';
                         }
                     }, 5000);
-                });
-        }
-
-        function copyContent() {
-            var btn = document.getElementById('btn-copy');
-            var flags = getInstallFlags();
-            if (!flags.installDna && !flags.installCss) return;
-
-            fetch('/api/skill/' + slug + '/raw')
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    var parts = [];
-                    if (flags.installDna && data.content) parts.push(data.content);
-                    if (flags.installCss && data.css_content) parts.push('/* CSS Snippet */\n' + data.css_content);
-                    return navigator.clipboard.writeText(parts.join('\n\n'));
-                })
-                .then(function() {
-                    btn.textContent = 'Copied!';
-                    btn.style.background = '#15803d';
-                    setTimeout(function() {
-                        btn.textContent = 'Copy to Clipboard';
-                        btn.style.background = '';
-                    }, 2000);
-                })
-                .catch(function() {
-                    btn.textContent = 'Copy failed — use Download';
-                    setTimeout(function() {
-                        btn.textContent = 'Copy to Clipboard';
-                    }, 2000);
                 });
         }
 

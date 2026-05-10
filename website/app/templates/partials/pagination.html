@@ -2,7 +2,7 @@
 <nav class="pagination" aria-label="Pagination">
     <ul>
         {% if page > 1 %}
-        <li><a href="?page={{ page - 1 }}{% if q %}&q={{ q }}{% endif %}{% if content_type %}&type={{ content_type }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" aria-label="Previous">&laquo; Prev</a></li>
+        <li><a href="?page={{ page - 1 }}{% if q %}&q={{ q }}{% endif %}{% if content_type %}&type={{ content_type }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" aria-label="Previous"><span class="icon icon-chevron-left" style="width:14px;height:14px"></span> Prev</a></li>
         {% endif %}
 
         {% for p in range(1, total_pages + 1) %}
@@ -16,7 +16,7 @@
         {% endfor %}
 
         {% if page < total_pages %}
-        <li><a href="?page={{ page + 1 }}{% if q %}&q={{ q }}{% endif %}{% if content_type %}&type={{ content_type }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" aria-label="Next">Next &raquo;</a></li>
+        <li><a href="?page={{ page + 1 }}{% if q %}&q={{ q }}{% endif %}{% if content_type %}&type={{ content_type }}{% endif %}{% if tag %}&tag={{ tag }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" aria-label="Next">Next <span class="icon icon-chevron-right" style="width:14px;height:14px"></span></a></li>
         {% endif %}
     </ul>
 </nav>

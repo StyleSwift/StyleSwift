@@ -27,6 +27,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS skills_fts USING fts5(
     tags,
     content,
     css_content,
+    tokenize='trigram',
     content='skills',
     content_rowid='id'
 );
@@ -116,11 +117,66 @@ def _migrate(conn: sqlite3.Connection) -> None:
         """)
 
 
+def _rebuild_fts(conn: sqlite3.Connection) -> None:
+    """Rebuild FTS index for trigram tokenizer support."""
+    # Drop and recreate FTS table with trigram tokenizer
+    conn.execute("DROP TABLE IF EXISTS skills_fts")
+    conn.execute("""
+        CREATE VIRTUAL TABLE skills_fts USING fts5(
+            title,
+            description,
+            tags,
+            content,
+            css_content,
+            tokenize='trigram',
+            content='skills',
+            content_rowid='id'
+        )
+    """)
+
+    # Re-populate FTS from existing skills
+    conn.execute("""
+        INSERT INTO skills_fts(rowid, title, description, tags, content, css_content)
+        SELECT id, title, description, tags, content, css_content FROM skills
+    """)
+
+    # Re-create triggers
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS skills_ai AFTER INSERT ON skills BEGIN
+            INSERT INTO skills_fts(rowid, title, description, tags, content, css_content)
+            VALUES (new.id, new.title, new.description, new.tags, new.content, new.css_content);
+        END
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS skills_ad AFTER DELETE ON skills BEGIN
+            INSERT INTO skills_fts(skills_fts, rowid, title, description, tags, content, css_content)
+            VALUES ('delete', old.id, old.title, old.description, old.tags, old.content, old.css_content);
+        END
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS skills_au AFTER UPDATE ON skills BEGIN
+            INSERT INTO skills_fts(skills_fts, rowid, title, description, tags, content, css_content)
+            VALUES ('delete', old.id, old.title, old.description, old.tags, old.content, old.css_content);
+            INSERT INTO skills_fts(rowid, title, description, tags, content, css_content)
+            VALUES (new.id, new.title, new.description, new.tags, new.content, new.css_content);
+        END
+    """)
+
+
 def init_db() -> None:
     conn = get_connection()
     try:
         conn.executescript(SCHEMA)
         _migrate(conn)
+
+        # Check if FTS needs rebuild (upgrade to trigram)
+        fts_info = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='skills_fts'"
+        ).fetchone()
+        if fts_info and "tokenize='trigram'" not in fts_info["sql"]:
+            print("Upgrading FTS to trigram tokenizer for Chinese support...")
+            _rebuild_fts(conn)
+
         # Re-apply schema to recreate FTS/triggers if migration dropped them
         conn.executescript(SCHEMA)
         conn.commit()
