@@ -2,11 +2,11 @@
 
 <div align="center">
 
-![StyleSwift Logo](images/banner.png)
+![StyleSwift Demo](images/演示动图.gif)
 
 **Give your favorite websites a fresh look with a single sentence**
 
-[![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-blue.svg)](https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli) [![OpenAI](https://img.shields.io/badge/OpenAI-GPT‑4o-412991?logo=openai&logoColor=white)](https://openai.com/) [![Anthropic](https://img.shields.io/badge/Anthropic-Claude‑3.5‑Sonnet-d4a57b?logo=anthropic&logoColor=white)](https://www.anthropic.com/) [![Google](https://img.shields.io/badge/Google-Gemini‑2.0-4285F4?logo=google&logoColor=white)](https://ai.google.dev/) [![DeepSeek](https://img.shields.io/badge/DeepSeek-V3/R1-5B5FC7?logo=deepseek&logoColor=white)](https://www.deepseek.com/)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-blue.svg)](https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli) [![PPIO](https://img.shields.io/badge/PPIO-Sponsor-blue.svg)](https://ppio.com/) [![OpenAI](https://img.shields.io/badge/OpenAI-GPT‑4o-412991?logo=openai&logoColor=white)](https://openai.com/) [![Anthropic](https://img.shields.io/badge/Anthropic-Claude‑3.5‑Sonnet-d4a57b?logo=anthropic&logoColor=white)](https://www.anthropic.com/) [![Google](https://img.shields.io/badge/Google-Gemini‑2.0-4285F4?logo=google&logoColor=white)](https://ai.google.dev/) [![DeepSeek](https://img.shields.io/badge/DeepSeek-V3/R1-5B5FC7?logo=deepseek&logoColor=white)](https://www.deepseek.com/) [![Moonshot](https://img.shields.io/badge/Moonshot-Kimi-FF6B35)](https://moonshot.cn/) [![Zhipu](https://img.shields.io/badge/智谱AI-GLM‑4-4D6BFF)](https://open.bigmodel.cn/) [![Alibaba](https://img.shields.io/badge/阿里云-通义千问-FF6A00?logo=alibaba&logoColor=white)](https://tongyi.aliyun.com/) [![Baidu](https://img.shields.io/badge/百度-文心一言-2932E1?logo=baidu&logoColor=white)](https://yiyan.baidu.com/) [![SiliconFlow](https://img.shields.io/badge/SiliconFlow-API-7C3AED)](https://siliconflow.cn/) [![Groq](https://img.shields.io/badge/Groq-Llama‑3-F55036?logo=groq&logoColor=white)](https://groq.com/)
 
 [English](#english) | [中文](#中文)
 
@@ -57,13 +57,13 @@ Claude Code is powerful, but not designed for web styling. StyleSwift fills that
 
 <div align="center">
 
-![Preview 1](images/demo1.png) | ![Preview 2](images/demo2.png) | ![Preview 3](images/demo3.png)
+![Windows XP Style](images/windowsXP风格.png) | ![Bauhaus Style](images/包豪斯风格.png) | ![Warm Style](images/温馨风格.png)
 :---:|:---:|:---:
-**Old Newspaper Style** | **The Matrix Style** | **One-Click Style Transfer**
+**Windows XP Style** | **Bauhaus Style** | **Warm Style**
 
-![B站韦斯安德森风格](images/B站韦斯安德森风格.png) | ![豆瓣墨水屏风格](images/豆瓣墨水屏风格.png) | ![github像素风](images/github像素风.png)
+![Old Newspaper Style](images/报纸风格.png) | ![The Matrix Style](images/黑客帝国风格.png) | ![Cyberpunk Style](images/赛博朋克风格.png)
 :---:|:---:|:---:
-**Bilibili Wes Anderson Style** | **Douban E-ink Style** | **GitHub Pixel Art Style**
+**Old Newspaper Style** | **The Matrix Style** | **Cyberpunk Style**
 
 Simply describe your design intent, and StyleSwift creates unique visual experiences for any website.
 
@@ -172,13 +172,13 @@ Claude Code 很强大，但并非为网页样式设计而生。数字女娲填�
 
 <div align="center">
 
-![效果预览 1](images/demo1.png) | ![效果预览 2](images/demo2.png) | ![效果预览 3](images/demo3.png)
+![Windows XP风格](images/windowsXP风格.png) | ![包豪斯风格](images/包豪斯风格.png) | ![温馨风格](images/温馨风格.png)
 :---:|:---:|:---:
-**旧报纸风格设计** | **黑客帝国风格设计** | **风格一键迁移**
+**Windows XP风格** | **包豪斯风格** | **温馨风格**
 
-![B站韦斯安德森风格](images/B站韦斯安德森风格.png) | ![豆瓣墨水屏风格](images/豆瓣墨水屏风格.png) | ![github像素风](images/github像素风.png)
+![报纸风格](images/报纸风格.png) | ![黑客帝国风格](images/黑客帝国风格.png) | ![赛博朋克风格](images/赛博朋克风格.png)
 :---:|:---:|:---:
-**B站韦斯安德森风格** | **豆瓣墨水屏风格** | **GitHub像素风**
+**报纸风格** | **黑客帝国风格** | **赛博朋克风格**
 
 只需一句话，数字女娲即可理解你的设计意图并智能应用样式，为任何网站打造独特的视觉体验。
 
