@@ -247,9 +247,10 @@ export function parseOpenAIStreamLine(line, state, callbacks) {
 
     const delta = choice.delta;
 
-    if (delta.reasoning_content) {
-      state.reasoning += delta.reasoning_content;
-      callbacks.onReasoning?.(delta.reasoning_content);
+    const reasoningDelta = delta.reasoning_content || delta.reasoning;
+    if (reasoningDelta) {
+      state.reasoning += reasoningDelta;
+      callbacks.onReasoning?.(reasoningDelta);
     }
 
     if (delta.content) {
