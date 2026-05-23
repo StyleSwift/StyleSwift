@@ -159,7 +159,7 @@ async function getDisabledUserSkills() {
 // --- Main Loop Constants and State ---
 
 export const MAX_ITERATIONS = 50;
-export const SUB_MAX_ITERATIONS = 20;
+export const SUB_MAX_ITERATIONS = 8;
 let currentAbortController = null;
 let isAgentRunning = false;
 let toolCallHistory = [];
@@ -318,7 +318,7 @@ export async function runTask(
     }
   } catch (_) {}
 
-  const subSystem = `${config.prompt}\n\nReturn a clear, concise summary after completing the task.`;
+  const subSystem = config.prompt;
 
   const subTools =
     config.tools === "*"
@@ -332,7 +332,16 @@ export async function runTask(
   // QualityAudit 的截图由 Agent 通过 capture_screenshot 工具主动获取
   const firstUserContent = enrichedPrompt;
 
-  const SUB_TOKEN_BUDGET = 40000;
+  // 动态计算子Agent token预算：取主Agent预算的40%，最低20000，最高60000
+  const { getSettings, DEFAULT_MODEL } = await import("../api.js");
+  let subModelName = DEFAULT_MODEL;
+  try {
+    const settings = await getSettings();
+    subModelName = settings.model || DEFAULT_MODEL;
+  } catch (_) {}
+  const mainBudget = getDynamicTokenBudget(subModelName);
+  const SUB_TOKEN_BUDGET = Math.max(20000, Math.min(60000, Math.floor(mainBudget * 0.4)));
+
   const subMessages = [{ role: "user", content: firstUserContent }];
   let iterations = 0;
   let subToolCallHistory = [];
@@ -422,7 +431,8 @@ export async function runTask(
 
           // 检测截图特殊格式：将图像放入单独的 user message（兼容 OpenAI）
           if (output && typeof output === "object" && output._screenshot_result) {
-            const { SCREENSHOT_ANALYSIS_HINT } = await import("./system-prompt.js");
+            // 子Agent已有自己的审计检查清单，注入简短提示即可
+            const SUBAGENT_SCREENSHOT_HINT = "Screenshot captured. Analyze this image against your audit checklist and output the JSON report.";
             // tool_result 只包含确认文本
             results.push({
               type: "tool_result",
@@ -433,7 +443,7 @@ export async function runTask(
             screenshotMessages.push({
               role: "user",
               content: [
-                { type: "text", text: SCREENSHOT_ANALYSIS_HINT },
+                { type: "text", text: SUBAGENT_SCREENSHOT_HINT },
                 { type: "image_url", image_url: { url: output.dataUrl } },
               ],
             });

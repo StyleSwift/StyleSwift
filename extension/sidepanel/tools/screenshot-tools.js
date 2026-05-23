@@ -10,7 +10,7 @@
 
 export const CAPTURE_SCREENSHOT_TOOL = {
   name: "capture_screenshot",
-  description: "截取当前页面可见区域的截图，用于视觉分析页面样式效果。返回截图和分析指南。",
+  description: "Capture a screenshot of the current page viewport for visual analysis of styling effects. Returns the screenshot image.",
   input_schema: {
     type: "object",
     properties: {},
