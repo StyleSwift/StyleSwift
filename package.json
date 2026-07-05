@@ -19,6 +19,7 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "eslint": "^8.57.0",
+    "js-yaml": "^4.2.0",
     "jsdom": "^29.0.1",
     "playwright": "^1.58.2",
     "postcss": "^8.5.16",
