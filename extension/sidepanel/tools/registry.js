@@ -263,7 +263,7 @@ async function runApplyStyles(css, mode, tabId) {
     const sKey = session.stylesKey;
     const domain = session.domain;
     const sessionId = session.sessionId;
-    const MAX_HISTORY = 20;
+    const MAX_HISTORY = 120;
 
     // === rollback_last 模式 ===
     if (mode === "rollback_last") {
