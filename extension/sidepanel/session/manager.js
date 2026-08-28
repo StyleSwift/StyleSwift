@@ -363,6 +363,9 @@ export async function cleanupStorage() {
       if (parts.length < 3) continue;
       const domain = parts[1];
 
+      // 正在应用的会话不参与清理
+      const activeId = await getActiveSession(domain);
+
       const sorted = sessions
         .map((s) => ({ ...s, age: now - (s.created_at || 0) }))
         .sort((a, b) => a.age - b.age);
@@ -372,8 +375,9 @@ export async function cleanupStorage() {
 
       for (const session of sorted) {
         const expired = session.age > SESSION_EXPIRE_DAYS * 86400000;
+        const isActive = session.id === activeId;
 
-        if (expired || toKeep.length >= MAX_SESSIONS_PER_DOMAIN) {
+        if (!isActive && (expired || toKeep.length >= MAX_SESSIONS_PER_DOMAIN)) {
           toDelete.push(session);
         } else {
           toKeep.push(session);
