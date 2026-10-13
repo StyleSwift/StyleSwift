@@ -995,7 +995,7 @@ function applyInputAreaState(config) {
 			DOM.inputArea.classList.add("restricted");
 			DOM.messageInput.disabled = true;
 			DOM.messageInput.placeholder = getMessage("restrictedPage");
-			DOM.messageInput.value = "";
+			// 保留草稿：跟随标签页切换时可能短暂经过受限页（新标签页、加载中）
 			DOM.sendBtn.disabled = true;
 			// 受限页面隐藏打字机效果
 			typewriterEffect.hide();
@@ -1465,6 +1465,45 @@ async function initMainView() {
 	// 显示空状态（默认）
 	showEmptyState();
 
+	// 跟随当前窗口的活动标签页切换（扩展页、新标签页等会显示受限状态）
+	chrome.tabs.onActivated.addListener(handleActiveTabChange);
+	chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+		if (tab.active && changeInfo.status === "complete") handleActiveTabChange();
+	});
+
+	await loadCurrentTab();
+}
+
+/**
+ * 活动标签页变化：站点改变或从受限页切出时重新加载（Agent 运行中不切换）
+ */
+async function handleActiveTabChange() {
+	if (AppState.agentStatus === "running") return;
+	const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+	let host = null;
+	try {
+		host = new URL(tab?.url).hostname || null;
+	} catch {
+		// 无权限读取或非标准 URL：按受限页处理
+	}
+	const sameSite = host && host === stateManager.get("currentDomain");
+	if (sameSite && stateManager.get("pageStatus") !== "restricted") return;
+	await loadCurrentTab();
+}
+
+/**
+ * 加载当前活动标签页：重置页面相关的界面状态，检测域名并加载对应会话
+ */
+async function loadCurrentTab() {
+	clearMessages();
+	clearPickedElement();
+	hideConfirmationOverlay(false);
+	stateManager.set("pageStatus", "ready");
+	stateManager.set("currentDomain", null);
+	setHasActiveStyles(false);
+	updateTopBarDisplay("--", getMessage("newSession"));
+	showEmptyState();
+
 	// === Step 4: 获取域名 ===
 	try {
 		const { getTargetDomain, sendToContentScript } = await import("./tools.js");
@@ -1520,6 +1559,20 @@ async function initMainView() {
 		// 继续显示空状态
 		showEmptyState();
 	}
+
+	await applyPendingPrompt();
+}
+
+/**
+ * 欢迎页「使用此风格」传来的提示词：预填到输入框（不自动发送）
+ */
+async function applyPendingPrompt() {
+	const { pendingPrompt } = await chrome.storage.local.get("pendingPrompt");
+	if (!pendingPrompt || !DOM.messageInput || DOM.messageInput.value) return;
+	DOM.messageInput.value = pendingPrompt;
+	resizeMessageInput();
+	typewriterEffect.hide();
+	await chrome.storage.local.remove("pendingPrompt");
 }
 
 /**

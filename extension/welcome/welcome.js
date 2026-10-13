@@ -637,15 +637,32 @@ document
 		showPage(2);
 	});
 
+// 当前窗口 ID：sidePanel.open 需在用户点击时同步调用，因此提前获取
+let welcomeWindowId = null;
+chrome.tabs.getCurrent((tab) => {
+	welcomeWindowId = tab?.windowId ?? null;
+});
+
+/**
+ * 打开侧边栏继续完成配置，然后关闭欢迎页
+ * @param {Object} [extra] - 额外写入存储的数据
+ */
+function openSidePanelAndClose(extra = {}) {
+	if (welcomeWindowId !== null) {
+		chrome.sidePanel.open({ windowId: welcomeWindowId }).catch((err) => {
+			console.warn("[Welcome] Failed to open side panel:", err);
+		});
+	}
+	chrome.storage.local.set({ welcomeCompleted: true, ...extra }, () => {
+		window.close();
+	});
+}
+
 // 页面3: 开始使用按钮
 document
 	.querySelector("#page-styles .btn-start")
 	?.addEventListener("click", () => {
-		// 标记已完成欢迎引导
-		chrome.storage.local.set({ welcomeCompleted: true }, () => {
-			// 关闭欢迎页面
-			window.close();
-		});
+		openSidePanelAndClose();
 	});
 
 // ============================================================
@@ -785,17 +802,8 @@ btnCopyPrompt?.addEventListener("click", async () => {
 btnUseStyle?.addEventListener("click", () => {
 	if (!currentStyle) return;
 
-	// 保存选中的风格
-	chrome.storage.local.set(
-		{
-			selectedStyle: currentStyle.id,
-			welcomeCompleted: true,
-		},
-		() => {
-			// 关闭欢迎页面
-			window.close();
-		},
-	);
+	// 侧边栏会把该风格的提示词预填到输入框
+	openSidePanelAndClose({ pendingPrompt: currentStyle.prompt });
 });
 
 // ============================================================
