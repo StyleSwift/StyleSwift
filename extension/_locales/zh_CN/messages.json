@@ -460,7 +460,7 @@
     "description": "Failed to get storage info"
   },
   "clearHistoryConfirm": {
-    "message": "确定要清理历史数据吗？\n\n这将删除：\n• 超过 90 天的会话\n• 每个域名超过 20 个的旧会话\n• 超过 50 个的旧风格技能\n\n此操作不可撤销。",
+    "message": "确定要清理历史数据吗？\n\n这将删除：\n• 超过 160 天的会话\n• 每个域名超过 20 个的旧会话\n• 超过 50 个的旧风格技能\n\n此操作不可撤销。",
     "description": "Clear history confirmation dialog"
   },
   "clearHistorySuccess": {
@@ -1171,8 +1171,8 @@
     "message": "回到这一轮",
     "description": "Rewind button title"
   },
-  "rewindConfirm": {
-    "message": "回到这一轮？之后的对话和样式修改将被丢弃。",
+  "rewindConfirmDesc": {
+    "message": "之后的对话和样式修改将被丢弃。",
     "description": "Rewind confirm"
   },
   "toolNoParams": {

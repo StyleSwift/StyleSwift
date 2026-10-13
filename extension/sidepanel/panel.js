@@ -3901,6 +3901,48 @@ async function handleDeleteSession(domain, sessionId, sessionTitle) {
 }
 
 /**
+ * 通用确认弹窗（替代原生 confirm，与面板内其他弹窗样式一致）
+ * @param {{title: string, message: string, confirmText: string}} options
+ * @returns {Promise<boolean>} 用户是否确认
+ */
+function showConfirmModal({ title, message, confirmText }) {
+	return new Promise((resolve) => {
+		const overlay = document.createElement("div");
+		overlay.className = "modal-overlay";
+		overlay.innerHTML = `
+    <div class="modal-container" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3 class="modal-title">${escapeHtml(title)}</h3>
+      </div>
+      <div class="modal-body">
+        <p style="white-space: pre-line">${escapeHtml(message)}</p>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-secondary" data-action="cancel">${getMessage("cancel")}</button>
+        <button class="modal-btn modal-btn-danger" data-action="confirm">${escapeHtml(confirmText)}</button>
+      </div>
+    </div>
+  `;
+		const close = (ok) => {
+			overlay.remove();
+			document.removeEventListener("keydown", onKey);
+			resolve(ok);
+		};
+		const onKey = (e) => {
+			if (e.key === "Escape") close(false);
+		};
+		overlay.addEventListener("click", (e) => {
+			const btn = e.target.closest("[data-action]");
+			if (btn) close(btn.dataset.action === "confirm");
+			else if (e.target === overlay) close(false);
+		});
+		document.addEventListener("keydown", onKey);
+		document.body.appendChild(overlay);
+		overlay.querySelector('[data-action="cancel"]').focus();
+	});
+}
+
+/**
  * 显示删除确认弹窗
  * @param {string} domain - 域名
  * @param {string} sessionId - 会话 ID
@@ -4279,10 +4321,10 @@ async function handleSettingsBack() {
 /**
  * 显示保存成功的简短提示（不跳转）
  */
-function showSaveSuccess() {
+function showSaveSuccess(message = getMessage("saved")) {
 	const saveHint = document.getElementById("settings-save-hint");
 	if (saveHint) {
-		saveHint.textContent = "✓ " + getMessage("saved");
+		saveHint.textContent = "✓ " + message;
 		saveHint.classList.remove("hidden", "unsaved");
 		saveHint.classList.add("saved");
 		setTimeout(() => {
@@ -4808,7 +4850,7 @@ async function openSkillEditor(skill) {
 			console.error("[Panel] Failed to save skill:", err);
 			saveBtn.disabled = false;
 			saveBtn.textContent = getMessage("save");
-			alert(getMessage("saveFailed") + ": " + err.message);
+			showError(`${getMessage("saveFailed")}: ${err.message}`);
 		}
 	});
 
@@ -4900,7 +4942,7 @@ function openNewSkillEditor() {
 			console.error("[Panel] Failed to create skill:", err);
 			saveBtn.disabled = false;
 			saveBtn.textContent = getMessage("save");
-			alert(getMessage("saveFailed") + ": " + err.message);
+			showError(`${getMessage("saveFailed")}: ${err.message}`);
 		}
 	});
 
@@ -5132,7 +5174,11 @@ async function loadStorageUsage() {
  */
 async function handleClearStorage() {
 	// 确认对话框
-	const confirmed = confirm(getMessage("clearHistoryConfirm"));
+	const confirmed = await showConfirmModal({
+		title: getMessage("clearHistory"),
+		message: getMessage("clearHistoryConfirm"),
+		confirmText: getMessage("clearHistory"),
+	});
 
 	if (!confirmed) return;
 
@@ -5154,10 +5200,10 @@ async function handleClearStorage() {
 		await loadStorageUsage();
 
 		// 显示成功提示
-		alert(getMessage("clearHistorySuccess"));
+		showSaveSuccess(getMessage("clearHistorySuccess"));
 	} catch (error) {
 		console.error("[Panel] Failed to clear storage:", error);
-		alert(formatMessage("clearStorageFailed", { error: error.message }));
+		showError(formatMessage("clearStorageFailed", { error: error.message }));
 	} finally {
 		// 恢复按钮状态
 		const clearBtn = document.getElementById("clear-storage-btn");
@@ -5723,7 +5769,11 @@ async function handleRewindClick(targetTurn) {
 		return;
 	}
 
-	const confirmed = confirm(getMessage("rewindConfirm"));
+	const confirmed = await showConfirmModal({
+		title: getMessage("rewindHere"),
+		message: getMessage("rewindConfirmDesc"),
+		confirmText: getMessage("rewindHere"),
+	});
 	if (!confirmed) return;
 
 	try {

@@ -460,7 +460,7 @@
     "description": "Failed to get storage info"
   },
   "clearHistoryConfirm": {
-    "message": "Are you sure you want to clear history data?\n\nThis will delete:\n• Sessions older than 90 days\n• Old sessions exceeding 20 per domain\n• Old style skills exceeding 50\n\nThis action cannot be undone.",
+    "message": "Are you sure you want to clear history data?\n\nThis will delete:\n• Sessions older than 160 days\n• Old sessions exceeding 20 per domain\n• Old style skills exceeding 50\n\nThis action cannot be undone.",
     "description": "Clear history confirmation dialog"
   },
   "clearHistorySuccess": {
@@ -1171,8 +1171,8 @@
     "message": "Go back to this turn",
     "description": "Rewind button title"
   },
-  "rewindConfirm": {
-    "message": "Go back to this turn? Later messages and style changes will be discarded.",
+  "rewindConfirmDesc": {
+    "message": "Later messages and style changes will be discarded.",
     "description": "Rewind confirm"
   },
   "toolNoParams": {

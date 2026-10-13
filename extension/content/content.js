@@ -1278,7 +1278,8 @@ function injectCSSAdopted(fullCSS) {
 
 // 根据检测结果更新当前 CSS 显示
 function applyCurrentCSS() {
-  // ponytail: scripting-api（CSP 严格页面）插入的样式不受开关控制，需 removeCSS 支持时再补
+  // 实测 Chrome 中扩展插入的 <style> 不受页面 CSP 限制（style-src 'none' 亦可生效），
+  // scripting-api 分支实际不会触发；若将来触发，该分支插入的样式不受站点开关控制
   const fullCSS = stylesDisabled ? "" : cssStack.join("\n");
   const method = detectCSSInjectionMethod();
 
