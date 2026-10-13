@@ -1290,6 +1290,10 @@ async function handleStartClick() {
 				errorMsg = getMessage("apiKeyInvalidPleaseCheck");
 			} else if (result.status === 403) {
 				errorMsg = getMessage("accessDeniedPleaseCheck");
+			} else if (result.status === 404) {
+				errorMsg = getMessage("errModelNotFound");
+			} else if (result.status === 402) {
+				errorMsg = getMessage("errInsufficientBalance");
 			} else if (result.status) {
 				errorMsg = formatMessage("connectionFailedHttp", { status: result.status });
 			}
@@ -4319,6 +4323,11 @@ function updateStatusIndicator(status) {
  * 初始化设置页
  */
 async function initSettingsView() {
+	settingsDirty = false;
+	settingsSaveFailed = false;
+	profileDirty = false;
+	document.getElementById("settings-save-hint")?.classList.add("hidden");
+
 	// 获取设置页 DOM 元素
 	DOM.settingsApiKey = document.getElementById("settings-api-key");
 	DOM.settingsApiBase = document.getElementById("settings-api-base");
@@ -4399,6 +4408,7 @@ async function initSettingsView() {
 	if (DOM.settingsUserProfile) {
 		// 字数统计
 		DOM.settingsUserProfile.addEventListener("input", () => {
+			profileDirty = true;
 			updateProfileCharCount();
 		});
 	}
@@ -4430,10 +4440,31 @@ async function initSettingsView() {
 	await renderUserSkillList();
 }
 
+/** API 配置有未保存改动 / 上次返回时验证失败（再次返回即放弃改动）/ 用户画像有改动 */
+let settingsDirty = false;
+let settingsSaveFailed = false;
+let profileDirty = false;
+
+/**
+ * 读取设置页 API 表单（空的视觉字段传 "" 以便清除已保存值）
+ */
+function readSettingsForm() {
+	return {
+		apiKey: DOM.settingsApiKey?.value.trim() || "",
+		apiBase: DOM.settingsApiBase?.value.trim() || DEFAULT_API_BASE,
+		model: DOM.settingsModel?.value.trim() || DEFAULT_MODEL,
+		visionApiKey: DOM.settingsVisionApiKey?.value.trim() || "",
+		visionApiBase: DOM.settingsVisionApiBase?.value.trim() || "",
+		visionModel: DOM.settingsVisionModel?.value.trim() || "",
+	};
+}
+
 /**
  * 标记设置有未保存的更改
  */
 function markSettingsDirty() {
+	settingsDirty = true;
+	settingsSaveFailed = false;
 	const saveHint = document.getElementById("settings-save-hint");
 	if (saveHint) {
 		saveHint.classList.remove("hidden");
@@ -4448,39 +4479,39 @@ function markSettingsDirty() {
  * 自动保存有效的设置后返回
  */
 async function handleSettingsBack() {
-	const apiKey = DOM.settingsApiKey?.value.trim();
-	const apiBase = DOM.settingsApiBase?.value.trim() || DEFAULT_API_BASE;
-	const model = DOM.settingsModel?.value.trim() || DEFAULT_MODEL;
+	// API 配置有改动：先验证再保存；失败则停留，再次返回视为放弃改动
+	if (settingsDirty && !settingsSaveFailed) {
+		const ok = await handleVerifyConnection();
+		if (!ok) {
+			settingsSaveFailed = true;
+			showConnectionStatus(
+				`${DOM.connectionStatus.textContent} ${getMessage("backAgainToDiscard")}`,
+				"error",
+			);
+			DOM.connectionStatus.scrollIntoView({ block: "center" });
+			return;
+		}
+	}
+	settingsDirty = false;
+	settingsSaveFailed = false;
 
-	// 获取视觉模型设置
-	const visionApiKey = DOM.settingsVisionApiKey?.value.trim() || undefined;
-	const visionApiBase = DOM.settingsVisionApiBase?.value.trim() || undefined;
-	const visionModel = DOM.settingsVisionModel?.value.trim() || undefined;
-
-	// 如果有 API Key，自动保存设置
-	if (apiKey) {
+	if (profileDirty) {
 		try {
-			await saveSettings({
-				apiKey,
-				apiBase,
-				model,
-				visionApiKey,
-				visionApiBase,
-				visionModel,
-			});
-			showSaveSuccess();
+			await runUpdateUserProfile(DOM.settingsUserProfile.value.trim());
+			profileDirty = false;
 		} catch (err) {
-			console.warn("[Panel] Auto-save on back failed:", err);
+			console.warn("[Panel] Auto-save profile on back failed:", err);
 		}
 	}
 
-	// 根据是否有 API Key 决定返回哪个视图
-	if (!apiKey) {
+	// 根据已保存的配置决定返回哪个视图
+	const { needsSetup } = await checkFirstRun();
+	if (needsSetup) {
 		switchView("onboarding");
 		return;
 	}
 
-	// 若之前是 missing 状态但现在填入了 Key，需要初始化主界面
+	// 若之前是 missing 状态但现在已有 Key，需要初始化主界面
 	if (AppState.apiKeyStatus === "missing") {
 		AppState.apiKeyStatus = "valid";
 		try {
@@ -5115,13 +5146,11 @@ function showProfileStatus(message, type) {
  * 处理验证连接按钮点击
  */
 async function handleVerifyConnection() {
-	const apiKey = DOM.settingsApiKey.value.trim();
-	const apiBase = DOM.settingsApiBase.value.trim() || DEFAULT_API_BASE;
-	const model = DOM.settingsModel.value.trim() || DEFAULT_MODEL;
+	const settings = readSettingsForm();
 
-	if (!apiKey) {
+	if (!settings.apiKey) {
 		showConnectionStatus(getMessage("enterApiKey"), "error");
-		return;
+		return false;
 	}
 
 	DOM.verifyConnectionBtn.disabled = true;
@@ -5129,27 +5158,48 @@ async function handleVerifyConnection() {
 	showConnectionStatus(getMessage("verifyingConnection"), "loading");
 
 	try {
-		const result = await validateConnection(apiKey, apiBase, model);
+		const result = await validateConnection(
+			settings.apiKey,
+			settings.apiBase,
+			settings.model,
+		);
 
-		if (result.ok) {
-			showConnectionStatus("✓ " + getMessage("connectionSuccess"), "success");
-			// 保存所有设置
-			await saveSettings({ apiKey, apiBase, model });
-			AppState.apiKeyStatus = "valid";
-			// 隐藏未保存提示
-			const saveHint = document.getElementById("settings-save-hint");
-			if (saveHint) saveHint.classList.add("hidden");
-		} else {
+		if (!result.ok) {
 			let msg = getMessage("connectionFailed");
 			if (result.status === 401) msg = getMessage("apiKeyInvalid");
 			else if (result.status === 403) msg = getMessage("accessDenied");
+			else if (result.status === 404) msg = getMessage("errModelNotFound");
+			else if (result.status === 402) msg = getMessage("errInsufficientBalance");
 			else if (result.error) msg = result.error;
 
 			showConnectionStatus(`✗ ${msg}`, "error");
 			AppState.apiKeyStatus = "invalid";
+			return false;
 		}
+
+		// 填写了视觉模型时一并验证
+		if (settings.visionModel) {
+			const vision = await validateConnection(
+				settings.visionApiKey || settings.apiKey,
+				settings.visionApiBase || settings.apiBase,
+				settings.visionModel,
+			);
+			if (!vision.ok) {
+				showConnectionStatus(`✗ ${getMessage("visionVerifyFailed")}`, "error");
+				return false;
+			}
+		}
+
+		// 保存所有设置（含视觉模型）
+		await saveSettings(settings);
+		AppState.apiKeyStatus = "valid";
+		settingsDirty = false;
+		showConnectionStatus("✓ " + getMessage("connectionSuccess"), "success");
+		showSaveSuccess();
+		return true;
 	} catch (err) {
 		showConnectionStatus(`✗ ${getMessage("connectionError")}: ${err.message}`, "error");
+		return false;
 	} finally {
 		DOM.verifyConnectionBtn.disabled = false;
 		DOM.verifyConnectionBtn.classList.remove("loading");

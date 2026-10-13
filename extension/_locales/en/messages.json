@@ -1274,5 +1274,13 @@
   "errContextTooLong": {
     "message": "This conversation is too long for the model. Start a new session",
     "description": "Error banner"
+  },
+  "backAgainToDiscard": {
+    "message": "Changes not saved. Press Back again to discard them.",
+    "description": "Settings back failed hint"
+  },
+  "visionVerifyFailed": {
+    "message": "Vision model connection failed, please check its settings",
+    "description": "Vision verify error"
   }
 }

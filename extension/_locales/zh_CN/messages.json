@@ -1274,5 +1274,13 @@
   "errContextTooLong": {
     "message": "对话过长，超出模型上限，请新建会话",
     "description": "Error banner"
+  },
+  "backAgainToDiscard": {
+    "message": "改动未保存，再次点击返回将放弃改动。",
+    "description": "Settings back failed hint"
+  },
+  "visionVerifyFailed": {
+    "message": "视觉模型连接失败，请检查视觉模型配置",
+    "description": "Vision verify error"
   }
 }
