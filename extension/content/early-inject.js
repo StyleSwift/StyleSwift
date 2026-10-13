@@ -16,6 +16,8 @@
   const result = await chrome.storage.local.get([key, disabledKey]);
 
   if (!result[key] || result[disabledKey]) return;
+  // Side Panel 可能动态重复注入本脚本：已有样式元素时不再追加
+  if (document.getElementById('styleswift-active-persistent')) return;
 
   const style = document.createElement('style');
   style.id = 'styleswift-active-persistent';
