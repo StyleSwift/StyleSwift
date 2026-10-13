@@ -608,7 +608,7 @@
     "description": "Default model placeholder"
   },
   "defaultModel2": {
-    "message": "deepseek/deepseek-r1",
+    "message": "claude-sonnet-5-5",
     "description": "Default model hint"
   },
   "clickToSwitchSession": {

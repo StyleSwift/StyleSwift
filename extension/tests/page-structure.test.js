@@ -247,9 +247,6 @@ function shortSelector(el) {
   
   return tag;
 }
-  
-  return tag;
-}
 
 /**
  * 生成元素在兄弟中唯一的选择器段
