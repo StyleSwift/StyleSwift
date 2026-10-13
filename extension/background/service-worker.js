@@ -3,6 +3,47 @@
 // 设置点击扩展图标自动打开 Side Panel
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
+// === 图标角标：当前站点有样式时显示 ON，被关闭时显示 OFF ===
+async function updateBadge(tab) {
+	let hostname;
+	let path;
+	try {
+		const url = new URL(tab.url);
+		hostname = url.hostname;
+		// 路径规则同 session/context.js extractPath
+		path = url.pathname.replace(/\/+$/, "") || "/";
+	} catch {
+		return;
+	}
+	const pKey = `active_styles:${hostname}:page:${path}`;
+	const aKey = `active_styles:${hostname}`;
+	const dKey = `styles_disabled:${hostname}`;
+	const r = await chrome.storage.local.get([pKey, aKey, dKey]);
+	const text = r[pKey] || r[aKey] ? (r[dKey] ? "OFF" : "ON") : "";
+	await chrome.action.setBadgeText({ tabId: tab.id, text });
+	await chrome.action.setBadgeBackgroundColor({
+		tabId: tab.id,
+		color: r[dKey] ? "#9ca3af" : "#c46e4d",
+	});
+}
+
+async function updateAllBadges() {
+	const tabs = await chrome.tabs.query({});
+	await Promise.all(tabs.filter((t) => t.url).map((t) => updateBadge(t).catch(() => {})));
+}
+
+chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+	if (changeInfo.url || changeInfo.status === "complete") updateBadge(tab).catch(() => {});
+});
+chrome.storage.onChanged.addListener((changes, area) => {
+	if (area !== "local") return;
+	const keys = Object.keys(changes);
+	if (keys.some((k) => k.startsWith("active_styles:") || k.startsWith("styles_disabled:"))) {
+		updateAllBadges();
+	}
+});
+updateAllBadges();
+
 /**
  * 保存技能到本地存储，并可选地将 CSS Snippet 应用到目标域名
  */

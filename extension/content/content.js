@@ -1200,6 +1200,51 @@ let adoptedSheet = null;
 let cssInjectionMethod = null;
 const cssStack = [];
 
+// === 站点样式开关：styles_disabled:{domain} 为 true 时隐藏样式但保留 cssStack ===
+const stylesDisabledKey = `styles_disabled:${location.hostname}`;
+let stylesDisabled = false;
+chrome.storage.local.get(stylesDisabledKey).then((r) => {
+  stylesDisabled = !!r[stylesDisabledKey];
+});
+
+// === 页面级样式：当前路径的生效样式 key（页面级优先，路径规则同 session/context.js）===
+const currentPath = () => location.pathname.replace(/\/+$/, "") || "/";
+
+async function effectiveStyles(path = currentPath()) {
+  const pageKey = `active_styles:${location.hostname}:page:${path}`;
+  const domainKey = `active_styles:${location.hostname}`;
+  const r = await chrome.storage.local.get([pageKey, domainKey]);
+  return r[pageKey] ? { key: pageKey, css: r[pageKey] } : { key: domainKey, css: r[domainKey] || "" };
+}
+
+// SPA 导航不刷新页面：路径变化且新旧路径的生效 key 不同时切换样式
+// 两个 key 都按当前 storage 解析，scope 切换后也不会用到过期的 key
+// ponytail: 1s 轮询 location，需要更及时时改用 Navigation API 事件
+let lastPath = currentPath();
+setInterval(async () => {
+  if (currentPath() === lastPath) return;
+  const prevPath = lastPath;
+  lastPath = currentPath();
+  const [prev, { key, css }] = await Promise.all([effectiveStyles(prevPath), effectiveStyles()]);
+  if (key === prev.key) return;
+  removeEarlyInjectStyle();
+  cssStack.length = 0;
+  if (css.trim()) cssStack.push(css);
+  applyCurrentCSS();
+}, 1000);
+chrome.storage.onChanged.addListener(async (changes, area) => {
+  if (area !== "local" || !(stylesDisabledKey in changes)) return;
+  stylesDisabled = !!changes[stylesDisabledKey].newValue;
+  if (stylesDisabled) {
+    removeEarlyInjectStyle();
+  } else if (cssStack.length === 0) {
+    // 早期注入的样式已被移除且尚未被 Side Panel 接管：从持久化样式恢复
+    const { css } = await effectiveStyles();
+    if (css.trim()) cssStack.push(css);
+  }
+  applyCurrentCSS();
+});
+
 // 检测可用的 CSS 注入方式
 function detectCSSInjectionMethod() {
   if (cssInjectionMethod) return cssInjectionMethod;
@@ -1258,7 +1303,9 @@ function injectCSSAdopted(fullCSS) {
 
 // 根据检测结果更新当前 CSS 显示
 function applyCurrentCSS() {
-  const fullCSS = cssStack.join("\n");
+  // 实测 Chrome 中扩展插入的 <style> 不受页面 CSP 限制（style-src 'none' 亦可生效），
+  // scripting-api 分支实际不会触发；若将来触发，该分支插入的样式不受站点开关控制
+  const fullCSS = stylesDisabled ? "" : cssStack.join("\n");
   const method = detectCSSInjectionMethod();
 
   switch (method) {

@@ -259,6 +259,10 @@
 .icon-check-circle  { --icon-src: url("https://api.iconify.design/lucide/check-circle-2.svg"); }
 .icon-clock         { --icon-src: url("https://api.iconify.design/lucide/clock.svg"); }
 .icon-refresh       { --icon-src: url("https://api.iconify.design/lucide/refresh-cw.svg"); }
+.icon-download      { --icon-src: url("https://api.iconify.design/lucide/download.svg"); }
+.icon-globe         { --icon-src: url("https://api.iconify.design/lucide/globe.svg"); }
+.icon-file          { --icon-src: url("https://api.iconify.design/lucide/file.svg"); }
+.icon-undo          { --icon-src: url("https://api.iconify.design/lucide/undo-2.svg"); }
 .icon-loader        { --icon-src: url("https://api.iconify.design/lucide/loader-2.svg"); }
 
 /* 图标动画 */
@@ -1135,6 +1139,10 @@ pre code {
   font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
   margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* 超时进度条 */
@@ -1180,6 +1188,38 @@ pre code {
 .toolbar-btn:active {
   background: var(--color-bg-active);
   transform: scale(0.9);
+}
+
+/* 样式作用范围开关（全站 / 仅本页） */
+.toolbar-btn.scope-btn {
+  width: auto;
+  gap: 4px;
+  padding: 0 6px;
+  font-size: var(--font-size-xs);
+}
+
+/* 页面级会话与当前页面不匹配的提示 */
+.scope-notice {
+  margin: var(--spacing-sm) var(--spacing-md) 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-light);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* 会话列表分组标题 */
+.session-group-title {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.session-group-title.current-path {
+  color: var(--color-primary);
 }
 
 /* 激活态 — 使用品牌主色（替代蓝色） */
@@ -4199,6 +4239,33 @@ pre code {
   transition: all var(--duration-fast) var(--easing-default);
 }
 
+.form-group select {
+  width: 100%;
+  min-height: var(--touch-target-min);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+.form-group .get-key-link {
+  display: inline-block;
+}
+
+.advanced-settings {
+  margin-bottom: var(--spacing-lg);
+  text-align: left;
+}
+
+.advanced-settings summary {
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-md);
+}
+
 .form-group input::placeholder {
   color: var(--color-text-tertiary);
 }
@@ -6542,3 +6609,24 @@ pre code {
   }
 }
 
+
+/* 本轮 token 用量 */
+.turn-usage {
+  align-self: flex-end;
+  margin: calc(-1 * var(--spacing-xs)) 0 var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  text-align: right;
+}
+
+/* 尊重系统“减少动态效果”设置 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

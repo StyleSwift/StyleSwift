@@ -20,8 +20,8 @@
     "description": "Start button on onboarding page"
   },
   "getApiKey": {
-    "message": "Get API Key",
-    "description": "Link to get API key"
+    "message": "Get an API Key →",
+    "description": "Link to provider API key page"
   },
   "newSession": {
     "message": "New Session",
@@ -42,10 +42,6 @@
   "styleSkills": {
     "message": "Style Skills",
     "description": "Style skills section title"
-  },
-  "appliedStyles": {
-    "message": "Applied Styles:",
-    "description": "Applied styles label"
   },
   "removeElement": {
     "message": "Remove selected element",
@@ -107,17 +103,45 @@
     "message": "API Address (optional)",
     "description": "API address input label"
   },
-  "apiAddressPlaceholder": {
-    "message": "Use Anthropic official address by default",
-    "description": "API address input hint"
-  },
   "modelLabel": {
     "message": "Model (optional)",
     "description": "Model input label"
   },
-  "modelPlaceholder": {
-    "message": "Use claude-opus-4-6 by default",
-    "description": "Model input hint"
+  "providerLabel": {
+    "message": "AI Provider",
+    "description": "Onboarding provider select label"
+  },
+  "providerCustom": {
+    "message": "Custom (OpenAI / Anthropic compatible)",
+    "description": "Custom provider option"
+  },
+  "advancedSettings": {
+    "message": "Advanced (API address / model)",
+    "description": "Onboarding advanced settings toggle"
+  },
+  "undoLastStyle": {
+    "message": "Undo last style change",
+    "description": "Top bar style controls"
+  },
+  "hideSiteStyles": {
+    "message": "Turn off styles on {domain} (all pages)",
+    "description": "Top bar style controls"
+  },
+  "showSiteStyles": {
+    "message": "Turn on styles on {domain} (all pages)",
+    "description": "Top bar style controls"
+  },
+  "nothingToUndo": {
+    "message": "Nothing to undo",
+    "description": "Top bar style controls"
+  },
+  "undoStyleFailed": {
+    "message": "Undo failed, please try again",
+    "description": "Top bar style controls"
+  },
+  "toggleStylesFailed": {
+    "message": "Failed to switch styles, please try again",
+    "description": "Top bar style controls"
   },
   "apiConfigTitle": {
     "message": "API Configuration",
@@ -216,7 +240,7 @@
     "description": "Clear history data button"
   },
   "clearHistoryDesc": {
-    "message": "Clear sessions older than 90 days and excess history records.",
+    "message": "Clear sessions older than 160 days and excess history records.",
     "description": "Clear history description"
   },
   "aboutTitle": {
@@ -432,7 +456,7 @@
     "description": "Failed to get storage info"
   },
   "clearHistoryConfirm": {
-    "message": "Are you sure you want to clear history data?\n\nThis will delete:\n• Sessions older than 90 days\n• Old sessions exceeding 20 per domain\n• Old style skills exceeding 50\n\nThis action cannot be undone.",
+    "message": "Are you sure you want to clear history data?\n\nThis will delete:\n• Sessions older than 160 days\n• Old sessions exceeding 20 per domain\n• Old style skills exceeding 50\n\nThis action cannot be undone.",
     "description": "Clear history confirmation dialog"
   },
   "clearHistorySuccess": {
@@ -580,7 +604,7 @@
     "description": "Default model placeholder"
   },
   "defaultModel2": {
-    "message": "deepseek/deepseek-r1",
+    "message": "claude-sonnet-5-5",
     "description": "Default model hint"
   },
   "clickToSwitchSession": {
@@ -1106,5 +1130,405 @@
   "newStyleSkill": {
     "message": "New Style Skill",
     "description": "New style skill modal title"
+  },
+  "feedbackIssues": {
+    "message": "GitHub Issues",
+    "description": "Feedback via GitHub issues link text"
+  },
+  "connectionFailedDetail": {
+    "message": "Connection failed: {error}",
+    "description": "Onboarding connection error"
+  },
+  "connectionFailedHttp": {
+    "message": "Connection failed (HTTP {status})",
+    "description": "Onboarding HTTP error"
+  },
+  "saveSettingsFailedDetail": {
+    "message": "Failed to save settings: {error}",
+    "description": "Onboarding save error"
+  },
+  "queueMessageFailed": {
+    "message": "Couldn't queue the message, please try again",
+    "description": "Queue message error"
+  },
+  "imageAlt": {
+    "message": "Image {index}",
+    "description": "Attached image alt text"
+  },
+  "deleteSessionFailed": {
+    "message": "Failed to delete session",
+    "description": "Delete session error"
+  },
+  "clearStorageFailed": {
+    "message": "Cleanup failed: {error}",
+    "description": "Clear storage error"
+  },
+  "rewindHere": {
+    "message": "Go back to this turn",
+    "description": "Rewind button title"
+  },
+  "rewindConfirmDesc": {
+    "message": "Later messages and style changes will be discarded.",
+    "description": "Rewind confirm"
+  },
+  "toolNoParams": {
+    "message": "(No parameters)",
+    "description": "Tool card empty input"
+  },
+  "todoDeleteStep": {
+    "message": "Delete this step",
+    "description": "Todo delete title"
+  },
+  "todoConfirmTitle": {
+    "message": "Please confirm the task plan",
+    "description": "Todo confirm card title"
+  },
+  "todoStepCount": {
+    "message": "{count} steps",
+    "description": "Todo step count"
+  },
+  "todoHint": {
+    "message": "Edit, add or remove steps, then run",
+    "description": "Todo hint"
+  },
+  "todoAddStep": {
+    "message": "+ Add step",
+    "description": "Todo add step"
+  },
+  "todoConfirm": {
+    "message": "Run plan",
+    "description": "Todo confirm button"
+  },
+  "todoStepPlaceholder": {
+    "message": "Describe the step...",
+    "description": "Todo step placeholder"
+  },
+  "todoProgressTitle": {
+    "message": "Task progress",
+    "description": "Todo progress title"
+  },
+  "confirmEffect": {
+    "message": "✓ Looks good",
+    "description": "Confirmation overlay confirm"
+  },
+  "undoShort": {
+    "message": "↶ Undo",
+    "description": "Confirmation overlay undo"
+  },
+  "orKeepTyping": {
+    "message": "or keep typing",
+    "description": "Confirmation overlay hint"
+  },
+  "confirmAll": {
+    "message": "✓ Accept all",
+    "description": "Confirmation overlay confirm all"
+  },
+  "undoLastStep": {
+    "message": "↶ Undo last step",
+    "description": "Confirmation overlay undo last"
+  },
+  "undoAllSteps": {
+    "message": "↶↶ Undo all",
+    "description": "Confirmation overlay undo all"
+  },
+  "errApiKeyInvalid": {
+    "message": "Invalid API Key, please check settings",
+    "description": "Error banner"
+  },
+  "goToSettings": {
+    "message": "Settings →",
+    "description": "Error banner action"
+  },
+  "errNetwork": {
+    "message": "Network error, please check your connection",
+    "description": "Error banner"
+  },
+  "errApi": {
+    "message": "API call failed",
+    "description": "Error banner"
+  },
+  "errAccessDenied": {
+    "message": "Access denied. Check that your API Key has permission for this model",
+    "description": "Error banner"
+  },
+  "errModelNotFound": {
+    "message": "Model not found. Check the model name in settings",
+    "description": "Error banner"
+  },
+  "errInsufficientBalance": {
+    "message": "Insufficient account balance. Top up with your provider, then retry",
+    "description": "Error banner"
+  },
+  "errRateLimited": {
+    "message": "Too many requests. Please wait a moment and retry",
+    "description": "Error banner"
+  },
+  "errContextTooLong": {
+    "message": "This conversation is too long for the model. Start a new session",
+    "description": "Error banner"
+  },
+  "backAgainToDiscard": {
+    "message": "Changes not saved. Press Back again to discard them.",
+    "description": "Settings back failed hint"
+  },
+  "visionVerifyFailed": {
+    "message": "Vision model connection failed, please check its settings",
+    "description": "Vision verify error"
+  },
+  "turnUsage": {
+    "message": "≈ {tokens} tokens this turn",
+    "description": "Per-turn token usage"
+  },
+  "turnUsageDetail": {
+    "message": "Input ≈ {input} · Output ≈ {output} tokens (estimated when the provider doesn't report usage)",
+    "description": "Per-turn token usage tooltip"
+  },
+  "scopeHint": {
+    "message": "Applies to all pages on {domain}",
+    "description": "Style scope hint after applying"
+  },
+  "presetDarkName": {
+    "message": "Dark Mode",
+    "description": "presetDarkName"
+  },
+  "presetDarkDesc": {
+    "message": "Comfortable dark theme",
+    "description": "presetDarkDesc"
+  },
+  "presetDarkPrompt": {
+    "message": "Turn this page into a comfortable dark mode: dark backgrounds, light text, enough contrast everywhere. Keep images and videos unchanged.",
+    "description": "presetDarkPrompt"
+  },
+  "presetReadingName": {
+    "message": "Reading Mode",
+    "description": "presetReadingName"
+  },
+  "presetReadingDesc": {
+    "message": "Focus on the main text",
+    "description": "presetReadingDesc"
+  },
+  "presetReadingPrompt": {
+    "message": "Make this page a focused reading mode: center the main content, limit line length to about 70 characters, increase font size and line height, and tone down sidebars and recommendations.",
+    "description": "presetReadingPrompt"
+  },
+  "presetLargeTextName": {
+    "message": "Larger Text",
+    "description": "presetLargeTextName"
+  },
+  "presetLargeTextDesc": {
+    "message": "Easier to read and click",
+    "description": "presetLargeTextDesc"
+  },
+  "presetLargeTextPrompt": {
+    "message": "Increase all text on this page by about 20% without breaking the layout, and make buttons and links easier to click.",
+    "description": "presetLargeTextPrompt"
+  },
+  "presetFocusName": {
+    "message": "Hide Distractions",
+    "description": "presetFocusName"
+  },
+  "presetFocusDesc": {
+    "message": "Hide ads, popups and clutter",
+    "description": "presetFocusDesc"
+  },
+  "presetFocusPrompt": {
+    "message": "Hide distracting elements on this page such as ads, floating banners, recommendations and popups. Keep the main content and navigation.",
+    "description": "presetFocusPrompt"
+  },
+  "applyStyleSkillPrompt": {
+    "message": "Apply the \"{skill}\" style skill to this page",
+    "description": "applyStyleSkillPrompt"
+  },
+  "skillName_Cozy_style": {
+    "message": "Cozy",
+    "description": "Static skill display name"
+  },
+  "skillDesc_Cozy_style": {
+    "message": "Soft pastel colors, rounded corners, warm tones",
+    "description": "Static skill display desc"
+  },
+  "skillName_Windows_9x_Retro": {
+    "message": "Windows 9x Retro",
+    "description": "Static skill display name"
+  },
+  "skillDesc_Windows_9x_Retro": {
+    "message": "Classic gray Windows 9x UI with 3D borders",
+    "description": "Static skill display desc"
+  },
+  "skillName_BauhausStyle": {
+    "message": "Bauhaus",
+    "description": "Static skill display name"
+  },
+  "skillDesc_BauhausStyle": {
+    "message": "Geometric grids, bold type, primary color accents",
+    "description": "Static skill display desc"
+  },
+  "skillName_cyberpunk_2077": {
+    "message": "Cyberpunk 2077",
+    "description": "Static skill display name"
+  },
+  "skillDesc_cyberpunk_2077": {
+    "message": "Neon yellow on black, glitch and HUD effects",
+    "description": "Static skill display desc"
+  },
+  "skillName_MatrixTerminal": {
+    "message": "Matrix Terminal",
+    "description": "Static skill display name"
+  },
+  "skillDesc_MatrixTerminal": {
+    "message": "Black background, neon green monospace text",
+    "description": "Static skill display desc"
+  },
+  "skillName_Newspaper_Style": {
+    "message": "Newspaper",
+    "description": "Static skill display name"
+  },
+  "skillDesc_Newspaper_Style": {
+    "message": "Classic British newspaper layout with serif type",
+    "description": "Static skill display desc"
+  },
+  "skillName_frontend_design": {
+    "message": "Frontend Design",
+    "description": "Static skill display name"
+  },
+  "skillDesc_frontend_design": {
+    "message": "Distinctive, production-grade interface principles",
+    "description": "Static skill display desc"
+  },
+  "skillName_audit": {
+    "message": "Quality Audit",
+    "description": "Static skill display name"
+  },
+  "skillDesc_audit": {
+    "message": "Accessibility, performance and theming checks",
+    "description": "Static skill display desc"
+  },
+  "skillName_colorize": {
+    "message": "Colorize",
+    "description": "Static skill display name"
+  },
+  "skillDesc_colorize": {
+    "message": "Add strategic color to dull interfaces",
+    "description": "Static skill display desc"
+  },
+  "skillName_polish": {
+    "message": "Polish",
+    "description": "Static skill display name"
+  },
+  "skillDesc_polish": {
+    "message": "Fix alignment, spacing and detail issues",
+    "description": "Static skill display desc"
+  },
+  "skillName_normalize": {
+    "message": "Normalize",
+    "description": "Static skill display name"
+  },
+  "skillDesc_normalize": {
+    "message": "Consistent typography, color and spacing",
+    "description": "Static skill display desc"
+  },
+  "skillName_distill": {
+    "message": "Distill",
+    "description": "Static skill display name"
+  },
+  "skillDesc_distill": {
+    "message": "Strip away unnecessary complexity",
+    "description": "Static skill display desc"
+  },
+  "skillName_delight": {
+    "message": "Delight",
+    "description": "Static skill display name"
+  },
+  "skillDesc_delight": {
+    "message": "Add moments of joy and personality",
+    "description": "Static skill display desc"
+  },
+  "skillName_critique": {
+    "message": "Critique",
+    "description": "Static skill display name"
+  },
+  "skillDesc_critique": {
+    "message": "UX review of hierarchy and clarity",
+    "description": "Static skill display desc"
+  },
+  "skillName_animate": {
+    "message": "Animate",
+    "description": "Static skill display name"
+  },
+  "skillDesc_animate": {
+    "message": "Purposeful motion and micro-interactions",
+    "description": "Static skill display desc"
+  },
+  "skillName_adapt": {
+    "message": "Adapt",
+    "description": "Static skill display name"
+  },
+  "skillDesc_adapt": {
+    "message": "Work well across screen sizes",
+    "description": "Static skill display desc"
+  },
+  "skillName_bolder": {
+    "message": "Bolder",
+    "description": "Static skill display name"
+  },
+  "skillDesc_bolder": {
+    "message": "More visual impact for safe designs",
+    "description": "Static skill display desc"
+  },
+  "importSkills": {
+    "message": "Import Skills (.md)",
+    "description": "Import skills button"
+  },
+  "exportSkill": {
+    "message": "Export as .md file to share",
+    "description": "Export skill button title"
+  },
+  "exportSkillFailed": {
+    "message": "Failed to export skill",
+    "description": "Export error"
+  },
+  "importSkillsDone": {
+    "message": "Imported {count} skill(s).",
+    "description": "Import result"
+  },
+  "importSkillsFailed": {
+    "message": "Could not import: {files}",
+    "description": "Import failures"
+  },
+  "scopeDomain": {
+    "message": "Whole site",
+    "description": "Style scope: whole domain"
+  },
+  "scopePage": {
+    "message": "This page",
+    "description": "Style scope: current page"
+  },
+  "scopeDomainTitle": {
+    "message": "Styles apply to all pages on {domain}. Click to apply only to {path}",
+    "description": "Scope button title (domain)"
+  },
+  "scopePageTitle": {
+    "message": "Styles apply only to {path}. Click to apply to the whole site ({domain})",
+    "description": "Scope button title (page)"
+  },
+  "scopeHintPage": {
+    "message": "Applies only to {path}",
+    "description": "Overlay scope hint (page)"
+  },
+  "scopeMismatch": {
+    "message": "This session's styles apply to {path}; you're on {current}. Switch to “Whole site” or open {path} to continue.",
+    "description": "Page session mismatch notice"
+  },
+  "scopeMismatchBlocked": {
+    "message": "This session belongs to another page. Switch to “Whole site” or pick another session.",
+    "description": "Send blocked by scope mismatch"
+  },
+  "scopeSwitchFailed": {
+    "message": "Failed to change style scope",
+    "description": "Scope switch error"
+  },
+  "scopeGroupDomain": {
+    "message": "Whole site",
+    "description": "Session list group title for domain sessions"
   }
 }

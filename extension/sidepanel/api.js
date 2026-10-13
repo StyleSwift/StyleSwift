@@ -50,8 +50,8 @@ function normalizeApiBase(apiBase) {
  * hasVersionInPath("/openai/chat/completions") // false
  */
 function hasVersionInPath(pathname) {
-  // 匹配 /v1、/v2、/v4 等版本号路径段
-  return /\/v\d+(?:\/|$)/i.test(pathname);
+  // 匹配 /v1、/v4、/v1beta 等版本号路径段
+  return /\/v\d+(?:beta|alpha)?(?:\/|$)/i.test(pathname);
 }
 
 /**
@@ -107,7 +107,7 @@ const DEFAULT_API_BASE = "https://api.anthropic.com";
  * 当前使用的默认模型
  * @type {string}
  */
-const DEFAULT_MODEL = "claude-opus-4-6";
+const DEFAULT_MODEL = "claude-sonnet-5-5";
 
 /**
  * 默认视觉模型
@@ -115,6 +115,23 @@ const DEFAULT_MODEL = "claude-opus-4-6";
  * @type {string}
  */
 const DEFAULT_VISION_MODEL = "";
+
+/**
+ * 引导页服务商预设：选择后自动填入 API 地址和模型
+ * apiBase 为空的 "custom" 表示用户自行填写
+ * @type {Array<{id: string, name: string, apiBase: string, model: string, keyUrl: string}>}
+ */
+const PROVIDER_PRESETS = [
+  { id: "ppio", name: "PPIO", apiBase: "https://api.ppio.com/openai", model: "deepseek/deepseek-v4-pro", keyUrl: "https://ppio.com/settings/key-management" },
+  { id: "deepseek", name: "DeepSeek", apiBase: "https://api.deepseek.com", model: "deepseek-v4-pro", keyUrl: "https://platform.deepseek.com/api_keys" },
+  { id: "zhipu", name: "智谱 GLM (Zhipu)", apiBase: "https://open.bigmodel.cn/api/paas/v4", model: "glm-5.3", keyUrl: "https://open.bigmodel.cn/usercenter/apikeys" },
+  { id: "bailian", name: "阿里百炼 (Bailian)", apiBase: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "qwen-plus", keyUrl: "https://bailian.console.aliyun.com/?apiKey=1" },
+  { id: "siliconflow", name: "硅基流动 (SiliconFlow)", apiBase: "https://api.siliconflow.cn/v1", model: "deepseek-ai/DeepSeek-V4-Flash", keyUrl: "https://cloud.siliconflow.cn/account/ak" },
+  { id: "anthropic", name: "Anthropic", apiBase: DEFAULT_API_BASE, model: DEFAULT_MODEL, keyUrl: "https://console.anthropic.com/settings/keys" },
+  { id: "openai", name: "OpenAI", apiBase: "https://api.openai.com/v1", model: "gpt-6.1-sol", keyUrl: "https://platform.openai.com/api-keys" },
+  { id: "gemini", name: "Google Gemini", apiBase: "https://generativelanguage.googleapis.com/v1beta/openai", model: "gemini-3.8-flash", keyUrl: "https://aistudio.google.com/apikey" },
+  { id: "custom", name: "", apiBase: "", model: "", keyUrl: "" },
+];
 
 /**
  * 设置存储 key
@@ -516,6 +533,7 @@ export {
   DEFAULT_API_BASE,
   DEFAULT_MODEL,
   DEFAULT_VISION_MODEL,
+  PROVIDER_PRESETS,
   SETTINGS_KEY,
   CLAUDE_API_DOMAINS,
   normalizeApiBase,

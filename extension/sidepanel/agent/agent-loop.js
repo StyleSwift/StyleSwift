@@ -34,7 +34,10 @@ import {
   callLLMStream,
   callLLMStreamSafe,
   sleep,
+  resetTurnUsage,
+  getTurnUsage,
 } from "./llm-client.js";
+export { getTurnUsage };
 // Re-export serialization functions for backward compatibility
 export {
   serializeToOpenAI,
@@ -491,6 +494,7 @@ export async function agentLoop(prompt, uiCallbacks) {
   currentAbortController = new AbortController();
   const { signal } = currentAbortController;
   resetToolCallHistory();
+  resetTurnUsage();
   const { resetTodos, setTodoUpdateCallback } =
     await import("./todo-manager.js");
   resetTodos();
@@ -498,7 +502,8 @@ export async function agentLoop(prompt, uiCallbacks) {
   const { getTargetTabId, lockTab, unlockTab, executeTool } =
     await import("../tools.js");
   const {
-    getOrCreateSession,
+    resolveSession,
+    extractPath,
     loadAndPrepareHistory,
     saveHistory,
     loadSessionMeta,
@@ -536,8 +541,11 @@ export async function agentLoop(prompt, uiCallbacks) {
       return;
     }
     const domain = access.domain || "unknown";
-    const sessionId = await getOrCreateSession(domain);
-    const session = new SessionContext(domain, sessionId);
+    // 按当前页面路径解析会话（页面级会话优先，见 session/manager.resolveSession）
+    const tab = await chrome.tabs.get(tabId);
+    const resolved = await resolveSession(domain, extractPath(tab?.url));
+    const sessionId = resolved.id;
+    const session = new SessionContext(domain, sessionId, resolved.scope, resolved.path);
     setCurrentSession(session);
     const historyData = await loadAndPrepareHistory(domain, sessionId);
     let fullHistory = historyData.messages;
@@ -565,6 +573,7 @@ export async function agentLoop(prompt, uiCallbacks) {
     }
     const userMsg = { role: "user", content: textOnlyContent };
     fullHistory.push(userMsg);
+    _saveState.userMsg = userMsg;
     let llmHistory = extractEffectiveHistory(fullHistory);
     llmHistory = deduplicateToolResults(llmHistory);
 
@@ -844,27 +853,17 @@ export async function agentLoop(prompt, uiCallbacks) {
       return;
     }
 
+    // AgentError：保存历史后交给 Side Panel 显示可操作的错误横幅
     if (err instanceof AgentError) {
-      const userMessages = {
-        API_KEY_INVALID: "\n⚠️ Invalid API Key, please check in settings.",
-        NETWORK_ERROR:
-          "\n⚠️ Network connection failed, please check your network and try again.",
-        RATE_LIMITED: "\n⚠️ API rate limit exceeded, please try again later.",
-        MAX_RETRIES: "\n⚠️ API retry limit reached, please try again later.",
-        CONTEXT_TOO_LONG:
-          "\n⚠️ Conversation exceeds model context length limit, auto-compression applied but still over limit. Please try starting a new session.",
-      };
-      uiCallbacks.appendText?.(userMessages[err.code] || `\n⚠️ ${err.message}`);
       if (_saveState) {
         try {
-          const { domain, sessionId, fullHistory, snapshots } = _saveState;
-          await saveHistory(domain, sessionId, {
-            messages: fullHistory,
-            snapshots,
-          });
+          const { domain, sessionId, fullHistory, snapshots, userMsg } = _saveState;
+          // 首次回复前就失败：不保存本轮用户消息，否则「重试」会重复发送它
+          const messages =
+            fullHistory.at(-1) === userMsg ? fullHistory.slice(0, -1) : fullHistory;
+          await saveHistory(domain, sessionId, { messages, snapshots });
         } catch {}
       }
-      return;
     }
 
     throw err;

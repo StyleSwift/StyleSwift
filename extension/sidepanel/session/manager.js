@@ -4,7 +4,15 @@
  * Session creation, switching, deletion, and metadata management.
  */
 
-import { SessionContext, currentSession, setCurrentSession, getCurrentSession } from "./context.js";
+import {
+  SessionContext,
+  currentSession,
+  setCurrentSession,
+  getCurrentSession,
+  extractPath,
+  pageStylesKey,
+  pageActiveKey,
+} from "./context.js";
 import {
   saveHistory,
   loadHistory,
@@ -21,18 +29,95 @@ import {
 } from "./constants.js";
 
 // Re-export context
-export { SessionContext, currentSession, setCurrentSession, getCurrentSession };
+export { SessionContext, currentSession, setCurrentSession, getCurrentSession, extractPath };
 
 // =============================================================================
 // 会话索引管理
 // =============================================================================
 
 /**
- * 记录某域名当前活跃的会话 ID
+ * 记录活跃会话：域名级写 sessions:{domain}:active，页面级写该路径的页面指针
  */
-export async function setActiveSession(domain, sessionId) {
-  const key = `sessions:${domain}:active`;
+export async function setActiveSession(domain, sessionId, scope = "domain", path = null) {
+  const key =
+    scope === "page" ? pageActiveKey(domain, path) : `sessions:${domain}:active`;
   await chrome.storage.local.set({ [key]: sessionId });
+}
+
+/** 读取会话索引条目（旧数据无 scope 时视为域名级） */
+async function loadIndex(domain) {
+  const indexKey = `sessions:${domain}:index`;
+  const { [indexKey]: index = [] } = await chrome.storage.local.get(indexKey);
+  return Array.isArray(index) ? index : [];
+}
+
+const scopeOf = (entry) => (entry?.scope === "page" ? "page" : "domain");
+
+/**
+ * 按会话索引中的 scope/path 构建 SessionContext
+ */
+export async function loadSessionContext(domain, sessionId) {
+  const entry = (await loadIndex(domain)).find((s) => s.id === sessionId);
+  return new SessionContext(domain, sessionId, scopeOf(entry), entry?.path ?? null);
+}
+
+/**
+ * 解析当前页面应使用的会话：
+ * 1. 该路径的页面级活跃会话 → 2. 域名级活跃会话 → 3. 最新的域名级会话 → 4. 新建域名级会话
+ * @returns {Promise<{id: string, scope: "domain"|"page", path: string|null}>}
+ */
+export async function resolveSession(domain, path) {
+  const index = await loadIndex(domain);
+  const pKey = pageActiveKey(domain, path);
+  const dKey = `sessions:${domain}:active`;
+  const { [pKey]: pageId, [dKey]: domainId } = await chrome.storage.local.get([pKey, dKey]);
+
+  const pageEntry = index.find((s) => s.id === pageId && scopeOf(s) === "page");
+  if (pageEntry) return { id: pageEntry.id, scope: "page", path: pageEntry.path };
+
+  const domainEntries = index.filter((s) => scopeOf(s) === "domain");
+  const active = domainEntries.find((s) => s.id === domainId);
+  if (active) return { id: active.id, scope: "domain", path: null };
+  if (domainEntries.length > 0) {
+    const latest = [...domainEntries].sort((a, b) => (b.created_at || 0) - (a.created_at || 0))[0];
+    return { id: latest.id, scope: "domain", path: null };
+  }
+
+  const id = await getOrCreateSession(domain, { forceNew: true });
+  return { id, scope: "domain", path: null };
+}
+
+/**
+ * 切换会话作用范围（保留样式，只改变应用范围；规格 4.2）
+ * @param {"domain"|"page"} scope
+ * @param {string|null} path - 页面级时为当前页面路径
+ */
+export async function setSessionScope(domain, sessionId, scope, path) {
+  const oldCtx = await loadSessionContext(domain, sessionId);
+  const newCtx = new SessionContext(domain, sessionId, scope, path);
+
+  const indexKey = `sessions:${domain}:index`;
+  const index = (await loadIndex(domain)).map((s) =>
+    s.id === sessionId ? { ...s, scope: newCtx.scope, path: newCtx.path } : s,
+  );
+  const meta = await loadSessionMeta(domain, sessionId);
+  const { [newCtx.stylesKey]: css = "" } = await chrome.storage.local.get(newCtx.stylesKey);
+
+  // 移除旧范围的活跃样式与指针（仅当指针指向本会话）
+  const oldPointer =
+    oldCtx.scope === "page" ? pageActiveKey(domain, oldCtx.path) : `sessions:${domain}:active`;
+  const { [oldPointer]: pointed } = await chrome.storage.local.get(oldPointer);
+  const toRemove = [oldCtx.activeStylesKey];
+  if (pointed === sessionId) toRemove.push(oldPointer);
+  await chrome.storage.local.remove(toRemove);
+
+  await chrome.storage.local.set({
+    [indexKey]: index,
+    [newCtx.metaKey]: { ...meta, scope: newCtx.scope, path: newCtx.path },
+    ...(css.trim() ? { [newCtx.activeStylesKey]: css } : {}),
+  });
+  await setActiveSession(domain, sessionId, newCtx.scope, newCtx.path);
+  return newCtx;
 }
 
 /**
@@ -47,13 +132,13 @@ export async function getActiveSession(domain) {
 /**
  * 获取或创建会话
  */
-export async function getOrCreateSession(domain) {
+export async function getOrCreateSession(domain, { forceNew = false } = {}) {
   const indexKey = `sessions:${domain}:index`;
 
   try {
     const { [indexKey]: index = [] } = await chrome.storage.local.get(indexKey);
 
-    if (Array.isArray(index) && index.length > 0) {
+    if (!forceNew && Array.isArray(index) && index.length > 0) {
       const activeId = await getActiveSession(domain);
       if (activeId && index.some((s) => s.id === activeId)) {
         return activeId;
@@ -73,7 +158,7 @@ export async function getOrCreateSession(domain) {
       created_at: now,
     };
 
-    const newIndex = [newSession];
+    const newIndex = [...(Array.isArray(index) ? index : []), newSession];
     await chrome.storage.local.set({ [indexKey]: newIndex });
 
     console.log(
@@ -176,6 +261,16 @@ export async function deleteSession(domain, sessionId) {
     const activeId = await getActiveSession(domain);
     if (activeId === sessionId) {
       await chrome.storage.local.remove(`sessions:${domain}:active`);
+    }
+
+    // 页面级会话：清除其页面指针与页面级活跃样式
+    const removed = index.find((s) => s.id === sessionId);
+    if (removed?.scope === "page") {
+      const pKey = pageActiveKey(domain, removed.path);
+      const { [pKey]: pageId } = await chrome.storage.local.get(pKey);
+      if (pageId === sessionId) {
+        await chrome.storage.local.remove([pKey, pageStylesKey(domain, removed.path)]);
+      }
     }
 
     await deleteHistory(domain, sessionId);
@@ -318,7 +413,7 @@ export async function rewindToTurn(domain, sessionId, targetTurn) {
     snapshots: prunedSnapshots,
   });
 
-  const session = new SessionContext(domain, sessionId);
+  const session = await loadSessionContext(domain, sessionId);
   if (css.trim()) {
     await chrome.storage.local.set({
       [session.stylesKey]: css,

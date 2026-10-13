@@ -20,8 +20,8 @@
     "description": "Start button on onboarding page"
   },
   "getApiKey": {
-    "message": "获取 API Key",
-    "description": "Link to get API key"
+    "message": "获取 API Key →",
+    "description": "Link to provider API key page"
   },
   "newSession": {
     "message": "新会话",
@@ -42,10 +42,6 @@
   "styleSkills": {
     "message": "风格技能",
     "description": "Style skills section title"
-  },
-  "appliedStyles": {
-    "message": "已应用样式:",
-    "description": "Applied styles label"
   },
   "removeElement": {
     "message": "移除选中元素",
@@ -107,17 +103,45 @@
     "message": "API 地址 (可选)",
     "description": "API address input label"
   },
-  "apiAddressPlaceholder": {
-    "message": "默认使用 Anthropic 官方地址",
-    "description": "API address input hint"
-  },
   "modelLabel": {
     "message": "模型 (可选)",
     "description": "Model input label"
   },
-  "modelPlaceholder": {
-    "message": "默认使用 claude-opus-4-6",
-    "description": "Model input hint"
+  "providerLabel": {
+    "message": "AI 服务商",
+    "description": "Onboarding provider select label"
+  },
+  "providerCustom": {
+    "message": "自定义（兼容 OpenAI / Anthropic）",
+    "description": "Custom provider option"
+  },
+  "advancedSettings": {
+    "message": "高级设置（API 地址 / 模型）",
+    "description": "Onboarding advanced settings toggle"
+  },
+  "undoLastStyle": {
+    "message": "撤销上一步样式修改",
+    "description": "Top bar style controls"
+  },
+  "hideSiteStyles": {
+    "message": "关闭 {domain} 全站的样式",
+    "description": "Top bar style controls"
+  },
+  "showSiteStyles": {
+    "message": "开启 {domain} 全站的样式",
+    "description": "Top bar style controls"
+  },
+  "nothingToUndo": {
+    "message": "没有可撤销的样式修改",
+    "description": "Top bar style controls"
+  },
+  "undoStyleFailed": {
+    "message": "撤销失败，请重试",
+    "description": "Top bar style controls"
+  },
+  "toggleStylesFailed": {
+    "message": "切换样式失败，请重试",
+    "description": "Top bar style controls"
   },
   "apiConfigTitle": {
     "message": "API 配置",
@@ -216,7 +240,7 @@
     "description": "Clear history data button"
   },
   "clearHistoryDesc": {
-    "message": "清理90天前的会话和超出限制的历史记录",
+    "message": "清理160天前的会话和超出限制的历史记录",
     "description": "Clear history description"
   },
   "aboutTitle": {
@@ -236,7 +260,7 @@
     "description": "GitHub repository URL"
   },
   "feedbackLabel": {
-    "message": "反馈邮箱",
+    "message": "反馈",
     "description": "Feedback email label"
   },
   "feedbackEmail": {
@@ -432,7 +456,7 @@
     "description": "Failed to get storage info"
   },
   "clearHistoryConfirm": {
-    "message": "确定要清理历史数据吗？\n\n这将删除：\n• 超过 90 天的会话\n• 每个域名超过 20 个的旧会话\n• 超过 50 个的旧风格技能\n\n此操作不可撤销。",
+    "message": "确定要清理历史数据吗？\n\n这将删除：\n• 超过 160 天的会话\n• 每个域名超过 20 个的旧会话\n• 超过 50 个的旧风格技能\n\n此操作不可撤销。",
     "description": "Clear history confirmation dialog"
   },
   "clearHistorySuccess": {
@@ -532,7 +556,7 @@
     "description": "Profile saved with checkmark"
   },
   "profileSaveFailed": {
-    "message": "✗ 保存失败",
+    "message": "✗ 保存失败：{error}",
     "description": "Profile save failed with message"
   },
   "apiAddressFormatError": {
@@ -580,7 +604,7 @@
     "description": "Default model placeholder"
   },
   "defaultModel2": {
-    "message": "deepseek/deepseek-r1",
+    "message": "claude-sonnet-5-5",
     "description": "Default model hint"
   },
   "clickToSwitchSession": {
@@ -1106,5 +1130,405 @@
   "newStyleSkill": {
     "message": "新建风格技能",
     "description": "New style skill modal title"
+  },
+  "feedbackIssues": {
+    "message": "GitHub Issues",
+    "description": "Feedback via GitHub issues link text"
+  },
+  "connectionFailedDetail": {
+    "message": "连接失败：{error}",
+    "description": "Onboarding connection error"
+  },
+  "connectionFailedHttp": {
+    "message": "连接失败（HTTP {status}）",
+    "description": "Onboarding HTTP error"
+  },
+  "saveSettingsFailedDetail": {
+    "message": "保存设置失败：{error}",
+    "description": "Onboarding save error"
+  },
+  "queueMessageFailed": {
+    "message": "无法排队消息，请稍后重试",
+    "description": "Queue message error"
+  },
+  "imageAlt": {
+    "message": "图片 {index}",
+    "description": "Attached image alt text"
+  },
+  "deleteSessionFailed": {
+    "message": "删除会话失败",
+    "description": "Delete session error"
+  },
+  "clearStorageFailed": {
+    "message": "清理失败：{error}",
+    "description": "Clear storage error"
+  },
+  "rewindHere": {
+    "message": "回到这一轮",
+    "description": "Rewind button title"
+  },
+  "rewindConfirmDesc": {
+    "message": "之后的对话和样式修改将被丢弃。",
+    "description": "Rewind confirm"
+  },
+  "toolNoParams": {
+    "message": "（无参数）",
+    "description": "Tool card empty input"
+  },
+  "todoDeleteStep": {
+    "message": "删除此步骤",
+    "description": "Todo delete title"
+  },
+  "todoConfirmTitle": {
+    "message": "请确认任务计划",
+    "description": "Todo confirm card title"
+  },
+  "todoStepCount": {
+    "message": "{count} 个步骤",
+    "description": "Todo step count"
+  },
+  "todoHint": {
+    "message": "可编辑、增删步骤后确认执行",
+    "description": "Todo hint"
+  },
+  "todoAddStep": {
+    "message": "+ 添加步骤",
+    "description": "Todo add step"
+  },
+  "todoConfirm": {
+    "message": "确认执行",
+    "description": "Todo confirm button"
+  },
+  "todoStepPlaceholder": {
+    "message": "输入步骤描述...",
+    "description": "Todo step placeholder"
+  },
+  "todoProgressTitle": {
+    "message": "任务进度",
+    "description": "Todo progress title"
+  },
+  "confirmEffect": {
+    "message": "✓ 确认效果",
+    "description": "Confirmation overlay confirm"
+  },
+  "undoShort": {
+    "message": "↶ 撤销",
+    "description": "Confirmation overlay undo"
+  },
+  "orKeepTyping": {
+    "message": "或继续输入",
+    "description": "Confirmation overlay hint"
+  },
+  "confirmAll": {
+    "message": "✓ 全部确认",
+    "description": "Confirmation overlay confirm all"
+  },
+  "undoLastStep": {
+    "message": "↶ 撤销最后一步",
+    "description": "Confirmation overlay undo last"
+  },
+  "undoAllSteps": {
+    "message": "↶↶ 全部撤销",
+    "description": "Confirmation overlay undo all"
+  },
+  "errApiKeyInvalid": {
+    "message": "API Key 无效，请检查设置",
+    "description": "Error banner"
+  },
+  "goToSettings": {
+    "message": "去设置 →",
+    "description": "Error banner action"
+  },
+  "errNetwork": {
+    "message": "网络错误，请检查网络连接",
+    "description": "Error banner"
+  },
+  "errApi": {
+    "message": "API 调用失败",
+    "description": "Error banner"
+  },
+  "errAccessDenied": {
+    "message": "访问被拒绝，请检查 API Key 是否有该模型的权限",
+    "description": "Error banner"
+  },
+  "errModelNotFound": {
+    "message": "模型不存在，请在设置中检查模型名称",
+    "description": "Error banner"
+  },
+  "errInsufficientBalance": {
+    "message": "账户余额不足，请到服务商充值后重试",
+    "description": "Error banner"
+  },
+  "errRateLimited": {
+    "message": "请求过于频繁，请稍后重试",
+    "description": "Error banner"
+  },
+  "errContextTooLong": {
+    "message": "对话过长，超出模型上限，请新建会话",
+    "description": "Error banner"
+  },
+  "backAgainToDiscard": {
+    "message": "改动未保存，再次点击返回将放弃改动。",
+    "description": "Settings back failed hint"
+  },
+  "visionVerifyFailed": {
+    "message": "视觉模型连接失败，请检查视觉模型配置",
+    "description": "Vision verify error"
+  },
+  "turnUsage": {
+    "message": "本轮约 {tokens} tokens",
+    "description": "Per-turn token usage"
+  },
+  "turnUsageDetail": {
+    "message": "输入约 {input} · 输出约 {output} tokens（服务商未返回用量时为估算值）",
+    "description": "Per-turn token usage tooltip"
+  },
+  "scopeHint": {
+    "message": "作用于 {domain} 全站",
+    "description": "Style scope hint after applying"
+  },
+  "presetDarkName": {
+    "message": "护眼深色",
+    "description": "presetDarkName"
+  },
+  "presetDarkDesc": {
+    "message": "舒适的深色主题",
+    "description": "presetDarkDesc"
+  },
+  "presetDarkPrompt": {
+    "message": "把这个页面改成舒适的深色模式：深色背景、浅色文字，各处保证足够对比度，图片和视频保持原样。",
+    "description": "presetDarkPrompt"
+  },
+  "presetReadingName": {
+    "message": "阅读模式",
+    "description": "presetReadingName"
+  },
+  "presetReadingDesc": {
+    "message": "专注正文阅读",
+    "description": "presetReadingDesc"
+  },
+  "presetReadingPrompt": {
+    "message": "把这个页面改成专注阅读模式：正文居中，行宽控制在约 70 个字符，加大字号和行高，弱化侧栏和推荐内容。",
+    "description": "presetReadingPrompt"
+  },
+  "presetLargeTextName": {
+    "message": "放大字号",
+    "description": "presetLargeTextName"
+  },
+  "presetLargeTextDesc": {
+    "message": "更易阅读和点击",
+    "description": "presetLargeTextDesc"
+  },
+  "presetLargeTextPrompt": {
+    "message": "把页面文字整体放大约 20%，保持布局不错乱，让按钮和链接更容易点击。",
+    "description": "presetLargeTextPrompt"
+  },
+  "presetFocusName": {
+    "message": "隐藏干扰",
+    "description": "presetFocusName"
+  },
+  "presetFocusDesc": {
+    "message": "隐藏广告、弹窗等干扰",
+    "description": "presetFocusDesc"
+  },
+  "presetFocusPrompt": {
+    "message": "隐藏这个页面上的广告、浮动横幅、推荐内容和弹窗等干扰元素，保留主要内容和导航。",
+    "description": "presetFocusPrompt"
+  },
+  "applyStyleSkillPrompt": {
+    "message": "为这个页面应用「{skill}」风格技能",
+    "description": "applyStyleSkillPrompt"
+  },
+  "skillName_Cozy_style": {
+    "message": "温馨可爱",
+    "description": "Static skill display name"
+  },
+  "skillDesc_Cozy_style": {
+    "message": "柔和粉嫩配色，圆润边角，温暖色调",
+    "description": "Static skill display desc"
+  },
+  "skillName_Windows_9x_Retro": {
+    "message": "Windows 9x 复古",
+    "description": "Static skill display name"
+  },
+  "skillDesc_Windows_9x_Retro": {
+    "message": "经典灰色系 Windows 9x 界面与 3D 立体边框",
+    "description": "Static skill display desc"
+  },
+  "skillName_BauhausStyle": {
+    "message": "包豪斯",
+    "description": "Static skill display name"
+  },
+  "skillDesc_BauhausStyle": {
+    "message": "几何网格、粗重字体、三原色点缀",
+    "description": "Static skill display desc"
+  },
+  "skillName_cyberpunk_2077": {
+    "message": "赛博朋克 2077",
+    "description": "Static skill display name"
+  },
+  "skillDesc_cyberpunk_2077": {
+    "message": "黑底霓虹黄，故障与 HUD 效果",
+    "description": "Static skill display desc"
+  },
+  "skillName_MatrixTerminal": {
+    "message": "黑客帝国终端",
+    "description": "Static skill display name"
+  },
+  "skillDesc_MatrixTerminal": {
+    "message": "深黑背景、霓虹绿等宽文字",
+    "description": "Static skill display desc"
+  },
+  "skillName_Newspaper_Style": {
+    "message": "复古报纸",
+    "description": "Static skill display name"
+  },
+  "skillDesc_Newspaper_Style": {
+    "message": "经典英式报纸排版，衬线字体为主",
+    "description": "Static skill display desc"
+  },
+  "skillName_frontend_design": {
+    "message": "前端设计原则",
+    "description": "Static skill display name"
+  },
+  "skillDesc_frontend_design": {
+    "message": "打造有辨识度、可上线的界面设计原则",
+    "description": "Static skill display desc"
+  },
+  "skillName_audit": {
+    "message": "质量审查",
+    "description": "Static skill display name"
+  },
+  "skillDesc_audit": {
+    "message": "检查可访问性、性能与主题一致性",
+    "description": "Static skill display desc"
+  },
+  "skillName_colorize": {
+    "message": "色彩增强",
+    "description": "Static skill display name"
+  },
+  "skillDesc_colorize": {
+    "message": "为单调界面添加有策略的色彩",
+    "description": "Static skill display desc"
+  },
+  "skillName_polish": {
+    "message": "细节打磨",
+    "description": "Static skill display name"
+  },
+  "skillDesc_polish": {
+    "message": "修正对齐、间距与细节问题",
+    "description": "Static skill display desc"
+  },
+  "skillName_normalize": {
+    "message": "设计规范化",
+    "description": "Static skill display name"
+  },
+  "skillDesc_normalize": {
+    "message": "统一字体、色彩与间距",
+    "description": "Static skill display desc"
+  },
+  "skillName_distill": {
+    "message": "精简提炼",
+    "description": "Static skill display name"
+  },
+  "skillDesc_distill": {
+    "message": "去除不必要的复杂元素",
+    "description": "Static skill display desc"
+  },
+  "skillName_delight": {
+    "message": "趣味点缀",
+    "description": "Static skill display name"
+  },
+  "skillDesc_delight": {
+    "message": "增加令人愉悦的个性细节",
+    "description": "Static skill display desc"
+  },
+  "skillName_critique": {
+    "message": "设计评审",
+    "description": "Static skill display name"
+  },
+  "skillDesc_critique": {
+    "message": "从体验角度评审层级与清晰度",
+    "description": "Static skill display desc"
+  },
+  "skillName_animate": {
+    "message": "动效增强",
+    "description": "Static skill display name"
+  },
+  "skillDesc_animate": {
+    "message": "添加有意义的动效与微交互",
+    "description": "Static skill display desc"
+  },
+  "skillName_adapt": {
+    "message": "多端适配",
+    "description": "Static skill display name"
+  },
+  "skillDesc_adapt": {
+    "message": "适配不同屏幕尺寸",
+    "description": "Static skill display desc"
+  },
+  "skillName_bolder": {
+    "message": "视觉强化",
+    "description": "Static skill display name"
+  },
+  "skillDesc_bolder": {
+    "message": "让平淡的设计更有冲击力",
+    "description": "Static skill display desc"
+  },
+  "importSkills": {
+    "message": "导入风格技能（.md）",
+    "description": "Import skills button"
+  },
+  "exportSkill": {
+    "message": "导出为 .md 文件以便分享",
+    "description": "Export skill button title"
+  },
+  "exportSkillFailed": {
+    "message": "导出技能失败",
+    "description": "Export error"
+  },
+  "importSkillsDone": {
+    "message": "已导入 {count} 个技能。",
+    "description": "Import result"
+  },
+  "importSkillsFailed": {
+    "message": "无法导入：{files}",
+    "description": "Import failures"
+  },
+  "scopeDomain": {
+    "message": "全站",
+    "description": "Style scope: whole domain"
+  },
+  "scopePage": {
+    "message": "仅本页",
+    "description": "Style scope: current page"
+  },
+  "scopeDomainTitle": {
+    "message": "样式作用于 {domain} 全站，点击改为仅作用于 {path}",
+    "description": "Scope button title (domain)"
+  },
+  "scopePageTitle": {
+    "message": "样式仅作用于 {path}，点击改为作用于全站（{domain}）",
+    "description": "Scope button title (page)"
+  },
+  "scopeHintPage": {
+    "message": "仅作用于 {path}",
+    "description": "Overlay scope hint (page)"
+  },
+  "scopeMismatch": {
+    "message": "此会话样式适用于 {path}，当前页面为 {current}。切换为「全站」或前往 {path} 后继续。",
+    "description": "Page session mismatch notice"
+  },
+  "scopeMismatchBlocked": {
+    "message": "此会话属于其他页面，请切换为「全站」或选择其他会话。",
+    "description": "Send blocked by scope mismatch"
+  },
+  "scopeSwitchFailed": {
+    "message": "切换样式范围失败",
+    "description": "Scope switch error"
+  },
+  "scopeGroupDomain": {
+    "message": "全站样式",
+    "description": "Session list group title for domain sessions"
   }
 }

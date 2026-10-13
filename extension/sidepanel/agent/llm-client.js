@@ -44,6 +44,22 @@ function checkHttpError(response) {
       if (response.status === 401) {
         throw new AgentError("API_KEY_INVALID", "Please check if the API Key is correct");
       }
+      const lowerText = errorText.toLowerCase();
+      if (
+        response.status === 402 ||
+        /insufficient|balance|quota|余额|欠费/.test(lowerText)
+      ) {
+        throw new AgentError("INSUFFICIENT_BALANCE", `Insufficient balance (${response.status}): ${errorText}`);
+      }
+      if (response.status === 403) {
+        throw new AgentError("ACCESS_DENIED", `Access denied: ${errorText}`);
+      }
+      if (
+        response.status === 404 ||
+        /model[^\n]{0,40}(not found|not exist|does not exist|invalid)|模型不存在/.test(lowerText)
+      ) {
+        throw new AgentError("MODEL_NOT_FOUND", `Model not found (${response.status}): ${errorText}`);
+      }
       if (response.status === 429) {
         throw new AgentError("RATE_LIMITED", `API rate limited: ${errorText}`);
       }
@@ -303,13 +319,15 @@ export async function callLLMStreamSafe(
   let currentMessages = messages;
   while (retries <= API_MAX_RETRIES) {
     try {
-      return await callLLMStream(
+      const response = await callLLMStream(
         system,
         currentMessages,
         tools,
         callbacks,
         abortSignal,
       );
+      recordUsage(response, currentMessages);
+      return response;
     } catch (err) {
       if (err.name === "AbortError") throw err;
       if (err.code === "API_KEY_INVALID") throw err;
@@ -339,4 +357,30 @@ export async function callLLMStreamSafe(
 }
 
 // Export internal functions for reuse
-export { sleep, msgTokenEstimate };
+// --- Turn Usage ---
+// 一次 agentLoop（含子 Agent）累计的 token 用量，供 UI 展示成本
+// 服务商未返回 usage 时（多数 OpenAI 兼容流式接口）按字符估算
+
+let turnUsage = { input: 0, output: 0 };
+
+function recordUsage(response, messages) {
+  const reported = response.usage?.input_tokens;
+  turnUsage = {
+    input: turnUsage.input + (reported || estimateTokenCount(messages)),
+    output:
+      turnUsage.output +
+      (reported
+        ? response.usage.output_tokens || 0
+        : msgTokenEstimate({ role: "assistant", content: response.content })),
+  };
+}
+
+export function resetTurnUsage() {
+  turnUsage = { input: 0, output: 0 };
+}
+
+export function getTurnUsage() {
+  return turnUsage;
+}
+
+export { sleep, msgTokenEstimate, checkHttpError, recordUsage };

@@ -72,9 +72,11 @@ describe('OpenAI API Format', () => {
     // 但我们可以验证 fetch 调用的格式
     
     // 验证 API 基础地址和模型的默认值
-    const { DEFAULT_API_BASE, DEFAULT_MODEL } = await import('../sidepanel/api.js');
-    expect(DEFAULT_API_BASE).toBe('https://api.ppio.com/openai');
-    expect(DEFAULT_MODEL).toBe('deepseek/deepseek-r1');
+    // 未配置地址/模型时回退到 Anthropic 官方（Claude 原生格式）
+    const { DEFAULT_API_BASE, DEFAULT_MODEL, detectProvider } = await import('../sidepanel/api.js');
+    expect(DEFAULT_API_BASE).toBe('https://api.anthropic.com');
+    expect(DEFAULT_MODEL).toBe('claude-sonnet-5-5');
+    expect(detectProvider(DEFAULT_API_BASE)).toBe('claude');
   });
 
   it('validateConnection 应该使用 OpenAI 格式', async () => {
