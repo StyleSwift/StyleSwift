@@ -206,6 +206,11 @@ class TypewriterEffect {
 	 */
 	start() {
 		if (!this.textElement || this.isPaused) return;
+		// 用户偏好减少动态效果：静态显示第一个示例
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+			this.textElement.textContent = this.examples[0];
+			return;
+		}
 		this.isTyping = true;
 		this.type();
 	}
