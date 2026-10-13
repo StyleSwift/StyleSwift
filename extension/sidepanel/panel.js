@@ -2801,46 +2801,45 @@ function hasAttachedImages() {
 // ============================================================================
 
 /**
+ * 静态技能的本地化显示名/描述（键名 skillName_<id>，非字母数字替换为 _）
+ * @param {"Name"|"Desc"} kind
+ * @param {string} id - 静态技能名
+ * @returns {string|null} 无对应文案时返回 null
+ */
+function skillDisplayText(kind, id) {
+	const key = `skill${kind}_${id.replace(/[^A-Za-z0-9]/g, "_")}`;
+	const text = getMessage(key);
+	return text && text !== key ? text : null;
+}
+
+/**
  * Built-in skill definitions
  * These are static skills bundled with the extension
  */
 const BUILT_IN_SKILLS = [
-	{
-		id: "Cozy style",
-		name: "Cozy Style",
+	// 实用预设：仅提示词，无对应技能文件
+	...["Dark", "Reading", "LargeText", "Focus"].map((key) => ({
+		id: `preset-${key.toLowerCase()}`,
+		name: getMessage(`preset${key}Name`),
+		desc: getMessage(`preset${key}Desc`),
 		icon: "",
-		prompt: "Apply cozy cherry-momoko style",
-	},
-	{
-		id: "Windows 9x Retro",
-		name: "Windows 9x Retro",
+		prompt: getMessage(`preset${key}Prompt`),
+	})),
+	// 风格预设：id 为静态技能名（存储与 load_skill 使用，不可改名）
+	...[
+		"Cozy style",
+		"Windows 9x Retro",
+		"BauhausStyle",
+		"cyberpunk-2077",
+		"MatrixTerminal",
+		"Newspaper Style",
+	].map((id) => ({
+		id,
+		name: skillDisplayText("Name", id),
+		desc: skillDisplayText("Desc", id),
 		icon: "",
-		prompt: "Apply Windows 9x retro style",
-	},
-	{
-		id: "BauhausStyle",
-		name: "Bauhaus",
-		icon: "",
-		prompt: "Apply Bauhaus design style",
-	},
-	{
-		id: "cyberpunk-2077",
-		name: "Cyberpunk 2077",
-		icon: "",
-		prompt: "Apply Cyberpunk 2077 style",
-	},
-	{
-		id: "MatrixTerminal",
-		name: "Matrix Terminal",
-		icon: "",
-		prompt: "Apply Matrix terminal style",
-	},
-	{
-		id: "Newspaper Style",
-		name: "Newspaper",
-		icon: "",
-		prompt: "Apply British newspaper style",
-	},
+		prompt: formatMessage("applyStyleSkillPrompt", { skill: id }),
+	})),
 ];
 
 /**
@@ -4731,8 +4730,8 @@ function createStaticSkillItem(skill, isEnabled) {
     <div class="static-skill-info">
       <span class="static-skill-icon">${iconHtml("file-text", 16)}</span>
       <div class="static-skill-text">
-        <span class="static-skill-name">${escapeHtml(skill.name)}</span>
-        <span class="static-skill-desc">${escapeHtml(skill.description || "No description")}</span>
+        <span class="static-skill-name">${escapeHtml(skillDisplayText("Name", skill.name) || skill.name)}</span>
+        <span class="static-skill-desc">${escapeHtml(skillDisplayText("Desc", skill.name) || skill.description || getMessage("noDesc"))}</span>
       </div>
     </div>
     <label class="toggle-switch">

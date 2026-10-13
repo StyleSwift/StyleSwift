@@ -20,8 +20,8 @@
     "description": "Start button on onboarding page"
   },
   "getApiKey": {
-    "message": "获取 API Key",
-    "description": "Link to get API key"
+    "message": "获取 API Key →",
+    "description": "Link to provider API key page"
   },
   "newSession": {
     "message": "新会话",
@@ -118,10 +118,6 @@
   "providerCustom": {
     "message": "自定义（兼容 OpenAI / Anthropic）",
     "description": "Custom provider option"
-  },
-  "getApiKey": {
-    "message": "获取 API Key →",
-    "description": "Link to provider API key page"
   },
   "advancedSettings": {
     "message": "高级设置（API 地址 / 模型）",
@@ -1294,5 +1290,193 @@
   "scopeHint": {
     "message": "作用于 {domain} 全站",
     "description": "Style scope hint after applying"
+  },
+  "presetDarkName": {
+    "message": "护眼深色",
+    "description": "presetDarkName"
+  },
+  "presetDarkDesc": {
+    "message": "舒适的深色主题",
+    "description": "presetDarkDesc"
+  },
+  "presetDarkPrompt": {
+    "message": "把这个页面改成舒适的深色模式：深色背景、浅色文字，各处保证足够对比度，图片和视频保持原样。",
+    "description": "presetDarkPrompt"
+  },
+  "presetReadingName": {
+    "message": "阅读模式",
+    "description": "presetReadingName"
+  },
+  "presetReadingDesc": {
+    "message": "专注正文阅读",
+    "description": "presetReadingDesc"
+  },
+  "presetReadingPrompt": {
+    "message": "把这个页面改成专注阅读模式：正文居中，行宽控制在约 70 个字符，加大字号和行高，弱化侧栏和推荐内容。",
+    "description": "presetReadingPrompt"
+  },
+  "presetLargeTextName": {
+    "message": "放大字号",
+    "description": "presetLargeTextName"
+  },
+  "presetLargeTextDesc": {
+    "message": "更易阅读和点击",
+    "description": "presetLargeTextDesc"
+  },
+  "presetLargeTextPrompt": {
+    "message": "把页面文字整体放大约 20%，保持布局不错乱，让按钮和链接更容易点击。",
+    "description": "presetLargeTextPrompt"
+  },
+  "presetFocusName": {
+    "message": "隐藏干扰",
+    "description": "presetFocusName"
+  },
+  "presetFocusDesc": {
+    "message": "隐藏广告、弹窗等干扰",
+    "description": "presetFocusDesc"
+  },
+  "presetFocusPrompt": {
+    "message": "隐藏这个页面上的广告、浮动横幅、推荐内容和弹窗等干扰元素，保留主要内容和导航。",
+    "description": "presetFocusPrompt"
+  },
+  "applyStyleSkillPrompt": {
+    "message": "为这个页面应用「{skill}」风格技能",
+    "description": "applyStyleSkillPrompt"
+  },
+  "skillName_Cozy_style": {
+    "message": "温馨可爱",
+    "description": "Static skill display name"
+  },
+  "skillDesc_Cozy_style": {
+    "message": "柔和粉嫩配色，圆润边角，温暖色调",
+    "description": "Static skill display desc"
+  },
+  "skillName_Windows_9x_Retro": {
+    "message": "Windows 9x 复古",
+    "description": "Static skill display name"
+  },
+  "skillDesc_Windows_9x_Retro": {
+    "message": "经典灰色系 Windows 9x 界面与 3D 立体边框",
+    "description": "Static skill display desc"
+  },
+  "skillName_BauhausStyle": {
+    "message": "包豪斯",
+    "description": "Static skill display name"
+  },
+  "skillDesc_BauhausStyle": {
+    "message": "几何网格、粗重字体、三原色点缀",
+    "description": "Static skill display desc"
+  },
+  "skillName_cyberpunk_2077": {
+    "message": "赛博朋克 2077",
+    "description": "Static skill display name"
+  },
+  "skillDesc_cyberpunk_2077": {
+    "message": "黑底霓虹黄，故障与 HUD 效果",
+    "description": "Static skill display desc"
+  },
+  "skillName_MatrixTerminal": {
+    "message": "黑客帝国终端",
+    "description": "Static skill display name"
+  },
+  "skillDesc_MatrixTerminal": {
+    "message": "深黑背景、霓虹绿等宽文字",
+    "description": "Static skill display desc"
+  },
+  "skillName_Newspaper_Style": {
+    "message": "复古报纸",
+    "description": "Static skill display name"
+  },
+  "skillDesc_Newspaper_Style": {
+    "message": "经典英式报纸排版，衬线字体为主",
+    "description": "Static skill display desc"
+  },
+  "skillName_frontend_design": {
+    "message": "前端设计原则",
+    "description": "Static skill display name"
+  },
+  "skillDesc_frontend_design": {
+    "message": "打造有辨识度、可上线的界面设计原则",
+    "description": "Static skill display desc"
+  },
+  "skillName_audit": {
+    "message": "质量审查",
+    "description": "Static skill display name"
+  },
+  "skillDesc_audit": {
+    "message": "检查可访问性、性能与主题一致性",
+    "description": "Static skill display desc"
+  },
+  "skillName_colorize": {
+    "message": "色彩增强",
+    "description": "Static skill display name"
+  },
+  "skillDesc_colorize": {
+    "message": "为单调界面添加有策略的色彩",
+    "description": "Static skill display desc"
+  },
+  "skillName_polish": {
+    "message": "细节打磨",
+    "description": "Static skill display name"
+  },
+  "skillDesc_polish": {
+    "message": "修正对齐、间距与细节问题",
+    "description": "Static skill display desc"
+  },
+  "skillName_normalize": {
+    "message": "设计规范化",
+    "description": "Static skill display name"
+  },
+  "skillDesc_normalize": {
+    "message": "统一字体、色彩与间距",
+    "description": "Static skill display desc"
+  },
+  "skillName_distill": {
+    "message": "精简提炼",
+    "description": "Static skill display name"
+  },
+  "skillDesc_distill": {
+    "message": "去除不必要的复杂元素",
+    "description": "Static skill display desc"
+  },
+  "skillName_delight": {
+    "message": "趣味点缀",
+    "description": "Static skill display name"
+  },
+  "skillDesc_delight": {
+    "message": "增加令人愉悦的个性细节",
+    "description": "Static skill display desc"
+  },
+  "skillName_critique": {
+    "message": "设计评审",
+    "description": "Static skill display name"
+  },
+  "skillDesc_critique": {
+    "message": "从体验角度评审层级与清晰度",
+    "description": "Static skill display desc"
+  },
+  "skillName_animate": {
+    "message": "动效增强",
+    "description": "Static skill display name"
+  },
+  "skillDesc_animate": {
+    "message": "添加有意义的动效与微交互",
+    "description": "Static skill display desc"
+  },
+  "skillName_adapt": {
+    "message": "多端适配",
+    "description": "Static skill display name"
+  },
+  "skillDesc_adapt": {
+    "message": "适配不同屏幕尺寸",
+    "description": "Static skill display desc"
+  },
+  "skillName_bolder": {
+    "message": "视觉强化",
+    "description": "Static skill display name"
+  },
+  "skillDesc_bolder": {
+    "message": "让平淡的设计更有冲击力",
+    "description": "Static skill display desc"
   }
 }
