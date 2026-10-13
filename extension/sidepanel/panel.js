@@ -186,13 +186,6 @@ const stateManager = new GlobalStateManager();
 let _pickedElementInfo = [];
 
 /**
- * 当前选中的单个元素（兼容旧代码，指向最后一个选中的元素）
- * @type {Object|null}
- * @deprecated Use _pickedElementInfo array instead
- */
-let _pickedElement = null;
-
-/**
  * 元素选择器是否处于激活状态
  * @type {boolean}
  */
@@ -1183,7 +1176,7 @@ async function loadCurrentTab() {
 
 	// === Step 4: 获取域名 ===
 	try {
-		const { getTargetDomain, sendToContentScript } = await import("./tools.js");
+		const { sendToContentScript } = await import("./tools.js");
 
 		// 获取域名（同时检测页面是否受限）
 		let domain = null;
@@ -1586,7 +1579,7 @@ async function handleSendClick() {
 
 		try {
 			// 动态导入 queueUserMessage 函数
-			const { queueUserMessage, getPendingMessagesCount } = await import("./agent/agent-loop.js");
+			const { queueUserMessage } = await import("./agent/agent-loop.js");
 
 			// 排队用户消息
 			const queued = queueUserMessage(messageContent);
@@ -1747,7 +1740,7 @@ async function handleSendClick() {
 
 	// 动态导入 agent-loop 模块
 	try {
-		const { agentLoop, cancelAgentLoop } = await import("./agent/agent-loop.js");
+		const { agentLoop } = await import("./agent/agent-loop.js");
 
 		// UI 回调函数
 		const uiCallbacks = {
@@ -2078,11 +2071,6 @@ function onElementPicked(info) {
 		_pickedElementInfo.push(info);
 	}
 	
-	// 更新 _pickedElement 为最后一个元素（兼容旧代码）
-	_pickedElement = _pickedElementInfo.length > 0 
-		? _pickedElementInfo[_pickedElementInfo.length - 1] 
-		: null;
-	
 	// 不自动关闭 picker，保持选择状态
 	// setPickerActive(false);
 
@@ -2153,9 +2141,6 @@ function updatePickedElementsBar() {
 function removePickedElement(index) {
 	if (index >= 0 && index < _pickedElementInfo.length) {
 		_pickedElementInfo.splice(index, 1);
-		_pickedElement = _pickedElementInfo.length > 0 
-			? _pickedElementInfo[_pickedElementInfo.length - 1] 
-			: null;
 		updatePickedElementsBar();
 	}
 }
@@ -2165,7 +2150,6 @@ function removePickedElement(index) {
  */
 function clearPickedElement() {
 	_pickedElementInfo = [];
-	_pickedElement = null;
 	if (DOM.pickedElementBar) {
 		DOM.pickedElementBar.classList.add("hidden");
 	}
@@ -2196,14 +2180,6 @@ async function finishPicking() {
  */
 function getPickedElementInfo() {
 	return _pickedElementInfo;
-}
-
-/**
- * 检查是否有选中的元素
- * @returns {boolean}
- */
-function hasPickedElements() {
-	return _pickedElementInfo.length > 0;
 }
 
 // ============================================================================
@@ -2946,7 +2922,7 @@ async function handleSkillChipClick(skill) {
 	}
 
 	try {
-		const { agentLoop, cancelAgentLoop } = await import("./agent/agent-loop.js");
+		const { agentLoop } = await import("./agent/agent-loop.js");
 
 		// Record skill as recently used
 		await StyleSkillStore.recordUsage(skill.id, skill.type);
@@ -3127,12 +3103,9 @@ function createUserSkillChip(skill, isRecent = false) {
 
 	// Long press handler for context menu
 	let longPressTimer = null;
-	let isLongPress = false;
 
 	chip.addEventListener("mousedown", (e) => {
-		isLongPress = false;
 		longPressTimer = setTimeout(() => {
-			isLongPress = true;
 			showSkillContextMenu(e, skill);
 		}, 500); // 500ms threshold for long press
 	});
@@ -3877,9 +3850,6 @@ async function handleNewSession() {
  */
 async function handleDeleteSession(domain, sessionId, sessionTitle) {
 	try {
-		// 动态导入 session 模块
-		const session = await import("./session.js");
-
 		// 先执行删除（不立即删除，等待确认）
 		const indexKey = `sessions:${domain}:index`;
 		const { [indexKey]: index = [] } = await chrome.storage.local.get(indexKey);
@@ -4057,7 +4027,7 @@ async function executeDeleteSession(domain, sessionId) {
 		console.log(`[Panel] Deleting session: ${sessionId}`);
 
 		const session = await import("./session.js");
-		const result = await session.deleteSession(domain, sessionId);
+		await session.deleteSession(domain, sessionId);
 
 		const currentSession = session.getCurrentSession();
 		if (currentSession && currentSession.sessionId === sessionId) {
@@ -5621,12 +5591,6 @@ function renderHistoryMessages(history) {
 	const messages = rawMessages.filter(
 		(msg) => !msg._isSummary && !msg._isLearned,
 	);
-
-	// 统计总轮次数（用于决定是否显示回退按钮）
-	let totalTurns = 0;
-	for (const msg of messages) {
-		if (msg.role === "user" && typeof msg.content === "string") totalTurns++;
-	}
 
 	// 预先构建 tool_use_id -> tool_result 的映射，供渲染工具卡片时使用
 	const toolResultMap = new Map();

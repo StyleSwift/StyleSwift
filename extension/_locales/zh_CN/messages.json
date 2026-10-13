@@ -43,10 +43,6 @@
     "message": "风格技能",
     "description": "Style skills section title"
   },
-  "appliedStyles": {
-    "message": "已应用样式:",
-    "description": "Applied styles label"
-  },
   "removeElement": {
     "message": "移除选中元素",
     "description": "Remove selected element tooltip"

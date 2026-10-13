@@ -43,10 +43,6 @@
     "message": "Style Skills",
     "description": "Style skills section title"
   },
-  "appliedStyles": {
-    "message": "Applied Styles:",
-    "description": "Applied styles label"
-  },
   "removeElement": {
     "message": "Remove selected element",
     "description": "Remove selected element tooltip"
