@@ -132,11 +132,11 @@
     "description": "Top bar style controls"
   },
   "hideSiteStyles": {
-    "message": "关闭此网站的样式",
+    "message": "关闭 {domain} 全站的样式",
     "description": "Top bar style controls"
   },
   "showSiteStyles": {
-    "message": "开启此网站的样式",
+    "message": "开启 {domain} 全站的样式",
     "description": "Top bar style controls"
   },
   "nothingToUndo": {
@@ -1290,5 +1290,9 @@
   "turnUsageDetail": {
     "message": "输入约 {input} · 输出约 {output} tokens（服务商未返回用量时为估算值）",
     "description": "Per-turn token usage tooltip"
+  },
+  "scopeHint": {
+    "message": "作用于 {domain} 全站",
+    "description": "Style scope hint after applying"
   }
 }

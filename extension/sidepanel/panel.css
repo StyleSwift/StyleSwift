@@ -1136,6 +1136,10 @@ pre code {
   font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
   margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* 超时进度条 */

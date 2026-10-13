@@ -3747,7 +3747,7 @@ async function refreshStyleControls() {
 	toggleBtn.setAttribute("aria-pressed", String(!disabled));
 	toggleBtn.querySelector(".icon").classList.toggle("icon-eye", !disabled);
 	toggleBtn.querySelector(".icon").classList.toggle("icon-eye-off", disabled);
-	const label = getMessage(disabled ? "showSiteStyles" : "hideSiteStyles");
+	const label = formatMessage(disabled ? "showSiteStyles" : "hideSiteStyles", { domain });
 	toggleBtn.title = label;
 	toggleBtn.setAttribute("aria-label", label);
 }
@@ -7259,13 +7259,13 @@ class ConfirmationOverlay {
 	show(options = {}) {
 		const { applyCount = 1, onUndo, onUndoAll, onConfirm } = options;
 
+		// 如果已有浮层，先移除（hide 会重置 applyCount，必须在赋值之前）
+		this.hide(false);
+
 		this.applyCount = applyCount;
 		this.onUndo = onUndo;
 		this.onUndoAll = onUndoAll;
 		this.onConfirm = onConfirm;
-
-		// 如果已有浮层，先移除
-		this.hide(false);
 
 		// 创建浮层
 		this.overlay = this._createOverlayElement();
@@ -7347,7 +7347,7 @@ class ConfirmationOverlay {
               ${getMessage("undoShort")}
             </button>
           </div>
-          <span class="confirmation-hint">${getMessage("orKeepTyping")}</span>
+          <span class="confirmation-hint" title="${escapeHtml(formatMessage("scopeHint", { domain: stateManager.get("currentDomain") || "" }))}">${escapeHtml(formatMessage("scopeHint", { domain: stateManager.get("currentDomain") || "" }))} · ${getMessage("orKeepTyping")}</span>
         </div>
       `;
 		} else {
@@ -7373,7 +7373,7 @@ class ConfirmationOverlay {
               </div>
             </div>
           </div>
-          <span class="confirmation-hint">${getMessage("orKeepTyping")}</span>
+          <span class="confirmation-hint" title="${escapeHtml(formatMessage("scopeHint", { domain: stateManager.get("currentDomain") || "" }))}">${escapeHtml(formatMessage("scopeHint", { domain: stateManager.get("currentDomain") || "" }))} · ${getMessage("orKeepTyping")}</span>
         </div>
         <div class="confirmation-timeout">
           <div class="confirmation-timeout-bar" style="width: 100%"></div>

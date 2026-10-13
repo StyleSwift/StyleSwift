@@ -132,11 +132,11 @@
     "description": "Top bar style controls"
   },
   "hideSiteStyles": {
-    "message": "Turn off styles on this site",
+    "message": "Turn off styles on {domain} (all pages)",
     "description": "Top bar style controls"
   },
   "showSiteStyles": {
-    "message": "Turn on styles on this site",
+    "message": "Turn on styles on {domain} (all pages)",
     "description": "Top bar style controls"
   },
   "nothingToUndo": {
@@ -1290,5 +1290,9 @@
   "turnUsageDetail": {
     "message": "Input ≈ {input} · Output ≈ {output} tokens (estimated when the provider doesn't report usage)",
     "description": "Per-turn token usage tooltip"
+  },
+  "scopeHint": {
+    "message": "Applies to all pages on {domain}",
+    "description": "Style scope hint after applying"
   }
 }
