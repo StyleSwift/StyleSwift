@@ -180,12 +180,12 @@ export class TodoCardManager {
 				});
 
 				if (editedTodos.length === 0) {
-					const { rejectPlan } = await import("./agent/todo-manager.js");
+					const { rejectPlan } = await import("../agent/todo-manager.js");
 					rejectPlan();
 					return;
 				}
 
-				const { confirmPlan } = await import("./agent/todo-manager.js");
+				const { confirmPlan } = await import("../agent/todo-manager.js");
 				confirmPlan(editedTodos);
 			});
 		}
@@ -194,7 +194,7 @@ export class TodoCardManager {
 		const cancelBtn = container.querySelector(".todo-cancel-btn");
 		if (cancelBtn) {
 			cancelBtn.addEventListener("click", async () => {
-				const { rejectPlan } = await import("./agent/todo-manager.js");
+				const { rejectPlan } = await import("../agent/todo-manager.js");
 				rejectPlan();
 			});
 		}
