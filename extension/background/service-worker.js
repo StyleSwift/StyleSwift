@@ -6,15 +6,20 @@ chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 // === 图标角标：当前站点有样式时显示 ON，被关闭时显示 OFF ===
 async function updateBadge(tab) {
 	let hostname;
+	let path;
 	try {
-		hostname = new URL(tab.url).hostname;
+		const url = new URL(tab.url);
+		hostname = url.hostname;
+		// 路径规则同 session/context.js extractPath
+		path = url.pathname.replace(/\/+$/, "") || "/";
 	} catch {
 		return;
 	}
+	const pKey = `active_styles:${hostname}:page:${path}`;
 	const aKey = `active_styles:${hostname}`;
 	const dKey = `styles_disabled:${hostname}`;
-	const r = await chrome.storage.local.get([aKey, dKey]);
-	const text = r[aKey] ? (r[dKey] ? "OFF" : "ON") : "";
+	const r = await chrome.storage.local.get([pKey, aKey, dKey]);
+	const text = r[pKey] || r[aKey] ? (r[dKey] ? "OFF" : "ON") : "";
 	await chrome.action.setBadgeText({ tabId: tab.id, text });
 	await chrome.action.setBadgeBackgroundColor({
 		tabId: tab.id,

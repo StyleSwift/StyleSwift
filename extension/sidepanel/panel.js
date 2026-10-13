@@ -42,6 +42,12 @@ import { ConfirmationOverlay } from "./ui/confirmation-overlay.js";
 import { escapeHtml, iconHtml } from "./ui/dom-utils.js";
 import { SkillLoader } from "./skill-loader.js";
 import {
+	extractPath,
+	getCurrentSession,
+	pageActiveKey,
+	pageStylesKey,
+} from "./session/context.js";
+import {
 	StyleSkillStore,
 	formatSkillFile,
 	parseSkillFile,
@@ -1136,7 +1142,9 @@ async function initMainView() {
 	// 跟随当前窗口的活动标签页切换（扩展页、新标签页等会显示受限状态）
 	chrome.tabs.onActivated.addListener(handleActiveTabChange);
 	chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
-		if (tab.active && changeInfo.status === "complete") handleActiveTabChange();
+		if (tab.active && (changeInfo.status === "complete" || changeInfo.url)) {
+			handleActiveTabChange();
+		}
 	});
 
 	await loadCurrentTab();
@@ -1157,7 +1165,18 @@ async function handleActiveTabChange() {
 		// 无权限读取或非标准 URL：按受限页处理
 	}
 	const sameSite = host && host === stateManager.get("currentDomain");
-	if (sameSite && stateManager.get("pageStatus") !== "restricted") return;
+	if (sameSite && stateManager.get("pageStatus") !== "restricted") {
+		const path = extractPath(tab.url);
+		if (path === stateManager.get("currentPath")) return;
+		stateManager.set("currentPath", path);
+		// 同站换页：仅当该页应使用的会话变化（页面级会话）时才重新加载
+		const session = await import("./session.js");
+		const resolved = await session.resolveSession(host, path);
+		if (resolved.id === stateManager.get("currentSessionId") && !scopeMismatch) {
+			updateScopeButton();
+			return;
+		}
+	}
 	await loadCurrentTab();
 }
 
@@ -1171,8 +1190,11 @@ async function loadCurrentTab() {
 	stateManager.set("pageStatus", "ready");
 	stateManager.set("currentDomain", null);
 	setHasActiveStyles(false);
+	setScopeMismatch(null);
 	updateTopBarDisplay("--", getMessage("newSession"));
 	showEmptyState();
+	const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+	stateManager.set("currentPath", extractPath(activeTab?.url));
 
 	// === Step 4: 获取域名 ===
 	try {
@@ -1256,16 +1278,26 @@ async function loadSessionForDomain(domain) {
 		// 动态导入依赖模块
 		const session = await import("./session.js");
 
-		// 获取或创建会话
-		const sessionId = await session.getOrCreateSession(domain);
-		console.log("[Panel] Session loaded:", sessionId);
+		// 按当前页面路径解析会话（页面级会话优先）
+		const resolved = await session.resolveSession(
+			domain,
+			stateManager.get("currentPath") || "/",
+		);
+		const sessionId = resolved.id;
+		console.log("[Panel] Session loaded:", sessionId, resolved.scope);
 
 		// 创建 SessionContext 并设置为当前会话
-		const currentSession = new session.SessionContext(domain, sessionId);
+		const currentSession = new session.SessionContext(
+			domain,
+			sessionId,
+			resolved.scope,
+			resolved.path,
+		);
 		session.setCurrentSession(currentSession);
+		updateScopeButton();
 
 		// 记录活跃会话（确保下次打开 Side Panel 时恢复到此会话）
-		await session.setActiveSession(domain, sessionId);
+		await session.setActiveSession(domain, sessionId, resolved.scope, resolved.path);
 
 		// 更新全局状态中的会话 ID
 		stateManager.set("currentSessionId", sessionId);
@@ -1504,6 +1536,12 @@ async function handleSendClick() {
 	// 禁止在受限页面发送
 	if (AppState.pageStatus === "restricted") {
 		console.warn("[Panel] Page is restricted, cannot send message");
+		return;
+	}
+
+	// 页面级会话不在其页面时不发送（Agent 会按当前页面解析到其他会话）
+	if (scopeMismatch) {
+		showError(getMessage("scopeMismatchBlocked"));
 		return;
 	}
 
@@ -1888,7 +1926,7 @@ async function handleSendClick() {
 		if (applyStylesCount > 0) {
 			showConfirmationOverlay({
 				applyCount: applyStylesCount,
-				domain: stateManager.get("currentDomain") || "",
+				scopeText: scopeHintText(),
 				onConfirm: () => {
 					console.log("[Panel] 样式已确认");
 				},
@@ -2837,6 +2875,10 @@ async function handleSkillChipClick(skill) {
 		console.warn("[Panel] Page is restricted, cannot apply skill");
 		return;
 	}
+	if (scopeMismatch) {
+		showError(getMessage("scopeMismatchBlocked"));
+		return;
+	}
 
 	const prompt = skill.prompt || `Apply my "${skill.name}" style`;
 
@@ -3012,7 +3054,7 @@ async function handleSkillChipClick(skill) {
 		if (applyStylesCount > 0) {
 			showConfirmationOverlay({
 				applyCount: applyStylesCount,
-				domain: stateManager.get("currentDomain") || "",
+				scopeText: scopeHintText(),
 				onConfirm: () => {
 					console.log("[Panel] Styles confirmed from skill");
 				},
@@ -3409,12 +3451,18 @@ function bindTopBarEvents() {
 		.getElementById("toggle-styles-btn")
 		?.addEventListener("click", handleToggleStylesClick);
 	stateManager.subscribe("currentDomain", refreshStyleControls);
+	stateManager.subscribe("currentPath", refreshStyleControls);
+	document.getElementById("scope-btn")?.addEventListener("click", handleScopeToggle);
 	chrome.storage.onChanged.addListener((changes, area) => {
 		const domain = stateManager.get("currentDomain");
 		if (
 			area === "local" &&
-			(`active_styles:${domain}` in changes ||
-				`styles_disabled:${domain}` in changes)
+			Object.keys(changes).some(
+				(k) =>
+					k === `active_styles:${domain}` ||
+					k.startsWith(`active_styles:${domain}:page:`) ||
+					k === `styles_disabled:${domain}`,
+			)
 		) {
 			refreshStyleControls();
 		}
@@ -3445,10 +3493,11 @@ async function refreshStyleControls() {
 	if (!undoBtn || !toggleBtn) return;
 
 	const domain = stateManager.get("currentDomain");
+	const pKey = pageStylesKey(domain, stateManager.get("currentPath") || "/");
 	const aKey = `active_styles:${domain}`;
 	const dKey = `styles_disabled:${domain}`;
-	const r = domain ? await chrome.storage.local.get([aKey, dKey]) : {};
-	const hasStyles = !!r[aKey];
+	const r = domain ? await chrome.storage.local.get([pKey, aKey, dKey]) : {};
+	const hasStyles = !!(r[pKey] || r[aKey]);
 	const disabled = !!r[dKey];
 
 	undoBtn.classList.toggle("hidden", !hasStyles);
@@ -3495,6 +3544,101 @@ async function handleToggleStylesClick() {
 	} catch (error) {
 		console.error("[Panel] 切换站点样式失败:", error);
 		showError(getMessage("toggleStylesFailed"));
+	}
+}
+
+/** 当前查看的页面级会话是否不属于当前页面 */
+let scopeMismatch = false;
+
+/**
+ * 显示/隐藏「页面级会话不匹配」提示（规格 7.2）
+ * @param {string|null} text - 提示文案，null 表示隐藏
+ */
+function setScopeMismatch(text) {
+	scopeMismatch = !!text;
+	document.getElementById("scope-notice")?.remove();
+	if (!text) return;
+	const notice = document.createElement("div");
+	notice.id = "scope-notice";
+	notice.className = "scope-notice";
+	notice.textContent = text;
+	DOM.chatArea?.prepend(notice);
+}
+
+/**
+ * 移除某页面的页面级覆盖（活跃指针与页面级活跃样式）
+ */
+async function clearPageOverride(domain, path) {
+	await chrome.storage.local.remove([
+		pageActiveKey(domain, path),
+		pageStylesKey(domain, path),
+	]);
+}
+
+/** 应用样式后浮层中的作用范围说明 */
+function scopeHintText() {
+	const session = getCurrentSession();
+	return session?.scope === "page"
+		? formatMessage("scopeHintPage", { path: session.path })
+		: formatMessage("scopeHint", { domain: stateManager.get("currentDomain") || "" });
+}
+
+/**
+ * 刷新输入区「全站 / 仅本页」开关
+ */
+function updateScopeButton() {
+	const btn = document.getElementById("scope-btn");
+	if (!btn) return;
+	const session = getCurrentSession();
+	const isPage = session?.scope === "page";
+	btn.classList.toggle("active", isPage);
+	const icon = btn.querySelector(".icon");
+	icon.classList.toggle("icon-file", isPage);
+	icon.classList.toggle("icon-globe", !isPage);
+	btn.querySelector(".scope-label").textContent = getMessage(
+		isPage ? "scopePage" : "scopeDomain",
+	);
+	const label = formatMessage(isPage ? "scopePageTitle" : "scopeDomainTitle", {
+		domain: stateManager.get("currentDomain") || "",
+		path: isPage ? session.path : stateManager.get("currentPath") || "/",
+	});
+	btn.title = label;
+	btn.setAttribute("aria-label", label);
+	btn.setAttribute("aria-pressed", String(isPage));
+}
+
+/**
+ * 切换当前会话的作用范围：全站 ↔ 仅当前页面（样式保留，只改变应用范围）
+ */
+async function handleScopeToggle() {
+	if (AppState.agentStatus === "running") return;
+	const domain = stateManager.get("currentDomain");
+	const current = getCurrentSession();
+	if (!domain || !current) return;
+	const path = stateManager.get("currentPath") || "/";
+	const toScope = current.scope === "page" ? "domain" : "page";
+
+	try {
+		const session = await import("./session.js");
+		const { sendToContentScript } = await import("./tools.js");
+		const ctx = await session.setSessionScope(
+			domain,
+			current.sessionId,
+			toScope,
+			toScope === "page" ? path : null,
+		);
+		session.setCurrentSession(ctx);
+		// 改为全站时，移除本页其他页面级会话的覆盖，确保本会话在本页生效
+		if (toScope === "domain") await clearPageOverride(domain, path);
+
+		const { [ctx.stylesKey]: css = "" } = await chrome.storage.local.get(ctx.stylesKey);
+		await sendToContentScript({ tool: "load_session_css", args: { css } });
+		setScopeMismatch(null);
+		updateScopeButton();
+		refreshStyleControls();
+	} catch (error) {
+		console.error("[Panel] Failed to switch style scope:", error);
+		showError(getMessage("scopeSwitchFailed"));
 	}
 }
 
@@ -3565,14 +3709,33 @@ async function renderSessionList() {
 		// 获取当前会话 ID
 		const currentSessionId = session.getCurrentSession()?.sessionId;
 
-		// 渲染每个会话
-		for (const sessionItem of sorted) {
-			const card = await createSessionCard(
-				sessionItem,
-				domain,
-				currentSessionId,
-			);
-			listContainer.appendChild(card);
+		// 有页面级会话时按「全站 / 各页面路径」分组（规格 5）
+		const hasPageSessions = sorted.some((s) => s.scope === "page");
+		const groups = new Map();
+		for (const item of sorted) {
+			const key = item.scope === "page" ? item.path : "";
+			groups.set(key, [...(groups.get(key) || []), item]);
+		}
+		const currentPath = stateManager.get("currentPath") || "/";
+		const orderedKeys = [...groups.keys()].sort((a, b) =>
+			a === "" ? -1 : b === "" ? 1 : a.localeCompare(b),
+		);
+		for (const key of orderedKeys) {
+			if (hasPageSessions) {
+				const title = document.createElement("div");
+				title.className =
+					"session-group-title" + (key && key === currentPath ? " current-path" : "");
+				title.textContent = key || getMessage("scopeGroupDomain");
+				listContainer.appendChild(title);
+			}
+			for (const sessionItem of groups.get(key)) {
+				const card = await createSessionCard(
+					sessionItem,
+					domain,
+					currentSessionId,
+				);
+				listContainer.appendChild(card);
+			}
 		}
 
 		console.log(
@@ -3680,8 +3843,20 @@ async function handleSessionClick(domain, sessionId) {
 		const session = await import("./session.js");
 		const { sendToContentScript } = await import("./tools.js");
 
-		// === 1. 卸载当前会话样式 ===
-		try {
+		// === 1. 创建目标会话上下文；页面级会话只在其页面生效 ===
+		const newSession = await session.loadSessionContext(domain, sessionId);
+		session.setCurrentSession(newSession);
+		updateScopeButton();
+		const currentPath = stateManager.get("currentPath") || "/";
+		const mismatch = newSession.scope === "page" && newSession.path !== currentPath;
+		setScopeMismatch(
+			mismatch
+				? formatMessage("scopeMismatch", { path: newSession.path, current: currentPath })
+				: null,
+		);
+
+		// === 2. 卸载当前会话样式并加载目标会话样式（不匹配时保持页面现状） ===
+		if (!mismatch) try {
 			await sendToContentScript({ tool: "unload_session_css" });
 			console.log("[Panel] Unloaded current session CSS");
 		} catch (error) {
@@ -3692,12 +3867,11 @@ async function handleSessionClick(domain, sessionId) {
 			// 继续执行，不中断切换流程
 		}
 
-		// === 2. 创建新的 SessionContext 并设置为当前会话 ===
-		const newSession = new session.SessionContext(domain, sessionId);
-		session.setCurrentSession(newSession);
-
-		// 记录活跃会话（确保下次打开 Side Panel 时恢复到此会话）
-		await session.setActiveSession(domain, sessionId);
+		if (!mismatch) {
+			// 记录活跃会话；在本页选择全站会话时，移除本页的页面级覆盖
+			await session.setActiveSession(domain, sessionId, newSession.scope, newSession.path);
+			if (newSession.scope === "domain") await clearPageOverride(domain, currentPath);
+		}
 
 		// === 3. 加载目标会话样式并注入 ===
 		const stylesKey = newSession.stylesKey;
@@ -3706,7 +3880,9 @@ async function handleSessionClick(domain, sessionId) {
 
 		// 同步 active_styles（供页面刷新时 early-inject.js 读取）
 		const aKey = newSession.activeStylesKey;
-		if (sessionCSS && sessionCSS.trim()) {
+		if (mismatch) {
+			// 页面级会话不在其页面：不改动当前页面样式
+		} else if (sessionCSS && sessionCSS.trim()) {
 			await chrome.storage.local.set({ [aKey]: sessionCSS });
 			try {
 				await sendToContentScript({
@@ -3803,6 +3979,11 @@ async function handleNewSession() {
 
 		// 记录活跃会话（确保下次打开 Side Panel 时恢复到此新会话）
 		await session.setActiveSession(domain, newSessionId);
+		// 新会话为全站范围：移除本页的页面级覆盖，否则本页仍会使用页面级会话
+		await clearPageOverride(domain, stateManager.get("currentPath") || "/");
+		stateManager.set("currentSessionId", newSessionId);
+		setScopeMismatch(null);
+		updateScopeButton();
 
 		// 卸载当前会话样式并清空 active_styles
 		try {

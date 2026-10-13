@@ -2,7 +2,14 @@
 
 > 版本：v1.0
 > 日期：2026-04-10
-> 状态：待实现
+> 状态：已实现（2026-10-13）
+>
+> 实现与本设计的差异：
+> - 域名级活跃样式沿用旧键 `active_styles:{domain}`（未新增 `:domain` 后缀），无需迁移
+> - 页面级活跃会话指针：`sessions:{domain}:active:page:{path}`；会话解析统一走 `session/manager.resolveSession`（Agent 与 Side Panel 共用）
+> - 页面级会话与当前页面不匹配时显示提示并阻止发送；切换为「全站」即可继续
+> - 在某页面选择全站会话或新建会话时，会移除该页面的页面级覆盖
+> - SPA 导航：content.js 每秒检测路径变化，Side Panel 通过 tabs.onUpdated(url) 同步
 
 ---
 

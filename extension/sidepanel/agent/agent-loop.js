@@ -502,7 +502,8 @@ export async function agentLoop(prompt, uiCallbacks) {
   const { getTargetTabId, lockTab, unlockTab, executeTool } =
     await import("../tools.js");
   const {
-    getOrCreateSession,
+    resolveSession,
+    extractPath,
     loadAndPrepareHistory,
     saveHistory,
     loadSessionMeta,
@@ -540,8 +541,11 @@ export async function agentLoop(prompt, uiCallbacks) {
       return;
     }
     const domain = access.domain || "unknown";
-    const sessionId = await getOrCreateSession(domain);
-    const session = new SessionContext(domain, sessionId);
+    // 按当前页面路径解析会话（页面级会话优先，见 session/manager.resolveSession）
+    const tab = await chrome.tabs.get(tabId);
+    const resolved = await resolveSession(domain, extractPath(tab?.url));
+    const sessionId = resolved.id;
+    const session = new SessionContext(domain, sessionId, resolved.scope, resolved.path);
     setCurrentSession(session);
     const historyData = await loadAndPrepareHistory(domain, sessionId);
     let fullHistory = historyData.messages;

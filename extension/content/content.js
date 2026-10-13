@@ -1206,6 +1206,35 @@ let stylesDisabled = false;
 chrome.storage.local.get(stylesDisabledKey).then((r) => {
   stylesDisabled = !!r[stylesDisabledKey];
 });
+
+// === 页面级样式：当前路径的生效样式 key（页面级优先，路径规则同 session/context.js）===
+const currentPath = () => location.pathname.replace(/\/+$/, "") || "/";
+
+async function effectiveStyles() {
+  const pageKey = `active_styles:${location.hostname}:page:${currentPath()}`;
+  const domainKey = `active_styles:${location.hostname}`;
+  const r = await chrome.storage.local.get([pageKey, domainKey]);
+  return r[pageKey] ? { key: pageKey, css: r[pageKey] } : { key: domainKey, css: r[domainKey] || "" };
+}
+
+// SPA 导航不刷新页面：路径变化且生效 key 改变时切换样式
+// ponytail: 1s 轮询 location，需要更及时时改用 Navigation API 事件
+let lastPath = currentPath();
+let lastEffectiveKey = null;
+effectiveStyles().then((e) => {
+  lastEffectiveKey = e.key;
+});
+setInterval(async () => {
+  if (currentPath() === lastPath) return;
+  lastPath = currentPath();
+  const { key, css } = await effectiveStyles();
+  if (key === lastEffectiveKey) return;
+  lastEffectiveKey = key;
+  removeEarlyInjectStyle();
+  cssStack.length = 0;
+  if (css.trim()) cssStack.push(css);
+  applyCurrentCSS();
+}, 1000);
 chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area !== "local" || !(stylesDisabledKey in changes)) return;
   stylesDisabled = !!changes[stylesDisabledKey].newValue;
@@ -1213,8 +1242,7 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
     removeEarlyInjectStyle();
   } else if (cssStack.length === 0) {
     // 早期注入的样式已被移除且尚未被 Side Panel 接管：从持久化样式恢复
-    const activeKey = `active_styles:${location.hostname}`;
-    const { [activeKey]: css = "" } = await chrome.storage.local.get(activeKey);
+    const { css } = await effectiveStyles();
     if (css.trim()) cssStack.push(css);
   }
   applyCurrentCSS();

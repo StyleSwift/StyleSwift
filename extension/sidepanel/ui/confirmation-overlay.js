@@ -3,7 +3,7 @@
  * 从 panel.js 拆分（行为不变）
  */
 
-import { getMessage, formatMessage } from "../i18n.js";
+import { getMessage } from "../i18n.js";
 import { escapeHtml } from "./dom-utils.js";
 
 /**
@@ -56,13 +56,13 @@ export class ConfirmationOverlay {
 	 * @param {Function} options.onConfirm - 确认回调
 	 */
 	show(options = {}) {
-		const { applyCount = 1, domain = "", onUndo, onUndoAll, onConfirm } = options;
+		const { applyCount = 1, scopeText = "", onUndo, onUndoAll, onConfirm } = options;
 
 		// 如果已有浮层，先移除（hide 会重置 applyCount，必须在赋值之前）
 		this.hide(false);
 
 		this.applyCount = applyCount;
-		this.domain = domain;
+		this.scopeText = scopeText;
 		this.onUndo = onUndo;
 		this.onUndoAll = onUndoAll;
 		this.onConfirm = onConfirm;
@@ -147,7 +147,7 @@ export class ConfirmationOverlay {
               ${getMessage("undoShort")}
             </button>
           </div>
-          <span class="confirmation-hint" title="${escapeHtml(formatMessage("scopeHint", { domain: this.domain }))}">${escapeHtml(formatMessage("scopeHint", { domain: this.domain }))} · ${getMessage("orKeepTyping")}</span>
+          <span class="confirmation-hint" title="${escapeHtml(this.scopeText)}">${escapeHtml(this.scopeText)} · ${getMessage("orKeepTyping")}</span>
         </div>
       `;
 		} else {
@@ -173,7 +173,7 @@ export class ConfirmationOverlay {
               </div>
             </div>
           </div>
-          <span class="confirmation-hint" title="${escapeHtml(formatMessage("scopeHint", { domain: this.domain }))}">${escapeHtml(formatMessage("scopeHint", { domain: this.domain }))} · ${getMessage("orKeepTyping")}</span>
+          <span class="confirmation-hint" title="${escapeHtml(this.scopeText)}">${escapeHtml(this.scopeText)} · ${getMessage("orKeepTyping")}</span>
         </div>
         <div class="confirmation-timeout">
           <div class="confirmation-timeout-bar" style="width: 100%"></div>

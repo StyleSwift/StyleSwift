@@ -11,17 +11,21 @@
 // 样式注入
 (async () => {
   const domain = location.hostname;
+  // 页面级样式优先于域名级（路径规则同 session/context.js extractPath）
+  const path = location.pathname.replace(/\/+$/, '') || '/';
+  const pageKey = `active_styles:${domain}:page:${path}`;
   const key = `active_styles:${domain}`;
   const disabledKey = `styles_disabled:${domain}`;
-  const result = await chrome.storage.local.get([key, disabledKey]);
+  const result = await chrome.storage.local.get([pageKey, key, disabledKey]);
+  const css = result[pageKey] || result[key];
 
-  if (!result[key] || result[disabledKey]) return;
+  if (!css || result[disabledKey]) return;
   // Side Panel 可能动态重复注入本脚本：已有样式元素时不再追加
   if (document.getElementById('styleswift-active-persistent')) return;
 
   const style = document.createElement('style');
   style.id = 'styleswift-active-persistent';
-  style.textContent = result[key];
+  style.textContent = css;
 
   if (document.head) {
     document.head.appendChild(style);

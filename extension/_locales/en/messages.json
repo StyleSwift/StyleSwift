@@ -1494,5 +1494,41 @@
   "importSkillsFailed": {
     "message": "Could not import: {files}",
     "description": "Import failures"
+  },
+  "scopeDomain": {
+    "message": "Whole site",
+    "description": "Style scope: whole domain"
+  },
+  "scopePage": {
+    "message": "This page",
+    "description": "Style scope: current page"
+  },
+  "scopeDomainTitle": {
+    "message": "Styles apply to all pages on {domain}. Click to apply only to {path}",
+    "description": "Scope button title (domain)"
+  },
+  "scopePageTitle": {
+    "message": "Styles apply only to {path}. Click to apply to the whole site ({domain})",
+    "description": "Scope button title (page)"
+  },
+  "scopeHintPage": {
+    "message": "Applies only to {path}",
+    "description": "Overlay scope hint (page)"
+  },
+  "scopeMismatch": {
+    "message": "This session's styles apply to {path}; you're on {current}. Switch to “Whole site” or open {path} to continue.",
+    "description": "Page session mismatch notice"
+  },
+  "scopeMismatchBlocked": {
+    "message": "This session belongs to another page. Switch to “Whole site” or pick another session.",
+    "description": "Send blocked by scope mismatch"
+  },
+  "scopeSwitchFailed": {
+    "message": "Failed to change style scope",
+    "description": "Scope switch error"
+  },
+  "scopeGroupDomain": {
+    "message": "Whole site",
+    "description": "Session list group title for domain sessions"
   }
 }

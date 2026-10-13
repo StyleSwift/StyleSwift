@@ -1494,5 +1494,41 @@
   "importSkillsFailed": {
     "message": "无法导入：{files}",
     "description": "Import failures"
+  },
+  "scopeDomain": {
+    "message": "全站",
+    "description": "Style scope: whole domain"
+  },
+  "scopePage": {
+    "message": "仅本页",
+    "description": "Style scope: current page"
+  },
+  "scopeDomainTitle": {
+    "message": "样式作用于 {domain} 全站，点击改为仅作用于 {path}",
+    "description": "Scope button title (domain)"
+  },
+  "scopePageTitle": {
+    "message": "样式仅作用于 {path}，点击改为作用于全站（{domain}）",
+    "description": "Scope button title (page)"
+  },
+  "scopeHintPage": {
+    "message": "仅作用于 {path}",
+    "description": "Overlay scope hint (page)"
+  },
+  "scopeMismatch": {
+    "message": "此会话样式适用于 {path}，当前页面为 {current}。切换为「全站」或前往 {path} 后继续。",
+    "description": "Page session mismatch notice"
+  },
+  "scopeMismatchBlocked": {
+    "message": "此会话属于其他页面，请切换为「全站」或选择其他会话。",
+    "description": "Send blocked by scope mismatch"
+  },
+  "scopeSwitchFailed": {
+    "message": "切换样式范围失败",
+    "description": "Scope switch error"
+  },
+  "scopeGroupDomain": {
+    "message": "全站样式",
+    "description": "Session list group title for domain sessions"
   }
 }

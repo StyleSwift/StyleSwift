@@ -260,6 +260,8 @@
 .icon-clock         { --icon-src: url("https://api.iconify.design/lucide/clock.svg"); }
 .icon-refresh       { --icon-src: url("https://api.iconify.design/lucide/refresh-cw.svg"); }
 .icon-download      { --icon-src: url("https://api.iconify.design/lucide/download.svg"); }
+.icon-globe         { --icon-src: url("https://api.iconify.design/lucide/globe.svg"); }
+.icon-file          { --icon-src: url("https://api.iconify.design/lucide/file.svg"); }
 .icon-undo          { --icon-src: url("https://api.iconify.design/lucide/undo-2.svg"); }
 .icon-loader        { --icon-src: url("https://api.iconify.design/lucide/loader-2.svg"); }
 
@@ -1186,6 +1188,38 @@ pre code {
 .toolbar-btn:active {
   background: var(--color-bg-active);
   transform: scale(0.9);
+}
+
+/* 样式作用范围开关（全站 / 仅本页） */
+.toolbar-btn.scope-btn {
+  width: auto;
+  gap: 4px;
+  padding: 0 6px;
+  font-size: var(--font-size-xs);
+}
+
+/* 页面级会话与当前页面不匹配的提示 */
+.scope-notice {
+  margin: var(--spacing-sm) var(--spacing-md) 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-light);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* 会话列表分组标题 */
+.session-group-title {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.session-group-title.current-path {
+  color: var(--color-primary);
 }
 
 /* 激活态 — 使用品牌主色（替代蓝色） */
