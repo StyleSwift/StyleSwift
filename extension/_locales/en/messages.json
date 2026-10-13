@@ -1478,5 +1478,25 @@
   "skillDesc_bolder": {
     "message": "More visual impact for safe designs",
     "description": "Static skill display desc"
+  },
+  "importSkills": {
+    "message": "Import Skills (.md)",
+    "description": "Import skills button"
+  },
+  "exportSkill": {
+    "message": "Export as .md file to share",
+    "description": "Export skill button title"
+  },
+  "exportSkillFailed": {
+    "message": "Failed to export skill",
+    "description": "Export error"
+  },
+  "importSkillsDone": {
+    "message": "Imported {count} skill(s).",
+    "description": "Import result"
+  },
+  "importSkillsFailed": {
+    "message": "Could not import: {files}",
+    "description": "Import failures"
   }
 }

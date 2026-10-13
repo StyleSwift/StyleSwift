@@ -259,6 +259,7 @@
 .icon-check-circle  { --icon-src: url("https://api.iconify.design/lucide/check-circle-2.svg"); }
 .icon-clock         { --icon-src: url("https://api.iconify.design/lucide/clock.svg"); }
 .icon-refresh       { --icon-src: url("https://api.iconify.design/lucide/refresh-cw.svg"); }
+.icon-download      { --icon-src: url("https://api.iconify.design/lucide/download.svg"); }
 .icon-undo          { --icon-src: url("https://api.iconify.design/lucide/undo-2.svg"); }
 .icon-loader        { --icon-src: url("https://api.iconify.design/lucide/loader-2.svg"); }
 

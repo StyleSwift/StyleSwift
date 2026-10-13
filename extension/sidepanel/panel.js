@@ -34,7 +34,12 @@ import {
 } from "./i18n.js";
 import { runGetUserProfile, runUpdateUserProfile } from "./profile.js";
 import { SkillLoader } from "./skill-loader.js";
-import { StyleSkillStore } from "./style-skill.js";
+import {
+	StyleSkillStore,
+	formatSkillFile,
+	parseSkillFile,
+	MAX_SKILL_FILE_BYTES,
+} from "./style-skill.js";
 
 // ============================================================================
 // Icon Utility — Iconify 图标辅助函数
@@ -4496,6 +4501,13 @@ async function initSettingsView() {
 		DOM.saveProfileBtn.addEventListener("click", handleSaveUserProfile);
 	}
 
+	// 导入风格技能
+	const importSkillInput = document.getElementById("import-skill-input");
+	document
+		.getElementById("import-skill-btn")
+		?.addEventListener("click", () => importSkillInput?.click());
+	importSkillInput?.addEventListener("change", handleImportSkills);
+
 	// 清理历史数据按钮
 	const clearStorageBtn = document.getElementById("clear-storage-btn");
 	if (clearStorageBtn) {
@@ -4919,7 +4931,7 @@ function createUserSkillItem(skill, isEnabled) {
 	item.className = "user-skill-item";
 	item.dataset.skillId = skill.id;
 
-	const createdDate = new Date(skill.createdAt).toLocaleDateString("zh-CN");
+	const createdDate = new Date(skill.createdAt).toLocaleDateString(getUILanguage());
 
 	item.innerHTML = `
     <div class="user-skill-info">
@@ -4935,6 +4947,7 @@ function createUserSkillItem(skill, isEnabled) {
         <input type="checkbox" ${isEnabled ? "checked" : ""}>
         <span class="toggle-slider"></span>
       </label>
+      <button class="btn-icon-small" data-action="export" title="${getMessage("exportSkill")}">${iconHtml("download", 13)}</button>
       <button class="btn-icon-small" data-action="edit" title="${getMessage("edit")}">${iconHtml("pencil", 13)}</button>
       <button class="btn-icon-small" data-action="delete" title="${getMessage("delete")}">${iconHtml("trash", 13)}</button>
     </div>
@@ -4961,6 +4974,9 @@ function createUserSkillItem(skill, isEnabled) {
 	const deleteBtn = item.querySelector('[data-action="delete"]');
 
 	editBtn.addEventListener("click", () => openSkillEditor(skill));
+	item
+		.querySelector('[data-action="export"]')
+		.addEventListener("click", () => exportUserSkill(skill));
 	deleteBtn.addEventListener("click", () => deleteSkillWithConfirmation(skill));
 
 	// 点击整个项目也可以编辑
@@ -4969,6 +4985,79 @@ function createUserSkillItem(skill, isEnabled) {
 		.addEventListener("click", () => openSkillEditor(skill));
 
 	return item;
+}
+
+/**
+ * 导出用户风格技能为 .md 文件
+ * @param {Object} skill - 技能索引条目
+ */
+async function exportUserSkill(skill) {
+	try {
+		const content = (await StyleSkillStore.load(skill.id)) || "";
+		const css = await StyleSkillStore.loadCss(skill.id);
+		const blob = new Blob([formatSkillFile(skill, content, css)], {
+			type: "text/markdown",
+		});
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = `${skill.name.replace(/[\\/:*?"<>|]/g, "_")}.md`;
+		link.click();
+		URL.revokeObjectURL(url);
+	} catch (err) {
+		console.error("[Panel] Failed to export skill:", err);
+		showError(getMessage("exportSkillFailed"));
+	}
+}
+
+/**
+ * 导入 .md 技能文件（可多选），每个文件作为新技能保存
+ * @param {Event} event - 文件选择事件
+ */
+async function handleImportSkills(event) {
+	const files = [...event.target.files];
+	event.target.value = "";
+	const status = document.getElementById("skill-import-status");
+	let imported = 0;
+	const failed = [];
+
+	for (const file of files) {
+		try {
+			if (file.size > MAX_SKILL_FILE_BYTES) throw new Error("too large");
+			const skill = parseSkillFile(
+				await file.text(),
+				file.name.replace(/\.(md|txt)$/i, ""),
+			);
+			await StyleSkillStore.save(
+				crypto.randomUUID().slice(0, 8),
+				skill.name,
+				skill.mood,
+				skill.sourceDomain || "import",
+				skill.content,
+				skill.cssContent
+					? { contentType: "mixed", cssContent: skill.cssContent }
+					: {},
+			);
+			imported++;
+		} catch (err) {
+			console.warn("[Panel] Skill import failed:", file.name, err);
+			failed.push(file.name);
+		}
+	}
+
+	status.textContent = [
+		imported ? formatMessage("importSkillsDone", { count: imported }) : "",
+		failed.length
+			? formatMessage("importSkillsFailed", { files: failed.join(", ") })
+			: "",
+	]
+		.filter(Boolean)
+		.join(" ");
+	status.classList.remove("hidden", "success", "error");
+	status.classList.add(failed.length ? "error" : "success");
+
+	await renderUserSkillList();
+	await renderSkillChips();
 }
 
 /**

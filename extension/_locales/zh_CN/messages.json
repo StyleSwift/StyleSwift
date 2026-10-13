@@ -1478,5 +1478,25 @@
   "skillDesc_bolder": {
     "message": "让平淡的设计更有冲击力",
     "description": "Static skill display desc"
+  },
+  "importSkills": {
+    "message": "导入风格技能（.md）",
+    "description": "Import skills button"
+  },
+  "exportSkill": {
+    "message": "导出为 .md 文件以便分享",
+    "description": "Export skill button title"
+  },
+  "exportSkillFailed": {
+    "message": "导出技能失败",
+    "description": "Export error"
+  },
+  "importSkillsDone": {
+    "message": "已导入 {count} 个技能。",
+    "description": "Import result"
+  },
+  "importSkillsFailed": {
+    "message": "无法导入：{files}",
+    "description": "Import failures"
   }
 }

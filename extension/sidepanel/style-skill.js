@@ -289,7 +289,81 @@ class StyleSkillStore {
 }
 
 // ============================================================================
+// 技能文件导入/导出（.md：frontmatter + 内容 + 可选 CSS 块）
+// ============================================================================
+
+/** 导入文件大小上限（字节） */
+const MAX_SKILL_FILE_BYTES = 200 * 1024;
+const MAX_SKILL_NAME_LENGTH = 60;
+const CSS_MARKER = "<!-- styleswift:css -->";
+
+const oneLine = (value) => String(value || "").replace(/\s*\n\s*/g, " ").trim();
+
+/**
+ * 生成可分享的技能文件文本
+ * @param {{name: string, mood?: string, sourceDomain?: string}} meta
+ * @param {string} content - 技能文档内容
+ * @param {string|null} cssContent - 可选 CSS Snippet
+ * @returns {string}
+ */
+function formatSkillFile(meta, content, cssContent) {
+  const header = [
+    "---",
+    `name: ${oneLine(meta.name)}`,
+    `mood: ${oneLine(meta.mood)}`,
+    `source: ${oneLine(meta.sourceDomain)}`,
+    "---",
+  ].join("\n");
+  const css = cssContent ? `\n\n${CSS_MARKER}\n\`\`\`css\n${cssContent}\n\`\`\`` : "";
+  return `${header}\n${content}${css}\n`;
+}
+
+/**
+ * 解析技能文件（导入的外部数据，需校验）
+ * @param {string} text - 文件内容
+ * @param {string} [fallbackName] - 无 name 时使用（如文件名）
+ * @returns {{name: string, mood: string, sourceDomain: string, content: string, cssContent: string|null}}
+ * @throws {Error} 文件过大、内容为空或缺少名称
+ */
+function parseSkillFile(text, fallbackName = "") {
+  if (new Blob([text]).size > MAX_SKILL_FILE_BYTES) {
+    throw new Error("Skill file too large");
+  }
+  let body = String(text).replace(/\r\n/g, "\n");
+  const meta = {};
+  const fm = body.match(/^---\n([\s\S]*?)\n---\n?/);
+  if (fm) {
+    for (const line of fm[1].split("\n")) {
+      const m = line.match(/^(\w+):\s*(.*)$/);
+      if (m) meta[m[1]] = m[2].trim();
+    }
+    body = body.slice(fm[0].length);
+  }
+
+  let cssContent = null;
+  const cssIndex = body.lastIndexOf(CSS_MARKER);
+  if (cssIndex >= 0) {
+    const block = body.slice(cssIndex + CSS_MARKER.length).match(/```css\n([\s\S]*?)\n```/);
+    cssContent = block ? block[1] : null;
+    body = body.slice(0, cssIndex);
+  }
+
+  const content = body.trim();
+  const name = oneLine(meta.name || fallbackName).slice(0, MAX_SKILL_NAME_LENGTH);
+  if (!content) throw new Error("Skill file has no content");
+  if (!name) throw new Error("Skill file has no name");
+
+  return {
+    name,
+    mood: oneLine(meta.mood),
+    sourceDomain: oneLine(meta.source),
+    content,
+    cssContent,
+  };
+}
+
+// ============================================================================
 // 导出
 // ============================================================================
 
-export { StyleSkillStore };
+export { StyleSkillStore, formatSkillFile, parseSkillFile, MAX_SKILL_FILE_BYTES };
