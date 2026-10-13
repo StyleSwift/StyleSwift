@@ -2155,15 +2155,7 @@ async function handleSendClick() {
 				onConfirm: () => {
 					console.log("[Panel] 样式已确认");
 				},
-				onUndo: async () => {
-					try {
-						const { executeTool } = await import("./tools.js");
-						await executeTool("apply_styles", { mode: "rollback_last" });
-						console.log("[Panel] 已直接撤销最后一步样式");
-					} catch (error) {
-						console.error("[Panel] 撤销失败:", error);
-					}
-				},
+				onUndo: handleUndoStyleClick,
 				onUndoAll: async () => {
 					try {
 						const { executeTool } = await import("./tools.js");
@@ -2172,6 +2164,7 @@ async function handleSendClick() {
 						console.log("[Panel] 已直接撤销所有样式");
 					} catch (error) {
 						console.error("[Panel] 全部撤销失败:", error);
+						showError(getMessage("undoStyleFailed"));
 					}
 				},
 			});
@@ -3302,15 +3295,7 @@ async function handleSkillChipClick(skill) {
 				onConfirm: () => {
 					console.log("[Panel] Styles confirmed from skill");
 				},
-				onUndo: async () => {
-					try {
-						const { executeTool } = await import("./tools.js");
-						await executeTool("apply_styles", { mode: "rollback_last" });
-						console.log("[Panel] Rolled back last style");
-					} catch (error) {
-						console.error("[Panel] Rollback failed:", error);
-					}
-				},
+				onUndo: handleUndoStyleClick,
 				onUndoAll: async () => {
 					try {
 						const { executeTool } = await import("./tools.js");
@@ -3319,6 +3304,7 @@ async function handleSkillChipClick(skill) {
 						console.log("[Panel] Rolled back all styles");
 					} catch (error) {
 						console.error("[Panel] Rollback all failed:", error);
+						showError(getMessage("undoStyleFailed"));
 					}
 				},
 			});
@@ -3705,6 +3691,26 @@ function bindTopBarEvents() {
 		});
 	}
 
+	// 样式控制：撤销上一步 / 站点样式开关
+	document
+		.getElementById("undo-style-btn")
+		?.addEventListener("click", handleUndoStyleClick);
+	document
+		.getElementById("toggle-styles-btn")
+		?.addEventListener("click", handleToggleStylesClick);
+	stateManager.subscribe("currentDomain", refreshStyleControls);
+	chrome.storage.onChanged.addListener((changes, area) => {
+		const domain = stateManager.get("currentDomain");
+		if (
+			area === "local" &&
+			(`active_styles:${domain}` in changes ||
+				`styles_disabled:${domain}` in changes)
+		) {
+			refreshStyleControls();
+		}
+	});
+	refreshStyleControls();
+
 	// 点击会话列表外部关闭
 	document.addEventListener("click", (e) => {
 		const panel = document.getElementById("session-list-panel");
@@ -3718,6 +3724,68 @@ function bindTopBarEvents() {
 			}
 		}
 	});
+}
+
+/**
+ * 按存储状态刷新顶栏样式控制按钮：有样式才显示，开关图标反映站点开/关
+ */
+async function refreshStyleControls() {
+	const undoBtn = document.getElementById("undo-style-btn");
+	const toggleBtn = document.getElementById("toggle-styles-btn");
+	if (!undoBtn || !toggleBtn) return;
+
+	const domain = stateManager.get("currentDomain");
+	const aKey = `active_styles:${domain}`;
+	const dKey = `styles_disabled:${domain}`;
+	const r = domain ? await chrome.storage.local.get([aKey, dKey]) : {};
+	const hasStyles = !!r[aKey];
+	const disabled = !!r[dKey];
+
+	undoBtn.classList.toggle("hidden", !hasStyles);
+	toggleBtn.classList.toggle("hidden", !hasStyles);
+	toggleBtn.setAttribute("aria-pressed", String(!disabled));
+	toggleBtn.querySelector(".icon").classList.toggle("icon-eye", !disabled);
+	toggleBtn.querySelector(".icon").classList.toggle("icon-eye-off", disabled);
+	const label = getMessage(disabled ? "showSiteStyles" : "hideSiteStyles");
+	toggleBtn.title = label;
+	toggleBtn.setAttribute("aria-label", label);
+}
+
+/**
+ * 撤销最近一次样式修改（顶栏按钮与应用后浮层共用）
+ */
+async function handleUndoStyleClick() {
+	if (AppState.agentStatus === "running") return;
+	try {
+		const { executeTool } = await import("./tools.js");
+		const result = await executeTool("apply_styles", { mode: "rollback_last" });
+		if (String(result).startsWith("没有可回滚")) {
+			showError(getMessage("nothingToUndo"));
+		}
+	} catch (error) {
+		console.error("[Panel] 撤销失败:", error);
+		showError(getMessage("undoStyleFailed"));
+	}
+}
+
+/**
+ * 站点样式开关：写入 styles_disabled:{domain}，由 content script 和 early-inject 生效
+ */
+async function handleToggleStylesClick() {
+	const domain = stateManager.get("currentDomain");
+	if (!domain) return;
+	const dKey = `styles_disabled:${domain}`;
+	try {
+		const { [dKey]: disabled } = await chrome.storage.local.get(dKey);
+		if (disabled) {
+			await chrome.storage.local.remove(dKey);
+		} else {
+			await chrome.storage.local.set({ [dKey]: true });
+		}
+	} catch (error) {
+		console.error("[Panel] 切换站点样式失败:", error);
+		showError(getMessage("toggleStylesFailed"));
+	}
 }
 
 /**

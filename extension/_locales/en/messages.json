@@ -127,6 +127,30 @@
     "message": "Advanced (API address / model)",
     "description": "Onboarding advanced settings toggle"
   },
+  "undoLastStyle": {
+    "message": "Undo last style change",
+    "description": "Top bar style controls"
+  },
+  "hideSiteStyles": {
+    "message": "Turn off styles on this site",
+    "description": "Top bar style controls"
+  },
+  "showSiteStyles": {
+    "message": "Turn on styles on this site",
+    "description": "Top bar style controls"
+  },
+  "nothingToUndo": {
+    "message": "Nothing to undo",
+    "description": "Top bar style controls"
+  },
+  "undoStyleFailed": {
+    "message": "Undo failed, please try again",
+    "description": "Top bar style controls"
+  },
+  "toggleStylesFailed": {
+    "message": "Failed to switch styles, please try again",
+    "description": "Top bar style controls"
+  },
   "apiConfigTitle": {
     "message": "API Configuration",
     "description": "API configuration section title"

@@ -127,6 +127,30 @@
     "message": "高级设置（API 地址 / 模型）",
     "description": "Onboarding advanced settings toggle"
   },
+  "undoLastStyle": {
+    "message": "撤销上一步样式修改",
+    "description": "Top bar style controls"
+  },
+  "hideSiteStyles": {
+    "message": "关闭此网站的样式",
+    "description": "Top bar style controls"
+  },
+  "showSiteStyles": {
+    "message": "开启此网站的样式",
+    "description": "Top bar style controls"
+  },
+  "nothingToUndo": {
+    "message": "没有可撤销的样式修改",
+    "description": "Top bar style controls"
+  },
+  "undoStyleFailed": {
+    "message": "撤销失败，请重试",
+    "description": "Top bar style controls"
+  },
+  "toggleStylesFailed": {
+    "message": "切换样式失败，请重试",
+    "description": "Top bar style controls"
+  },
   "apiConfigTitle": {
     "message": "API 配置",
     "description": "API configuration section title"

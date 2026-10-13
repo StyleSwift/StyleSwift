@@ -12,9 +12,10 @@
 (async () => {
   const domain = location.hostname;
   const key = `active_styles:${domain}`;
-  const result = await chrome.storage.local.get(key);
+  const disabledKey = `styles_disabled:${domain}`;
+  const result = await chrome.storage.local.get([key, disabledKey]);
 
-  if (!result[key]) return;
+  if (!result[key] || result[disabledKey]) return;
 
   const style = document.createElement('style');
   style.id = 'styleswift-active-persistent';

@@ -1200,6 +1200,26 @@ let adoptedSheet = null;
 let cssInjectionMethod = null;
 const cssStack = [];
 
+// === 站点样式开关：styles_disabled:{domain} 为 true 时隐藏样式但保留 cssStack ===
+const stylesDisabledKey = `styles_disabled:${location.hostname}`;
+let stylesDisabled = false;
+chrome.storage.local.get(stylesDisabledKey).then((r) => {
+  stylesDisabled = !!r[stylesDisabledKey];
+});
+chrome.storage.onChanged.addListener(async (changes, area) => {
+  if (area !== "local" || !(stylesDisabledKey in changes)) return;
+  stylesDisabled = !!changes[stylesDisabledKey].newValue;
+  if (stylesDisabled) {
+    removeEarlyInjectStyle();
+  } else if (cssStack.length === 0) {
+    // 早期注入的样式已被移除且尚未被 Side Panel 接管：从持久化样式恢复
+    const activeKey = `active_styles:${location.hostname}`;
+    const { [activeKey]: css = "" } = await chrome.storage.local.get(activeKey);
+    if (css.trim()) cssStack.push(css);
+  }
+  applyCurrentCSS();
+});
+
 // 检测可用的 CSS 注入方式
 function detectCSSInjectionMethod() {
   if (cssInjectionMethod) return cssInjectionMethod;
@@ -1258,7 +1278,8 @@ function injectCSSAdopted(fullCSS) {
 
 // 根据检测结果更新当前 CSS 显示
 function applyCurrentCSS() {
-  const fullCSS = cssStack.join("\n");
+  // ponytail: scripting-api（CSP 严格页面）插入的样式不受开关控制，需 removeCSS 支持时再补
+  const fullCSS = stylesDisabled ? "" : cssStack.join("\n");
   const method = detectCSSInjectionMethod();
 
   switch (method) {

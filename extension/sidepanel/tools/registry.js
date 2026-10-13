@@ -241,6 +241,8 @@ async function syncActiveStyles() {
   const aKey = session.activeStylesKey;
   const sKey = session.stylesKey;
   const { [sKey]: sessionCSS = "" } = await chrome.storage.local.get(sKey);
+  // 任何样式变更都意味着用户想看到结果：恢复站点样式开关
+  await chrome.storage.local.remove(`styles_disabled:${session.domain}`);
   if (sessionCSS.trim()) {
     await chrome.storage.local.set({ [aKey]: sessionCSS });
   } else {
@@ -269,7 +271,7 @@ async function runApplyStyles(css, mode, tabId) {
     if (mode === "rollback_last") {
       const history = await loadStylesHistory(domain, sessionId);
 
-      if (history.length <= 1) {
+      if (history.length === 0) {
         return "没有可回滚的历史。当前无已应用样式或已是最初状态。";
       }
 
