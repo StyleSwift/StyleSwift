@@ -107,17 +107,25 @@
     "message": "API 地址 (可选)",
     "description": "API address input label"
   },
-  "apiAddressPlaceholder": {
-    "message": "默认使用 Anthropic 官方地址",
-    "description": "API address input hint"
-  },
   "modelLabel": {
     "message": "模型 (可选)",
     "description": "Model input label"
   },
-  "modelPlaceholder": {
-    "message": "默认使用 claude-opus-4-6",
-    "description": "Model input hint"
+  "providerLabel": {
+    "message": "AI 服务商",
+    "description": "Onboarding provider select label"
+  },
+  "providerCustom": {
+    "message": "自定义（兼容 OpenAI / Anthropic）",
+    "description": "Custom provider option"
+  },
+  "getApiKey": {
+    "message": "获取 API Key →",
+    "description": "Link to provider API key page"
+  },
+  "advancedSettings": {
+    "message": "高级设置（API 地址 / 模型）",
+    "description": "Onboarding advanced settings toggle"
   },
   "apiConfigTitle": {
     "message": "API 配置",

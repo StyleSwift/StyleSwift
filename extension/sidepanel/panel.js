@@ -20,6 +20,7 @@ import {
 	DEFAULT_MODEL,
 	getSettings,
 	normalizeApiBase,
+	PROVIDER_PRESETS,
 	saveSettings,
 	validateConnection,
 } from "./api.js";
@@ -1163,9 +1164,16 @@ function initOnboarding() {
 	// 监听开始按钮
 	DOM.startBtn.addEventListener("click", handleStartClick);
 
-	// 设置默认值
-	DOM.apiBaseInput.value = DEFAULT_API_BASE;
-	DOM.modelInput.value = DEFAULT_MODEL;
+	// 服务商下拉：中文界面默认 PPIO，其他默认 Anthropic
+	DOM.providerSelect = document.getElementById("provider-select");
+	DOM.providerSelect.replaceChildren(
+		...PROVIDER_PRESETS.map(
+			(p) => new Option(p.name || getMessage("providerCustom"), p.id),
+		),
+	);
+	DOM.providerSelect.value = isChineseLanguage() ? "ppio" : "anthropic";
+	DOM.providerSelect.addEventListener("change", applyProviderPreset);
+	applyProviderPreset();
 
 	// 初始验证表单
 	validateOnboardingForm();
@@ -1176,6 +1184,20 @@ function initOnboarding() {
 		apiGuideLink.href = `chrome-extension://${chrome.runtime.id}/api-guide/api-guide.html`;
 		apiGuideLink.setAttribute("target", "_blank");
 	}
+}
+
+/**
+ * 将选中服务商的地址和模型填入表单；自定义时展开高级设置让用户填写
+ */
+function applyProviderPreset() {
+	const preset = PROVIDER_PRESETS.find((p) => p.id === DOM.providerSelect.value);
+	DOM.apiBaseInput.value = preset.apiBase;
+	DOM.modelInput.value = preset.model;
+	document.getElementById("advanced-settings").open = preset.id === "custom";
+
+	const keyLink = document.getElementById("get-key-link");
+	keyLink.href = preset.keyUrl;
+	keyLink.classList.toggle("hidden", !preset.keyUrl);
 }
 
 /**

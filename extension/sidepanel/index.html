@@ -15,30 +15,35 @@
       <div class="onboarding-content">
         <div class="logo-area">
           <div class="logo-icon">
-            <img src="../icons/icon-16.png" alt="StyleSwift Logo" style="width:64px;height:64px;object-fit:contain;">
+            <img src="../icons/icon-128.png" alt="StyleSwift Logo" style="width:64px;height:64px;object-fit:contain;">
           </div>
           <h1 class="logo-text" data-i18n="productName">StyleSwift</h1>
           <p class="tagline" data-i18n="tagline">Transform any webpage with a single sentence</p>
         </div>
-        
+
         <div class="setup-form">
           <div class="form-group">
-            <label for="model-input" data-i18n="modelLabel">Model (optional)</label>
-            <input type="text" id="model-input" data-testid="model-input" autocomplete="off">
-            <p class="hint" data-i18n="modelPlaceholder">Use claude-opus-4-6 by default</p>
-          </div>
-
-          <div class="form-group">
-            <label for="api-base-input" data-i18n="apiAddressLabel">API Address (optional)</label>
-            <input type="text" id="api-base-input" data-testid="api-base-input" autocomplete="off">
-            <p class="hint" data-i18n="apiAddressPlaceholder">Use Anthropic official address by default</p>
+            <label for="provider-select" data-i18n="providerLabel">AI Provider</label>
+            <select id="provider-select" data-testid="provider-select"></select>
           </div>
 
           <div class="form-group">
             <label for="api-key-input" data-i18n="apiKeyLabel">API Key</label>
-            <input type="password" id="api-key-input" data-testid="api-key-input" autocomplete="off">
-            <p class="hint" data-i18n="apiKeyPlaceholder">Enter your API Key</p>
+            <input type="password" id="api-key-input" data-testid="api-key-input" autocomplete="off" data-i18n-placeholder="apiKeyPlaceholder">
+            <a id="get-key-link" class="hint get-key-link" target="_blank" rel="noopener" data-i18n="getApiKey">Get an API Key →</a>
           </div>
+
+          <details id="advanced-settings" class="advanced-settings">
+            <summary data-i18n="advancedSettings">Advanced (API address / model)</summary>
+            <div class="form-group">
+              <label for="api-base-input" data-i18n="apiAddressLabel">API Address</label>
+              <input type="text" id="api-base-input" data-testid="api-base-input" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label for="model-input" data-i18n="modelLabel">Model</label>
+              <input type="text" id="model-input" data-testid="model-input" autocomplete="off">
+            </div>
+          </details>
 
           <button id="start-btn" class="btn-primary" data-testid="start-btn" disabled data-i18n="startUsing">Get Started</button>
           

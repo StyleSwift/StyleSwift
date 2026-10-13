@@ -107,17 +107,25 @@
     "message": "API Address (optional)",
     "description": "API address input label"
   },
-  "apiAddressPlaceholder": {
-    "message": "Use Anthropic official address by default",
-    "description": "API address input hint"
-  },
   "modelLabel": {
     "message": "Model (optional)",
     "description": "Model input label"
   },
-  "modelPlaceholder": {
-    "message": "Use claude-opus-4-6 by default",
-    "description": "Model input hint"
+  "providerLabel": {
+    "message": "AI Provider",
+    "description": "Onboarding provider select label"
+  },
+  "providerCustom": {
+    "message": "Custom (OpenAI / Anthropic compatible)",
+    "description": "Custom provider option"
+  },
+  "getApiKey": {
+    "message": "Get an API Key →",
+    "description": "Link to provider API key page"
+  },
+  "advancedSettings": {
+    "message": "Advanced (API address / model)",
+    "description": "Onboarding advanced settings toggle"
   },
   "apiConfigTitle": {
     "message": "API Configuration",
