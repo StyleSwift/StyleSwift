@@ -844,17 +844,8 @@ export async function agentLoop(prompt, uiCallbacks) {
       return;
     }
 
+    // AgentError：保存历史后交给 Side Panel 显示可操作的错误横幅
     if (err instanceof AgentError) {
-      const userMessages = {
-        API_KEY_INVALID: "\n⚠️ Invalid API Key, please check in settings.",
-        NETWORK_ERROR:
-          "\n⚠️ Network connection failed, please check your network and try again.",
-        RATE_LIMITED: "\n⚠️ API rate limit exceeded, please try again later.",
-        MAX_RETRIES: "\n⚠️ API retry limit reached, please try again later.",
-        CONTEXT_TOO_LONG:
-          "\n⚠️ Conversation exceeds model context length limit, auto-compression applied but still over limit. Please try starting a new session.",
-      };
-      uiCallbacks.appendText?.(userMessages[err.code] || `\n⚠️ ${err.message}`);
       if (_saveState) {
         try {
           const { domain, sessionId, fullHistory, snapshots } = _saveState;
@@ -864,7 +855,6 @@ export async function agentLoop(prompt, uiCallbacks) {
           });
         } catch {}
       }
-      return;
     }
 
     throw err;

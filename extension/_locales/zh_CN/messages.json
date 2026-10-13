@@ -1254,5 +1254,25 @@
   "errApi": {
     "message": "API 调用失败",
     "description": "Error banner"
+  },
+  "errAccessDenied": {
+    "message": "访问被拒绝，请检查 API Key 是否有该模型的权限",
+    "description": "Error banner"
+  },
+  "errModelNotFound": {
+    "message": "模型不存在，请在设置中检查模型名称",
+    "description": "Error banner"
+  },
+  "errInsufficientBalance": {
+    "message": "账户余额不足，请到服务商充值后重试",
+    "description": "Error banner"
+  },
+  "errRateLimited": {
+    "message": "请求过于频繁，请稍后重试",
+    "description": "Error banner"
+  },
+  "errContextTooLong": {
+    "message": "对话过长，超出模型上限，请新建会话",
+    "description": "Error banner"
   }
 }

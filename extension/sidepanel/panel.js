@@ -1051,7 +1051,10 @@ function applyErrorBannerState(config) {
 	if (!DOM.errorBanner) return;
 
 	if (config.show) {
-		showErrorBanner(config.type);
+		const alreadyShown =
+			!DOM.errorBanner.classList.contains("hidden") &&
+			DOM.errorBanner.dataset.type === config.type;
+		if (!alreadyShown) showErrorBanner(config.type);
 	} else {
 		hideErrorBanner();
 	}
@@ -2183,33 +2186,15 @@ async function handleSendClick() {
 		// 恢复就绪状态
 		setProcessingState(false);
 
-		// 处理错误类型
-		if (error.message?.includes("401") || error.message?.includes("API Key")) {
-			setErrorState("API_KEY_INVALID");
-			showErrorBanner("API_KEY_INVALID");
-		} else if (
-			error.message?.includes("network") ||
-			error.message?.includes("Network") ||
-			error instanceof TypeError
-		) {
-			setErrorState("NETWORK_ERROR");
-			showErrorBanner("NETWORK_ERROR", {
-				onRetry: () => {
-					// 重新发送消息
-					DOM.messageInput.value = message;
-					handleSendClick();
-				},
-			});
-		} else {
-			setErrorState("API_ERROR");
-			showErrorBanner("API_ERROR", {
-				customMessage: error.message || getMessage("errApi"),
-				onRetry: () => {
-					DOM.messageInput.value = message;
-					handleSendClick();
-				},
-			});
-		}
+		// 重试时恢复原消息、选中元素和图片
+		showAgentError(error, () => {
+			DOM.messageInput.value = message;
+			_pickedElementInfo = [...pickedElements];
+			updatePickedElementsBar();
+			_attachedImages = [...imagesToSend];
+			renderAttachedImages();
+			handleSendClick();
+		});
 	}
 }
 
@@ -3317,16 +3302,7 @@ async function handleSkillChipClick(skill) {
 		finalizeToolCardGroup();
 		setProcessingState(false);
 
-		if (error.message?.includes("401") || error.message?.includes("API Key")) {
-			setErrorState("API_KEY_INVALID");
-		} else if (error.message?.includes("Network")) {
-			setErrorState("NETWORK_ERROR");
-		} else {
-			setErrorState("API_ERROR");
-			renderAssistantMessage(
-				`Error: ${error.message || "Failed to apply skill"}`,
-			);
-		}
+		showAgentError(error, () => handleSkillChipClick(skill));
 	}
 }
 
@@ -7545,22 +7521,48 @@ function getConfirmationOverlay() {
  * 错误类型配置
  */
 const ERROR_BANNER_CONFIGS = {
-	API_KEY_INVALID: {
-		messageKey: "errApiKeyInvalid",
-		actionKey: "goToSettings",
-		action: "settings",
-	},
-	NETWORK_ERROR: {
-		messageKey: "errNetwork",
-		actionKey: "retry",
-		action: "retry",
-	},
-	API_ERROR: {
-		messageKey: "errApi",
-		actionKey: "retry",
-		action: "retry",
-	},
+	API_KEY_INVALID: { messageKey: "errApiKeyInvalid", action: "settings" },
+	NETWORK_ERROR: { messageKey: "errNetwork", action: "retry" },
+	API_ERROR: { messageKey: "errApi", action: "retry" },
 };
+
+/** 横幅操作按钮文案 */
+const ERROR_ACTION_LABEL_KEYS = {
+	settings: "goToSettings",
+	retry: "retry",
+	newSession: "newSession",
+};
+
+/**
+ * Agent 错误码 → 横幅类型、文案与操作
+ */
+const AGENT_ERROR_UI = {
+	API_KEY_INVALID: { type: "API_KEY_INVALID", key: "errApiKeyInvalid", action: "settings" },
+	ACCESS_DENIED: { type: "API_KEY_INVALID", key: "errAccessDenied", action: "settings" },
+	MODEL_NOT_FOUND: { type: "API_ERROR", key: "errModelNotFound", action: "settings" },
+	INSUFFICIENT_BALANCE: { type: "API_ERROR", key: "errInsufficientBalance", action: "retry" },
+	RATE_LIMITED: { type: "API_ERROR", key: "errRateLimited", action: "retry" },
+	MAX_RETRIES: { type: "API_ERROR", key: "errRateLimited", action: "retry" },
+	CONTEXT_TOO_LONG: { type: "API_ERROR", key: "errContextTooLong", action: "newSession" },
+	NETWORK_ERROR: { type: "NETWORK_ERROR", key: "errNetwork", action: "retry" },
+};
+
+/**
+ * 按错误码显示可操作的错误横幅（发送消息与技能 chip 共用）
+ * @param {Error} error - agentLoop 抛出的错误（AgentError 带 code）
+ * @param {Function} onRetry - 重试回调
+ */
+function showAgentError(error, onRetry) {
+	const code =
+		error.code || (error instanceof TypeError ? "NETWORK_ERROR" : null);
+	const ui = AGENT_ERROR_UI[code];
+	const type = ui?.type || "API_ERROR";
+	const customMessage = ui
+		? getMessage(ui.key)
+		: `${getMessage("errApi")}: ${String(error.message || "").slice(0, 200)}`;
+	setErrorState(type);
+	showErrorBanner(type, { customMessage, action: ui?.action, onRetry });
+}
 
 /**
  * 显示错误横幅
@@ -7582,14 +7584,17 @@ function showErrorBanner(errorType, options = {}) {
 	const message = options.customMessage || getMessage(config.messageKey);
 	DOM.errorBannerMessage.textContent = message;
 
+	DOM.errorBanner.dataset.type = errorType;
+
 	// 设置操作按钮
-	if (config.actionKey && config.action) {
-		DOM.errorBannerAction.textContent = getMessage(config.actionKey);
+	const action = options.action || config.action;
+	if (action) {
+		DOM.errorBannerAction.textContent = getMessage(ERROR_ACTION_LABEL_KEYS[action]);
 		DOM.errorBannerAction.classList.remove("hidden");
-		DOM.errorBannerAction.dataset.action = config.action;
+		DOM.errorBannerAction.dataset.action = action;
 
 		// 如果是重试操作，保存回调
-		if (config.action === "retry" && options.onRetry) {
+		if (action === "retry" && options.onRetry) {
 			DOM.errorBannerAction.dataset.hasCallback = "true";
 			// 使用闭包保存回调
 			DOM.errorBannerAction._retryCallback = options.onRetry;
@@ -7657,10 +7662,18 @@ function initErrorBanner() {
 
 				case "retry":
 					// 执行重试回调
-					if (DOM.errorBannerAction._retryCallback) {
+					const retry = DOM.errorBannerAction._retryCallback;
+					if (retry) {
 						hideErrorBanner();
-						DOM.errorBannerAction._retryCallback();
+						clearErrorState();
+						retry();
 					}
+					break;
+
+				case "newSession":
+					hideErrorBanner();
+					clearErrorState();
+					handleNewSession();
 					break;
 			}
 		});

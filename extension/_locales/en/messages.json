@@ -1254,5 +1254,25 @@
   "errApi": {
     "message": "API call failed",
     "description": "Error banner"
+  },
+  "errAccessDenied": {
+    "message": "Access denied. Check that your API Key has permission for this model",
+    "description": "Error banner"
+  },
+  "errModelNotFound": {
+    "message": "Model not found. Check the model name in settings",
+    "description": "Error banner"
+  },
+  "errInsufficientBalance": {
+    "message": "Insufficient account balance. Top up with your provider, then retry",
+    "description": "Error banner"
+  },
+  "errRateLimited": {
+    "message": "Too many requests. Please wait a moment and retry",
+    "description": "Error banner"
+  },
+  "errContextTooLong": {
+    "message": "This conversation is too long for the model. Start a new session",
+    "description": "Error banner"
   }
 }

@@ -44,6 +44,22 @@ function checkHttpError(response) {
       if (response.status === 401) {
         throw new AgentError("API_KEY_INVALID", "Please check if the API Key is correct");
       }
+      const lowerText = errorText.toLowerCase();
+      if (
+        response.status === 402 ||
+        /insufficient|balance|quota|余额|欠费/.test(lowerText)
+      ) {
+        throw new AgentError("INSUFFICIENT_BALANCE", `Insufficient balance (${response.status}): ${errorText}`);
+      }
+      if (response.status === 403) {
+        throw new AgentError("ACCESS_DENIED", `Access denied: ${errorText}`);
+      }
+      if (
+        response.status === 404 ||
+        /model[^\n]{0,40}(not found|not exist|does not exist|invalid)|模型不存在/.test(lowerText)
+      ) {
+        throw new AgentError("MODEL_NOT_FOUND", `Model not found (${response.status}): ${errorText}`);
+      }
       if (response.status === 429) {
         throw new AgentError("RATE_LIMITED", `API rate limited: ${errorText}`);
       }
@@ -339,4 +355,4 @@ export async function callLLMStreamSafe(
 }
 
 // Export internal functions for reuse
-export { sleep, msgTokenEstimate };
+export { sleep, msgTokenEstimate, checkHttpError };
