@@ -1282,5 +1282,13 @@
   "visionVerifyFailed": {
     "message": "Vision model connection failed, please check its settings",
     "description": "Vision verify error"
+  },
+  "turnUsage": {
+    "message": "≈ {tokens} tokens this turn",
+    "description": "Per-turn token usage"
+  },
+  "turnUsageDetail": {
+    "message": "Input ≈ {input} · Output ≈ {output} tokens (estimated when the provider doesn't report usage)",
+    "description": "Per-turn token usage tooltip"
   }
 }

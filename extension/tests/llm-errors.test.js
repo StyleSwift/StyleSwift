@@ -29,3 +29,21 @@ describe("checkHttpError", () => {
     await expect(checkHttpError({ ok: true })).resolves.toBeUndefined();
   });
 });
+
+import { recordUsage, resetTurnUsage, getTurnUsage } from "../sidepanel/agent/llm-client.js";
+
+describe("turn usage", () => {
+  test("sums reported usage and falls back to estimates", () => {
+    resetTurnUsage();
+    recordUsage({ usage: { input_tokens: 100, output_tokens: 20 }, content: [] }, []);
+    expect(getTurnUsage()).toEqual({ input: 100, output: 20 });
+
+    recordUsage({ usage: null, content: [{ type: "text", text: "hello world" }] }, []);
+    const { input, output } = getTurnUsage();
+    expect(input).toBeGreaterThan(100);
+    expect(output).toBeGreaterThan(20);
+
+    resetTurnUsage();
+    expect(getTurnUsage()).toEqual({ input: 0, output: 0 });
+  });
+});

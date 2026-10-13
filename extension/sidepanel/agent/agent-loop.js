@@ -34,7 +34,10 @@ import {
   callLLMStream,
   callLLMStreamSafe,
   sleep,
+  resetTurnUsage,
+  getTurnUsage,
 } from "./llm-client.js";
+export { getTurnUsage };
 // Re-export serialization functions for backward compatibility
 export {
   serializeToOpenAI,
@@ -491,6 +494,7 @@ export async function agentLoop(prompt, uiCallbacks) {
   currentAbortController = new AbortController();
   const { signal } = currentAbortController;
   resetToolCallHistory();
+  resetTurnUsage();
   const { resetTodos, setTodoUpdateCallback } =
     await import("./todo-manager.js");
   resetTodos();

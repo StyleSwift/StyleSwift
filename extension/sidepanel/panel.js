@@ -2155,6 +2155,7 @@ async function handleSendClick() {
 
 		// 恢复就绪状态
 		setProcessingState(false);
+		showTurnUsage();
 
 		if (applyStylesCount > 0) {
 			showConfirmationOverlay({
@@ -2189,6 +2190,7 @@ async function handleSendClick() {
 
 		// 恢复就绪状态
 		setProcessingState(false);
+		showTurnUsage();
 
 		// 重试时恢复原消息、选中元素和图片
 		showAgentError(error, () => {
@@ -2200,6 +2202,23 @@ async function handleSendClick() {
 			handleSendClick();
 		});
 	}
+}
+
+/**
+ * 在对话末尾显示本轮 token 用量（服务商未返回时为估算值）
+ */
+async function showTurnUsage() {
+	const { getTurnUsage } = await import("./agent/agent-loop.js");
+	const { input, output } = getTurnUsage();
+	const total = input + output;
+	if (!total) return;
+	const el = document.createElement("div");
+	el.className = "turn-usage";
+	el.textContent = formatMessage("turnUsage", {
+		tokens: total >= 1000 ? `${(total / 1000).toFixed(1)}k` : total,
+	});
+	el.title = formatMessage("turnUsageDetail", { input, output });
+	addMessageToContainer(el);
 }
 
 /**
@@ -3277,6 +3296,7 @@ async function handleSkillChipClick(skill) {
 		streamingRenderer.finish();
 		finalizeToolCardGroup();
 		setProcessingState(false);
+		showTurnUsage();
 
 		if (applyStylesCount > 0) {
 			showConfirmationOverlay({
@@ -3305,6 +3325,7 @@ async function handleSkillChipClick(skill) {
 		streamingRenderer.finish();
 		finalizeToolCardGroup();
 		setProcessingState(false);
+		showTurnUsage();
 
 		showAgentError(error, () => handleSkillChipClick(skill));
 	}

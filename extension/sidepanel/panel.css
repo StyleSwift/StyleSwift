@@ -6570,3 +6570,12 @@ pre code {
   }
 }
 
+
+/* 本轮 token 用量 */
+.turn-usage {
+  align-self: flex-end;
+  margin: calc(-1 * var(--spacing-xs)) 0 var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  text-align: right;
+}

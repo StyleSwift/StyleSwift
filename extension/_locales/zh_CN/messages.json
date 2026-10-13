@@ -1282,5 +1282,13 @@
   "visionVerifyFailed": {
     "message": "视觉模型连接失败，请检查视觉模型配置",
     "description": "Vision verify error"
+  },
+  "turnUsage": {
+    "message": "本轮约 {tokens} tokens",
+    "description": "Per-turn token usage"
+  },
+  "turnUsageDetail": {
+    "message": "输入约 {input} · 输出约 {output} tokens（服务商未返回用量时为估算值）",
+    "description": "Per-turn token usage tooltip"
   }
 }
