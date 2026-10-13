@@ -248,7 +248,7 @@
     "description": "Clear history data button"
   },
   "clearHistoryDesc": {
-    "message": "清理90天前的会话和超出限制的历史记录",
+    "message": "清理160天前的会话和超出限制的历史记录",
     "description": "Clear history description"
   },
   "aboutTitle": {
@@ -268,7 +268,7 @@
     "description": "GitHub repository URL"
   },
   "feedbackLabel": {
-    "message": "反馈邮箱",
+    "message": "反馈",
     "description": "Feedback email label"
   },
   "feedbackEmail": {
@@ -1138,5 +1138,9 @@
   "newStyleSkill": {
     "message": "新建风格技能",
     "description": "New style skill modal title"
+  },
+  "feedbackIssues": {
+    "message": "GitHub Issues",
+    "description": "Feedback via GitHub issues link text"
   }
 }
