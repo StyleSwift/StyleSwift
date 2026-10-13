@@ -65,6 +65,8 @@ const PRESET_STYLES = [
 		descEn: "Clean, simple design with high contrast and generous whitespace",
 		prompt:
 			"极简瑞士风格设计。使用单色配色（纯黑#000000和纯白#FFFFFF为主），大量留白，高对比度。采用无衬线字体，基于网格的布局，避免多余装饰。过渡动画简洁（200-250ms），强调内容层级和功能优先。适合专业工具、文档站点、企业应用。",
+		promptEn:
+			"Minimalist Swiss style. Use a monochrome palette (mainly pure black #000000 and pure white #FFFFFF), generous whitespace and high contrast. Sans-serif type, grid-based layout, no unnecessary decoration. Keep transitions short (200-250ms) and emphasize content hierarchy and function. Suits professional tools, documentation sites and business apps.",
 		preview: { bg: "#FFFFFF", text: "#000000" },
 	},
 	{
@@ -75,6 +77,8 @@ const PRESET_STYLES = [
 		descEn: "Soft UI with subtle raised depth and refined shadows",
 		prompt:
 			"新拟物化设计风格。使用柔和的淡色调背景（柔蓝#C8E0F4、柔粉#F5E0E8、柔灰#E8E8E8），通过多层阴影创造凸起或凹陷的3D效果（box-shadow: -5px -5px 15px, 5px 5px 15px）。圆角（12-16px），单色调配色，过渡平缓（150ms）。适合健康应用、冥想平台。",
+		promptEn:
+			"Neumorphism. Use soft pastel backgrounds (soft blue #C8E0F4, soft pink #F5E0E8, soft gray #E8E8E8) and layered shadows to create raised or inset 3D surfaces (box-shadow: -5px -5px 15px, 5px 5px 15px). Rounded corners (12-16px), monochromatic palette, gentle transitions (150ms). Suits wellness and meditation apps.",
 		preview: { bg: "#E8E8E8", text: "#5a5a5a" },
 	},
 	{
@@ -85,6 +89,8 @@ const PRESET_STYLES = [
 		descEn: "Frosted glass effect with translucent layers",
 		prompt:
 			"玻璃拟态设计。使用半透明白色背景（rgba(255,255,255,0.1-0.3)），配合背景模糊效果（backdrop-filter: blur(10-20px)）。鲜艳的渐变背景（电蓝#0080FF、霓紫#8B00FF、亮粉#FF1493），细腻的边框（1px solid rgba(255,255,255,0.2)）。营造层次分明的现代感。适合SaaS、金融仪表板、现代企业应用。",
+		promptEn:
+			"Glassmorphism. Use translucent white surfaces (rgba(255,255,255,0.1-0.3)) with background blur (backdrop-filter: blur(10-20px)) over vivid gradient backgrounds (electric blue #0080FF, neon purple #8B00FF, hot pink #FF1493), with subtle borders (1px solid rgba(255,255,255,0.2)). Create a clearly layered modern look. Suits SaaS, finance dashboards and modern business apps.",
 		preview: {
 			bg: "linear-gradient(135deg, #0080FF, #8B00FF)",
 			text: "#FFFFFF",
@@ -98,6 +104,8 @@ const PRESET_STYLES = [
 		descEn: "Raw, unpolished design with high contrast anti-aesthetic",
 		prompt:
 			"粗野主义设计。使用原始未修饰的风格，高对比度配色（纯红#FF0000、纯蓝#0000FF、纯黄#FFFF00、黑白）。无渐变，instant过渡，尖锐的边角（0px），粗体字（700+），可见的边框和网格。大胆的排版，不对称布局，打破传统设计规则。适合设计作品集、艺术项目、编辑类网站。",
+		promptEn:
+			"Brutalism. Use a raw, unpolished style with high-contrast colors (pure red #FF0000, pure blue #0000FF, pure yellow #FFFF00, black and white). No gradients, instant transitions, sharp corners (0px), bold type (700+), visible borders and grids. Bold typography and asymmetric layouts that break conventions. Suits design portfolios, art projects and editorial sites.",
 		preview: { bg: "#FFFF00", text: "#000000" },
 	},
 	{
@@ -108,6 +116,8 @@ const PRESET_STYLES = [
 		descEn: "Soft 3D, toy-like bubbly shapes with thick borders",
 		prompt:
 			"粘土拟态设计。使用柔和的粉彩色调（柔桃#FDBCB4、婴儿蓝#ADD8E6、薄荷#98FF98、淡紫#E6E6FA）。元素呈圆润的球状（border-radius: 16-24px），配合双层阴影创造蓬松的3D效果。粗边框（3-4px），柔和的按压缩放动画（200ms ease-out）。营造可爱、友好的氛围。适合教育应用、儿童产品、创意工具。",
+		promptEn:
+			"Claymorphism. Use soft pastels (soft peach #FDBCB4, baby blue #ADD8E6, mint #98FF98, lavender #E6E6FA). Rounded, puffy elements (border-radius: 16-24px) with double shadows for a fluffy 3D look, thick borders (3-4px) and soft press-scale animations (200ms ease-out). Cute and friendly. Suits education apps, kids' products and creative tools.",
 		preview: { bg: "#FDBCB4", text: "#4a4a4a" },
 	},
 	{
@@ -118,6 +128,8 @@ const PRESET_STYLES = [
 		descEn: "Vibrant flowing gradients like Northern Lights",
 		prompt:
 			"极光风格设计。使用鲜艳的渐变配色（蓝→紫→粉→青），营造极光般的流动感。大面积的CSS/SVG渐变，配合8-12秒的柔和动画。互补配色（蓝橙、紫黄），渐变融合效果（screen/multiply混合模式）。层次通过颜色叠加表现。适合创意机构、音乐平台、高端产品展示。",
+		promptEn:
+			"Aurora UI. Use vivid flowing gradients (blue → purple → pink → teal) like the northern lights, with large CSS/SVG gradients and soft 8-12s animations. Complementary pairs (blue-orange, purple-yellow) and blended gradients (screen/multiply blend modes); express depth through color overlays. Suits creative agencies, music platforms and premium product showcases.",
 		preview: {
 			bg: "linear-gradient(135deg, #0080FF, #8B00FF, #FF1493, #00FFFF)",
 			text: "#FFFFFF",
@@ -131,6 +143,8 @@ const PRESET_STYLES = [
 		descEn: "80s sci-fi aesthetic with neon glow effects",
 		prompt:
 			"复古未来主义风格。使用霓虹配色（霓蓝#0080FF、亮粉#FF006E、青色#00FFFF、深黑#1A1A2E）。CRT扫描线效果（::before伪元素），霓虹发光（text-shadow + box-shadow），故障艺术动画（skew/offset keyframes）。网格背景，深色基调。适合游戏、音乐平台、科技品牌、赛博朋克风格产品。",
+		promptEn:
+			"Retro-futurism. Use neon colors (neon blue #0080FF, hot pink #FF006E, cyan #00FFFF, deep black #1A1A2E). CRT scanlines (::before pseudo-element), neon glow (text-shadow + box-shadow), glitch animations (skew/offset keyframes), grid backgrounds on a dark base. Suits games, music platforms, tech brands and cyberpunk-style products.",
 		preview: { bg: "#1A1A2E", text: "#00FFFF" },
 	},
 	{
@@ -141,6 +155,8 @@ const PRESET_STYLES = [
 		descEn: "Clean 2D design without shadows",
 		prompt:
 			"扁平化设计。使用明亮纯色（红、橙、蓝、绿），无渐变无阴影。简洁的形状，干净的线条，以字体为核心。简洁的悬停效果（颜色/透明度变化），快速加载，过渡简洁（150-200ms ease）。有限的调色板（4-6色）。适合Web应用、移动应用、初创MVP、SaaS、仪表板。",
+		promptEn:
+			"Flat design. Use bright solid colors (red, orange, blue, green) with no gradients or shadows. Simple shapes, clean lines, typography-led. Simple hover effects (color/opacity), fast and short transitions (150-200ms ease), a limited palette of 4-6 colors. Suits web and mobile apps, startup MVPs, SaaS and dashboards.",
 		preview: { bg: "#3498db", text: "#FFFFFF" },
 	},
 	{
@@ -151,6 +167,8 @@ const PRESET_STYLES = [
 		descEn: "Pure black dark theme, eye-friendly and power efficient",
 		prompt:
 			"OLED深色模式设计。使用纯黑背景（#000000），深灰色调（#121212、#0A0E27）。鲜艳的强调色（霓绿#39FF14、电蓝#0080FF、金色#FFD700、等离子紫#BF00FF）。最小化发光效果（text-shadow: 0 0 10px），深色到浅色的文字过渡，高可读性，可见的焦点状态。适合夜间模式应用、编程平台、娱乐类产品。",
+		promptEn:
+			"OLED dark mode. Use a pure black background (#000000) with deep grays (#121212, #0A0E27) and vivid accents (neon green #39FF14, electric blue #0080FF, gold #FFD700, plasma purple #BF00FF). Minimal glow (text-shadow: 0 0 10px), readable light text, high legibility and visible focus states. Suits night-mode apps, coding platforms and entertainment products.",
 		preview: { bg: "#000000", text: "#39FF14" },
 	},
 	{
@@ -161,6 +179,8 @@ const PRESET_STYLES = [
 		descEn: "Bold borders, thick shadows, playful and loud",
 		prompt:
 			"新粗野主义设计。使用明亮的主色（黄#FFEB3B、红#FF5252、蓝#2196F3），粗黑边框（border: 3px solid #000），45度偏移阴影（box-shadow: 4px 4px 0 #000）。无渐变，尖锐边角（0px），粗体字。大胆的悬停偏移动画。适合Z世代品牌、初创公司、创意机构、Figma风格界面。",
+		promptEn:
+			"Neubrutalism. Use bright primaries (yellow #FFEB3B, red #FF5252, blue #2196F3), thick black borders (border: 3px solid #000) and offset hard shadows (box-shadow: 4px 4px 0 #000). No gradients, sharp corners (0px), bold type and punchy hover offset animations. Suits Gen Z brands, startups, creative agencies and Figma-style interfaces.",
 		preview: { bg: "#FFEB3B", text: "#000000" },
 	},
 	{
@@ -171,6 +191,8 @@ const PRESET_STYLES = [
 		descEn: "Modular cards, Apple-style display",
 		prompt:
 			"便当盒网格设计。使用中性底色（#FFFFFF、#F5F5F5）配合品牌强调色。模块化卡片布局，不对称网格（grid-template），变化的卡片尺寸（span属性）。圆角（16px），柔和阴影，悬停放大（scale: 1.02），平滑过渡。干净的层级结构，大片负空间。适合仪表板、产品页面、作品集、SaaS。",
+		promptEn:
+			"Bento box grid. Use neutral bases (#FFFFFF, #F5F5F5) with a brand accent color. Modular card layout on an asymmetric grid (grid-template) with varied card sizes (span), rounded corners (16px), soft shadows, hover scale (scale: 1.02) and smooth transitions. Clean hierarchy and lots of negative space. Suits dashboards, product pages, portfolios and SaaS.",
 		preview: { bg: "#F5F5F7", text: "#1D1D1F" },
 	},
 	{
@@ -180,7 +202,9 @@ const PRESET_STYLES = [
 		desc: "于禧年代美学，金属光泽复古",
 		descEn: "Y2K millennium aesthetic with metallic gloss",
 		prompt:
-			"Y2K千禧风格。使用霓虹粉（#FF69B4）、青色（#00FFFF）、银色（#C0C0C0）、紫色（##9400D3）。金属渐变效果，光泽按钮，3D铬金效果，发光动画，气泡形状。复古未来主义，怀旧感。适合时尚品牌、音乐平台、Z世代品牌、娱乐产品。",
+			"Y2K千禧风格。使用霓虹粉（#FF69B4）、青色（#00FFFF）、银色（#C0C0C0）、紫色（#9400D3）。金属渐变效果，光泽按钮，3D铬金效果，发光动画，气泡形状。复古未来主义，怀旧感。适合时尚品牌、音乐平台、Z世代品牌、娱乐产品。",
+		promptEn:
+			"Y2K aesthetic. Use neon pink (#FF69B4), cyan (#00FFFF), silver (#C0C0C0) and purple (#9400D3). Metallic gradients, glossy buttons, 3D chrome effects, glowing animations and bubble shapes. Retro-futuristic and nostalgic. Suits fashion brands, music platforms, Gen Z brands and entertainment products.",
 		preview: {
 			bg: "linear-gradient(135deg, #FF69B4, #00FFFF, #C0C0C0)",
 			text: "#FFFFFF",
@@ -194,6 +218,8 @@ const PRESET_STYLES = [
 		descEn: "Neon terminal, sci-fi interface aesthetic",
 		prompt:
 			"赛博朋克UI设计。使用深黑背景（#0D0D0D），霓虹绿（#00FF00）、品红（#FF00FF）、青色（#00FFFF）。终端风格字体，霓虹发光效果（text-shadow），故障艺术动画（skew/offset），扫描线覆盖（::before伪元素）。HUD元素，矩阵数字雨效果。适合游戏平台、科技产品、加密应用、开发工具。",
+		promptEn:
+			"Cyberpunk UI. Use a deep black background (#0D0D0D) with neon green (#00FF00), magenta (#FF00FF) and cyan (#00FFFF). Terminal-style type, neon glow (text-shadow), glitch animations (skew/offset), scanline overlays (::before pseudo-element), HUD elements and a Matrix-style digital rain. Suits gaming platforms, tech products, crypto apps and developer tools.",
 		preview: { bg: "#0D0D0D", text: "#00FF00" },
 	},
 	{
@@ -204,6 +230,8 @@ const PRESET_STYLES = [
 		descEn: "Natural textures, organic curves, sustainable aesthetic",
 		prompt:
 			"有机亲和设计。使用自然色调（森林绿#228B22、土棕#8B4513、天蓝#87CEEB、米色#F5F5DC）。有机曲线（border-radius变化），自然阴影，流动的SVG形状，圆角（16-24px）。天然纹理背景。适合健康应用、可持续品牌、生态产品、冥想应用。",
+		promptEn:
+			"Organic biophilic design. Use natural tones (forest green #228B22, earth brown #8B4513, sky blue #87CEEB, beige #F5F5DC). Organic curves (varied border-radius), natural shadows, flowing SVG shapes, rounded corners (16-24px) and natural textured backgrounds. Suits wellness apps, sustainable brands, eco products and meditation apps.",
 		preview: { bg: "#228B22", text: "#F5F5DC" },
 	},
 	{
@@ -214,6 +242,8 @@ const PRESET_STYLES = [
 		descEn: "Conversational, minimal chrome, streaming text",
 		prompt:
 			"AI原生界面设计。使用中性色背景（#F5F5F5）配合单一强调色（AI紫#6366F1）。极简边框，对话气泡风格，流式文本动画（三点脉冲指示器），打字效果。上下文卡片，平滑揭示动画。适合AI产品、聊天机器人、语音助手、AI辅助工具。",
+		promptEn:
+			"AI-native interface. Use a neutral background (#F5F5F5) with a single accent color (AI purple #6366F1). Minimal borders, chat-bubble style, streaming text animations (three-dot pulse indicator) and typing effects. Contextual cards and smooth reveal animations. Suits AI products, chatbots, voice assistants and AI-assisted tools.",
 		preview: { bg: "#F5F5F5", text: "#6366F1" },
 	},
 	{
@@ -224,6 +254,8 @@ const PRESET_STYLES = [
 		descEn: "80s geometric, playful patterns, pop art",
 		prompt:
 			"孟菲斯设计。使用明亮的几何配色（亮粉#FF71CE、黄色#FFCE5C、青色#86CCCA、紫蓝#6A7BB4）。重复的几何图案（三角形、波浪线、圆形），clip-path多边形，mix-blend-mode混合模式。大胆的形状，80年代后现代美学。适合创意机构、音乐网站、Z世代品牌、活动推广。",
+		promptEn:
+			"Memphis design. Use bright geometric colors (hot pink #FF71CE, yellow #FFCE5C, teal #86CCCA, periwinkle #6A7BB4). Repeating geometric patterns (triangles, squiggles, circles), clip-path polygons and mix-blend-mode. Bold shapes with an 80s postmodern feel. Suits creative agencies, music sites, Gen Z brands and event promotions.",
 		preview: { bg: "#FF71CE", text: "#FFFFFF" },
 	},
 	{
@@ -234,6 +266,8 @@ const PRESET_STYLES = [
 		descEn: "Synthwave, 80s-90s retro neon aesthetic",
 		prompt:
 			"蒸汽波设计。使用霓虹配色（粉#FF71CE、青#01CDFE、薄荷#05FFA1、紫#B967FF）。日落渐变，故障覆盖，VHS效果，复古扫描线。文字发光阴影效果，hue-rotate滤镜动画。怀旧复古未来主义，梦幻氛围。适合音乐平台、游戏、创意作品集、科技初创公司。",
+		promptEn:
+			"Vaporwave. Use neon colors (pink #FF71CE, cyan #01CDFE, mint #05FFA1, purple #B967FF). Sunset gradients, glitch overlays, VHS effects and retro scanlines. Glowing text shadows and hue-rotate filter animations. Nostalgic retro-futurism with a dreamy mood. Suits music platforms, games, creative portfolios and tech startups.",
 		preview: {
 			bg: "linear-gradient(135deg, #FF71CE, #01CDFE, #05FFA1, #B967FF)",
 			text: "#FFFFFF",
@@ -247,6 +281,8 @@ const PRESET_STYLES = [
 		descEn: "Spatial computing, depth layers, gaze interaction",
 		prompt:
 			"空间UI设计。使用毛玻璃效果（#FFFFFF 15-30%透明度），系统白色。深色阴影创造深度感，视差深度效果，动态光照响应，凝视悬停效果，焦点缩放动画。通透的层次感。适合空间计算应用、VR/AR界面、沉浸式媒体、未来仪表板。",
+		promptEn:
+			"Spatial UI. Use frosted glass (#FFFFFF at 15-30% opacity) and system white. Deep shadows for depth, parallax layering, dynamic light response, gaze-style hover effects and focus scale animations. A clear, airy sense of layers. Suits spatial computing apps, VR/AR interfaces, immersive media and futuristic dashboards.",
 		preview: { bg: "rgba(255,255,255,0.2)", text: "#1D1D1F" },
 	},
 	{
@@ -257,6 +293,8 @@ const PRESET_STYLES = [
 		descEn: "Chaos aesthetic, stickers collage, internet culture",
 		prompt:
 			"Z世代混沌设计。使用冲突的明亮色（#FF00FF、#00FF00、#FFFF00、#0000FF）。渐变、彩虹、故障、噪点、饱和度混合。滚动字幕动画、抖动、贴纸层叠、GIF过载、随机放置。打破秩序的互联网文化美学。适合Z世代生活方式品牌、音乐艺术家、创意作品集、病毒式营销。",
+		promptEn:
+			"Gen Z chaos / maximalism. Use clashing bright colors (#FF00FF, #00FF00, #FFFF00, #0000FF). Gradients, rainbows, glitch, noise and saturated blends. Marquee animations, jitter, layered stickers, GIF overload and random placement. An order-breaking internet-culture aesthetic. Suits Gen Z lifestyle brands, music artists, creative portfolios and viral campaigns.",
 		preview: { bg: "#FF00FF", text: "#00FF00" },
 	},
 	// ============================================================
@@ -270,6 +308,8 @@ const PRESET_STYLES = [
 		descEn: "Large hero section, compelling headline, high-contrast CTA",
 		prompt:
 			"英雄中心落地页设计。大尺寸英雄区域，醒目的标题，高对比度的CTA按钮。品牌主色，白色/浅色背景保证对比度，强调色用于CTA。滚动揭示动画，英雄区淡入效果，背景视差，CTA发光/脉冲效果。适合SaaS落地页、产品发布、服务落地页、B2B平台。",
+		promptEn:
+			"Hero-centric landing page. A large hero section with a striking headline and high-contrast CTA button. Brand primary color on a white/light background for contrast, with an accent color for CTAs. Scroll-reveal animations, hero fade-in, background parallax and CTA glow/pulse. Suits SaaS landing pages, product launches, service pages and B2B platforms.",
 		preview: { bg: "#FFFFFF", text: "#2563EB" },
 	},
 	{
@@ -280,6 +320,8 @@ const PRESET_STYLES = [
 		descEn: "Form-focused, single CTA, trust signals",
 		prompt:
 			"转化优化落地页设计。极简设计，单一CTA焦点，高对比度。紧迫感元素（倒计时、限时优惠），信任信号（客户Logo、评价、安全徽章），社会证明。表单焦点悬停动画，加载微调，成功反馈。适合电商产品页、免费试用注册、潜在客户获取、SaaS定价页。",
+		promptEn:
+			"Conversion-optimized landing page. Minimal design, a single focused CTA and high contrast. Urgency elements (countdowns, limited-time offers), trust signals (customer logos, reviews, security badges) and social proof. Form focus/hover animations, loading spinners and success feedback. Suits e-commerce product pages, free-trial signups, lead generation and SaaS pricing pages.",
 		preview: { bg: "#FFFFFF", text: "#22C55E" },
 	},
 	{
@@ -290,6 +332,8 @@ const PRESET_STYLES = [
 		descEn: "Testimonials, case studies, credibility markers",
 		prompt:
 			"社交证明落地页设计。突出的客户评价，客户Logo展示，成功案例区块，评分/星级，用户头像，成功指标。主品牌色，信任蓝，成功绿用于增长指标。评价轮播动画，Logo网格淡入，数字计数动画。适合B2B SaaS、专业服务、高级产品、电商转化页。",
+		promptEn:
+			"Social-proof landing page. Prominent testimonials, customer logo walls, case-study sections, ratings/stars, user avatars and success metrics. Primary brand color, trust blue, and success green for growth metrics. Testimonial carousel, logo grid fade-in and number count-up animations. Suits B2B SaaS, professional services, premium products and e-commerce conversion pages.",
 		preview: { bg: "#F8FAFC", text: "#1E40AF" },
 	},
 	// ============================================================
@@ -303,6 +347,8 @@ const PRESET_STYLES = [
 		descEn: "Multiple charts, KPI cards, space-efficient",
 		prompt:
 			"数据密集仪表板设计。多图表/小部件，数据表格，KPI卡片，最小内边距，网格布局。中控配色（浅灰#F5F5F5），数据色（蓝绿红），深色文字#333333。成功绿#22C55E、警告橙#F59E0B、警报红#EF4444用于状态。悬停工具提示，图表点击缩放，行高亮，平滑过滤动画。适合BI仪表板、财务分析、企业报告。",
+		promptEn:
+			"Data-dense dashboard. Multiple charts/widgets, data tables, KPI cards, minimal padding and a grid layout. Neutral base (light gray #F5F5F5), data colors (blue, green, red) and dark text #333333. Success green #22C55E, warning orange #F59E0B and alert red #EF4444 for status. Hover tooltips, click-to-zoom charts, row highlighting and smooth filter animations. Suits BI dashboards, financial analysis and enterprise reporting.",
 		preview: { bg: "#F5F5F5", text: "#333333" },
 	},
 	{
@@ -313,6 +359,8 @@ const PRESET_STYLES = [
 		descEn: "Live updates, status indicators, streaming charts",
 		prompt:
 			"实时监控面板设计。实时数据更新，状态指示器，警报通知。警报色：紧急红#FF0000、警告橙#FFA500、正常绿#22C55E、更新蓝。状态指示闪烁动画，警报脉冲/发光，平滑数据流更新，加载效果。适合系统监控、DevOps仪表板、实时分析、股票看板、直播跟踪。",
+		promptEn:
+			"Real-time monitoring panel. Live data updates, status indicators and alert notifications. Alert colors: critical red #FF0000, warning orange #FFA500, healthy green #22C55E, update blue. Blinking status indicators, pulsing/glowing alerts, smooth streaming data updates and loading effects. Suits system monitoring, DevOps dashboards, real-time analytics, stock tickers and live tracking.",
 		preview: { bg: "#1E1E1E", text: "#22C55E" },
 	},
 ];
@@ -738,13 +786,18 @@ const btnUseStyle = document.getElementById("btn-use-style");
 
 let currentStyle = null;
 
+/** 按界面语言选择风格提示词 */
+function localizedPrompt(style) {
+	return getLocale() === "zh_CN" ? style.prompt : style.promptEn || style.prompt;
+}
+
 function showStyleModal(style) {
 	currentStyle = style;
 	const locale = getLocale();
 
 	// 设置弹窗内容
 	modalStyleName.textContent = locale === "zh_CN" ? style.name : style.nameEn;
-	stylePromptCode.textContent = style.prompt;
+	stylePromptCode.textContent = localizedPrompt(style);
 	styleDescription.textContent = locale === "zh_CN" ? style.desc : style.descEn;
 
 	// 根据背景类型处理：渐变或纯色
@@ -783,7 +836,7 @@ btnCopyPrompt?.addEventListener("click", async () => {
 	if (!currentStyle) return;
 
 	try {
-		await navigator.clipboard.writeText(currentStyle.prompt);
+		await navigator.clipboard.writeText(localizedPrompt(currentStyle));
 
 		// 更新按钮文本为"已复制"
 		const originalText = btnCopyPrompt.innerHTML;
@@ -803,7 +856,7 @@ btnUseStyle?.addEventListener("click", () => {
 	if (!currentStyle) return;
 
 	// 侧边栏会把该风格的提示词预填到输入框
-	openSidePanelAndClose({ pendingPrompt: currentStyle.prompt });
+	openSidePanelAndClose({ pendingPrompt: localizedPrompt(currentStyle) });
 });
 
 // ============================================================
