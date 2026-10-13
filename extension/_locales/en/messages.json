@@ -1142,5 +1142,117 @@
   "feedbackIssues": {
     "message": "GitHub Issues",
     "description": "Feedback via GitHub issues link text"
+  },
+  "connectionFailedDetail": {
+    "message": "Connection failed: {error}",
+    "description": "Onboarding connection error"
+  },
+  "connectionFailedHttp": {
+    "message": "Connection failed (HTTP {status})",
+    "description": "Onboarding HTTP error"
+  },
+  "saveSettingsFailedDetail": {
+    "message": "Failed to save settings: {error}",
+    "description": "Onboarding save error"
+  },
+  "queueMessageFailed": {
+    "message": "Couldn't queue the message, please try again",
+    "description": "Queue message error"
+  },
+  "imageAlt": {
+    "message": "Image {index}",
+    "description": "Attached image alt text"
+  },
+  "deleteSessionFailed": {
+    "message": "Failed to delete session",
+    "description": "Delete session error"
+  },
+  "clearStorageFailed": {
+    "message": "Cleanup failed: {error}",
+    "description": "Clear storage error"
+  },
+  "rewindHere": {
+    "message": "Go back to this turn",
+    "description": "Rewind button title"
+  },
+  "rewindConfirm": {
+    "message": "Go back to this turn? Later messages and style changes will be discarded.",
+    "description": "Rewind confirm"
+  },
+  "toolNoParams": {
+    "message": "(No parameters)",
+    "description": "Tool card empty input"
+  },
+  "todoDeleteStep": {
+    "message": "Delete this step",
+    "description": "Todo delete title"
+  },
+  "todoConfirmTitle": {
+    "message": "Please confirm the task plan",
+    "description": "Todo confirm card title"
+  },
+  "todoStepCount": {
+    "message": "{count} steps",
+    "description": "Todo step count"
+  },
+  "todoHint": {
+    "message": "Edit, add or remove steps, then run",
+    "description": "Todo hint"
+  },
+  "todoAddStep": {
+    "message": "+ Add step",
+    "description": "Todo add step"
+  },
+  "todoConfirm": {
+    "message": "Run plan",
+    "description": "Todo confirm button"
+  },
+  "todoStepPlaceholder": {
+    "message": "Describe the step...",
+    "description": "Todo step placeholder"
+  },
+  "todoProgressTitle": {
+    "message": "Task progress",
+    "description": "Todo progress title"
+  },
+  "confirmEffect": {
+    "message": "✓ Looks good",
+    "description": "Confirmation overlay confirm"
+  },
+  "undoShort": {
+    "message": "↶ Undo",
+    "description": "Confirmation overlay undo"
+  },
+  "orKeepTyping": {
+    "message": "or keep typing",
+    "description": "Confirmation overlay hint"
+  },
+  "confirmAll": {
+    "message": "✓ Accept all",
+    "description": "Confirmation overlay confirm all"
+  },
+  "undoLastStep": {
+    "message": "↶ Undo last step",
+    "description": "Confirmation overlay undo last"
+  },
+  "undoAllSteps": {
+    "message": "↶↶ Undo all",
+    "description": "Confirmation overlay undo all"
+  },
+  "errApiKeyInvalid": {
+    "message": "Invalid API Key, please check settings",
+    "description": "Error banner"
+  },
+  "goToSettings": {
+    "message": "Settings →",
+    "description": "Error banner action"
+  },
+  "errNetwork": {
+    "message": "Network error, please check your connection",
+    "description": "Error banner"
+  },
+  "errApi": {
+    "message": "API call failed",
+    "description": "Error banner"
   }
 }

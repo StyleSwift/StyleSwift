@@ -564,7 +564,7 @@
     "description": "Profile saved with checkmark"
   },
   "profileSaveFailed": {
-    "message": "✗ 保存失败",
+    "message": "✗ 保存失败：{error}",
     "description": "Profile save failed with message"
   },
   "apiAddressFormatError": {
@@ -1142,5 +1142,117 @@
   "feedbackIssues": {
     "message": "GitHub Issues",
     "description": "Feedback via GitHub issues link text"
+  },
+  "connectionFailedDetail": {
+    "message": "连接失败：{error}",
+    "description": "Onboarding connection error"
+  },
+  "connectionFailedHttp": {
+    "message": "连接失败（HTTP {status}）",
+    "description": "Onboarding HTTP error"
+  },
+  "saveSettingsFailedDetail": {
+    "message": "保存设置失败：{error}",
+    "description": "Onboarding save error"
+  },
+  "queueMessageFailed": {
+    "message": "无法排队消息，请稍后重试",
+    "description": "Queue message error"
+  },
+  "imageAlt": {
+    "message": "图片 {index}",
+    "description": "Attached image alt text"
+  },
+  "deleteSessionFailed": {
+    "message": "删除会话失败",
+    "description": "Delete session error"
+  },
+  "clearStorageFailed": {
+    "message": "清理失败：{error}",
+    "description": "Clear storage error"
+  },
+  "rewindHere": {
+    "message": "回到这一轮",
+    "description": "Rewind button title"
+  },
+  "rewindConfirm": {
+    "message": "回到这一轮？之后的对话和样式修改将被丢弃。",
+    "description": "Rewind confirm"
+  },
+  "toolNoParams": {
+    "message": "（无参数）",
+    "description": "Tool card empty input"
+  },
+  "todoDeleteStep": {
+    "message": "删除此步骤",
+    "description": "Todo delete title"
+  },
+  "todoConfirmTitle": {
+    "message": "请确认任务计划",
+    "description": "Todo confirm card title"
+  },
+  "todoStepCount": {
+    "message": "{count} 个步骤",
+    "description": "Todo step count"
+  },
+  "todoHint": {
+    "message": "可编辑、增删步骤后确认执行",
+    "description": "Todo hint"
+  },
+  "todoAddStep": {
+    "message": "+ 添加步骤",
+    "description": "Todo add step"
+  },
+  "todoConfirm": {
+    "message": "确认执行",
+    "description": "Todo confirm button"
+  },
+  "todoStepPlaceholder": {
+    "message": "输入步骤描述...",
+    "description": "Todo step placeholder"
+  },
+  "todoProgressTitle": {
+    "message": "任务进度",
+    "description": "Todo progress title"
+  },
+  "confirmEffect": {
+    "message": "✓ 确认效果",
+    "description": "Confirmation overlay confirm"
+  },
+  "undoShort": {
+    "message": "↶ 撤销",
+    "description": "Confirmation overlay undo"
+  },
+  "orKeepTyping": {
+    "message": "或继续输入",
+    "description": "Confirmation overlay hint"
+  },
+  "confirmAll": {
+    "message": "✓ 全部确认",
+    "description": "Confirmation overlay confirm all"
+  },
+  "undoLastStep": {
+    "message": "↶ 撤销最后一步",
+    "description": "Confirmation overlay undo last"
+  },
+  "undoAllSteps": {
+    "message": "↶↶ 全部撤销",
+    "description": "Confirmation overlay undo all"
+  },
+  "errApiKeyInvalid": {
+    "message": "API Key 无效，请检查设置",
+    "description": "Error banner"
+  },
+  "goToSettings": {
+    "message": "去设置 →",
+    "description": "Error banner action"
+  },
+  "errNetwork": {
+    "message": "网络错误，请检查网络连接",
+    "description": "Error banner"
+  },
+  "errApi": {
+    "message": "API 调用失败",
+    "description": "Error banner"
   }
 }

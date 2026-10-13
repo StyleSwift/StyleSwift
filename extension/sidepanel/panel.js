@@ -927,8 +927,8 @@ function applyChatAreaState(config) {
 			tip.className = "restricted-tip";
 			tip.innerHTML = `
         <div class="restricted-icon">${iconHtml("lock", 48)}</div>
-        <div class="restricted-title">此页面不支持样式修改</div>
-        <div class="restricted-desc">Chrome 扩展无法操作浏览器内部页面（chrome://、扩展商店等）</div>
+        <div class="restricted-title">${getMessage("restrictedPage")}</div>
+        <div class="restricted-desc">${getMessage("restrictedPageDesc")}</div>
       `;
 			DOM.messagesContainer.appendChild(tip);
 			break;
@@ -1282,13 +1282,13 @@ async function handleStartClick() {
 
 			if (result.error) {
 				// 网络错误
-				errorMsg = `连接失败: ${result.error}`;
+				errorMsg = formatMessage("connectionFailedDetail", { error: result.error });
 			} else if (result.status === 401) {
 				errorMsg = getMessage("apiKeyInvalidPleaseCheck");
 			} else if (result.status === 403) {
 				errorMsg = getMessage("accessDeniedPleaseCheck");
 			} else if (result.status) {
-				errorMsg = `连接失败 (HTTP ${result.status})`;
+				errorMsg = formatMessage("connectionFailedHttp", { status: result.status });
 			}
 
 			showSetupError(errorMsg);
@@ -1307,7 +1307,7 @@ async function handleStartClick() {
 		initMainView();
 	} catch (err) {
 		console.error("[Panel] Setup error:", err);
-		showSetupError(`保存设置失败: ${err.message}`);
+		showSetupError(formatMessage("saveSettingsFailedDetail", { error: err.message }));
 	} finally {
 		showLoading(false);
 		DOM.startBtn.disabled = false;
@@ -1868,11 +1868,11 @@ async function handleSendClick() {
 				console.log(`[Panel] Message queued successfully.`);
 			} else {
 				console.warn("[Panel] Failed to queue message");
-				showError("无法排队消息，请稍后重试");
+				showError(getMessage("queueMessageFailed"));
 			}
 		} catch (err) {
 			console.error("[Panel] Error queueing message:", err);
-			showError("排队消息时出错");
+			showError(getMessage("queueMessageFailed"));
 		}
 		return;
 	}
@@ -1908,11 +1908,11 @@ async function handleSendClick() {
 		const selectors = pickedElements.map(el => el.selector).join(", ");
 		displayMessage += `\n📍 ${selectors}`;
 		if (pickedElements.length > 1) {
-			displayMessage = message + `\n📍 已选择 ${pickedElements.length} 个元素`;
+			displayMessage = message + `\n📍 ${formatMessage("selectedElements_other", { count: pickedElements.length })}`;
 		}
 	}
 	if (hasImages) {
-		displayMessage += `\n🖼 ${imagesToSend.length} 张图片`;
+		displayMessage += `\n🖼 ${formatMessage("images", { count: imagesToSend.length })}`;
 	}
 
 	// 计算当前轮次（统计已有的用户文本消息数量 + 1）
@@ -2203,7 +2203,7 @@ async function handleSendClick() {
 		} else {
 			setErrorState("API_ERROR");
 			showErrorBanner("API_ERROR", {
-				customMessage: error.message || "API 调用失败",
+				customMessage: error.message || getMessage("errApi"),
 				onRetry: () => {
 					DOM.messageInput.value = message;
 					handleSendClick();
@@ -2562,7 +2562,7 @@ async function handlePaste(event) {
 			_attachedImages.push({
 				file,
 				dataUrl,
-				name: file.name || `粘贴图片 ${_attachedImages.length + 1}`,
+				name: file.name || `${getMessage("pastedImage")} ${_attachedImages.length + 1}`,
 				wasCompressed,
 			});
 
@@ -2741,7 +2741,7 @@ function renderAttachedImages() {
 
 		const preview = document.createElement("img");
 		preview.src = img.dataUrl;
-		preview.alt = img.name || `图片 ${index + 1}`;
+		preview.alt = img.name || formatMessage("imageAlt", { index: index + 1 });
 		item.appendChild(preview);
 
 		const removeBtn = document.createElement("button");
@@ -3607,12 +3607,12 @@ async function deleteSkillWithConfirmation(skill) {
         <h3>${getMessage("confirmDelete")}</h3>
       </div>
       <div class="modal-body">
-        <p>确定要删除风格技能「${escapeHtml(skill.name)}」吗？</p>
-        <p class="hint">删除后无法恢复</p>
+        <p>${formatMessage("confirmDeleteDesc", { name: escapeHtml(skill.name) })}</p>
+        <p class="hint">${getMessage("cannotRecover")}</p>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-cancel">取消</button>
-        <button class="btn btn-danger">删除</button>
+        <button class="btn btn-cancel">${getMessage("cancel")}</button>
+        <button class="btn btn-danger">${getMessage("delete")}</button>
       </div>
     </div>
   `;
@@ -4159,7 +4159,7 @@ async function handleDeleteSession(domain, sessionId, sessionTitle) {
 		}
 	} catch (error) {
 		console.error("[Panel] Failed to handle delete session:", error);
-		showError("删除会话失败");
+		showError(getMessage("deleteSessionFailed"));
 	}
 }
 
@@ -4180,13 +4180,13 @@ function showDeleteConfirmationModal(domain, sessionId, sessionTitle) {
 
 	modal.innerHTML = `
     <div class="modal-header">
-      <h3 class="modal-title">删除「${escapeHtml(sessionTitle)}」？</h3>
+      <h3 class="modal-title">${formatMessage("deleteConfirmTitle", { title: escapeHtml(sessionTitle) })}</h3>
     </div>
     <div class="modal-body">
-      <p>会话记录和该会话的样式将被永久删除。</p>
+      <p>${getMessage("deleteConfirmDesc")}</p>
     </div>
     <div class="modal-footer">
-      <button class="modal-btn modal-btn-secondary" data-action="cancel">取消</button>
+      <button class="modal-btn modal-btn-secondary" data-action="cancel">${getMessage("cancel")}</button>
       <button class="modal-btn modal-btn-danger" data-action="confirm">${getMessage("confirm")}</button>
     </div>
   `;
@@ -4233,13 +4233,13 @@ function showLastSessionModal(domain, sessionId, sessionTitle) {
 
 	modal.innerHTML = `
     <div class="modal-header">
-      <h3 class="modal-title">这是 ${domain} 的最后一个会话</h3>
+      <h3 class="modal-title">${formatMessage("lastSession", { domain: escapeHtml(domain) })}</h3>
     </div>
     <div class="modal-body">
-      <p>删除后将清除该域名的所有会话数据。</p>
+      <p>${getMessage("lastSessionDesc")}</p>
     </div>
     <div class="modal-footer">
-      <button class="modal-btn modal-btn-secondary" data-action="cancel">取消</button>
+      <button class="modal-btn modal-btn-secondary" data-action="cancel">${getMessage("cancel")}</button>
       <button class="modal-btn modal-btn-danger" data-action="delete">${getMessage("confirm")}</button>
     </div>
   `;
@@ -4684,7 +4684,7 @@ async function renderStaticSkillList() {
 		}
 	} catch (err) {
 		console.error("[Panel] Failed to load static skills:", err);
-		container.innerHTML = '<p class="hint error">加载技能失败</p>';
+		container.innerHTML = `<p class="hint error">${getMessage("loadSkillError")}</p>`;
 	}
 }
 
@@ -4850,7 +4850,7 @@ function createUserSkillItem(skill, isEnabled) {
         <input type="checkbox" ${isEnabled ? "checked" : ""}>
         <span class="toggle-slider"></span>
       </label>
-      <button class="btn-icon-small" data-action="edit" title="编辑">${iconHtml("pencil", 13)}</button>
+      <button class="btn-icon-small" data-action="edit" title="${getMessage("edit")}">${iconHtml("pencil", 13)}</button>
       <button class="btn-icon-small" data-action="delete" title="${getMessage("delete")}">${iconHtml("trash", 13)}</button>
     </div>
   `;
@@ -4905,21 +4905,21 @@ async function openSkillEditor(skill) {
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label for="edit-skill-name">名称</label>
+          <label for="edit-skill-name">${getMessage("name")}</label>
           <input type="text" id="edit-skill-name" value="${escapeHtml(skill.name)}" data-i18n-placeholder="styleNamePlaceholder">
         </div>
         <div class="form-group">
-          <label for="edit-skill-mood">描述</label>
+          <label for="edit-skill-mood">${getMessage("desc")}</label>
           <input type="text" id="edit-skill-mood" value="${escapeHtml(skill.mood || "")}" data-i18n-placeholder="styleDescPlaceholder">
         </div>
         <div class="form-group">
-          <label for="edit-skill-content">内容</label>
+          <label for="edit-skill-content">${getMessage("content")}</label>
           <textarea id="edit-skill-content" class="settings-textarea skill-editor-textarea" data-i18n-placeholder="skillContentPlaceholder">${escapeHtml(content || "")}</textarea>
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-cancel">取消</button>
-        <button class="btn btn-primary">保存</button>
+        <button class="btn btn-cancel">${getMessage("cancel")}</button>
+        <button class="btn btn-primary">${getMessage("save")}</button>
       </div>
     </div>
   `;
@@ -4993,21 +4993,21 @@ function openNewSkillEditor() {
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label for="new-skill-name">名称</label>
+          <label for="new-skill-name">${getMessage("name")}</label>
           <input type="text" id="new-skill-name" data-i18n-placeholder="styleNamePlaceholder">
         </div>
         <div class="form-group">
-          <label for="new-skill-mood">描述</label>
+          <label for="new-skill-mood">${getMessage("desc")}</label>
           <input type="text" id="new-skill-mood" data-i18n-placeholder="styleDescPlaceholder">
         </div>
         <div class="form-group">
-          <label for="new-skill-content">内容</label>
+          <label for="new-skill-content">${getMessage("content")}</label>
           <textarea id="new-skill-content" class="settings-textarea skill-editor-textarea" data-i18n-placeholder="skillContentPlaceholder"></textarea>
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-cancel">取消</button>
-        <button class="btn btn-primary">保存</button>
+        <button class="btn btn-cancel">${getMessage("cancel")}</button>
+        <button class="btn btn-primary">${getMessage("save")}</button>
       </div>
     </div>
   `;
@@ -5082,7 +5082,7 @@ function openNewSkillEditor() {
 function updateProfileCharCount() {
 	if (DOM.settingsUserProfile && DOM.profileCharCount) {
 		const count = DOM.settingsUserProfile.value.length;
-		DOM.profileCharCount.textContent = `${count} 字`;
+		DOM.profileCharCount.textContent = formatMessage("charCount", { count });
 	}
 }
 
@@ -5103,7 +5103,7 @@ async function handleSaveUserProfile() {
 		showProfileStatus("✓ " + getMessage("profileSaved"), "success");
 	} catch (err) {
 		console.error("[Panel] Failed to save user profile:", err);
-		showProfileStatus(`✗ 保存失败: ${err.message}`, "error");
+		showProfileStatus(formatMessage("profileSaveFailed", { error: err.message }), "error");
 	} finally {
 		DOM.saveProfileBtn.disabled = false;
 	}
@@ -5173,7 +5173,7 @@ async function handleVerifyConnection() {
 			AppState.apiKeyStatus = "invalid";
 		}
 	} catch (err) {
-		showConnectionStatus(`✗ 连接错误: ${err.message}`, "error");
+		showConnectionStatus(`✗ ${getMessage("connectionError")}: ${err.message}`, "error");
 	} finally {
 		DOM.verifyConnectionBtn.disabled = false;
 		DOM.verifyConnectionBtn.classList.remove("loading");
@@ -5301,7 +5301,7 @@ async function handleClearStorage() {
 		alert(getMessage("clearHistorySuccess"));
 	} catch (error) {
 		console.error("[Panel] Failed to clear storage:", error);
-		alert("清理失败：" + error.message);
+		alert(formatMessage("clearStorageFailed", { error: error.message }));
 	} finally {
 		// 恢复按钮状态
 		const clearBtn = document.getElementById("clear-storage-btn");
@@ -5436,7 +5436,7 @@ function renderUserMessage(content, options = {}) {
 	if (options.showRewind && options.turn != null) {
 		const rewindBtn = document.createElement("button");
 		rewindBtn.className = "rewind-btn";
-		rewindBtn.title = "回到这一轮";
+		rewindBtn.title = getMessage("rewindHere");
 		rewindBtn.innerHTML = "↩";
 		rewindBtn.addEventListener("click", (e) => {
 			e.stopPropagation();
@@ -6139,7 +6139,7 @@ async function handleRewindClick(targetTurn) {
 		return;
 	}
 
-	const confirmed = confirm("回到这一轮？之后的对话和样式修改将被丢弃。");
+	const confirmed = confirm(getMessage("rewindConfirm"));
 	if (!confirmed) return;
 
 	try {
@@ -6469,7 +6469,7 @@ class ToolCardManager {
 	 */
 	formatInput(input) {
 		if (!input || Object.keys(input).length === 0) {
-			return '<span class="tool-card-empty">(无参数)</span>';
+			return `<span class="tool-card-empty">${getMessage("toolNoParams")}</span>`;
 		}
 
 		// 特殊处理：显示关键参数
@@ -6783,7 +6783,7 @@ class TodoCardManager {
       <div class="todo-item todo-item-editable" data-index="${index}">
         <span class="todo-drag-handle">⠿</span>
         <input type="text" class="todo-edit-input" value="${this._escapeAttr(todo.content)}" />
-        <button class="todo-delete-btn" data-index="${index}" title="删除此步骤">×</button>
+        <button class="todo-delete-btn" data-index="${index}" title="${getMessage("todoDeleteStep")}">×</button>
       </div>
     `,
 			)
@@ -6791,17 +6791,17 @@ class TodoCardManager {
 
 		this.todoContainer.innerHTML = `
       <div class="todo-card-header">
-        <span class="todo-card-title">请确认任务计划</span>
-        <span class="todo-step-count">${todos.length} 个步骤</span>
+        <span class="todo-card-title">${getMessage("todoConfirmTitle")}</span>
+        <span class="todo-step-count">${formatMessage("todoStepCount", { count: todos.length })}</span>
       </div>
-      <div class="todo-hint">可编辑、增删步骤后确认执行</div>
+      <div class="todo-hint">${getMessage("todoHint")}</div>
       <div class="todo-list todo-list-editable">
         ${todosHtml}
       </div>
-      <button class="todo-add-btn">+ 添加步骤</button>
+      <button class="todo-add-btn">${getMessage("todoAddStep")}</button>
       <div class="todo-confirm-actions">
-        <button class="todo-cancel-btn">取消</button>
-        <button class="todo-confirm-btn">确认执行</button>
+        <button class="todo-cancel-btn">${getMessage("cancel")}</button>
+        <button class="todo-confirm-btn">${getMessage("todoConfirm")}</button>
       </div>
     `;
 
@@ -6838,8 +6838,8 @@ class TodoCardManager {
 				newItem.className = "todo-item todo-item-editable";
 				newItem.innerHTML = `
           <span class="todo-drag-handle">⠿</span>
-          <input type="text" class="todo-edit-input" value="" placeholder="输入步骤描述..." />
-          <button class="todo-delete-btn" title="删除此步骤">×</button>
+          <input type="text" class="todo-edit-input" value="" placeholder="${getMessage("todoStepPlaceholder")}" />
+          <button class="todo-delete-btn" title="${getMessage("todoDeleteStep")}">×</button>
         `;
 				newItem
 					.querySelector(".todo-delete-btn")
@@ -6911,7 +6911,7 @@ class TodoCardManager {
 		const itemCount =
 			this.todoContainer?.querySelectorAll(".todo-item").length || 0;
 		if (countEl) {
-			countEl.textContent = `${itemCount} 个步骤`;
+			countEl.textContent = formatMessage("todoStepCount", { count: itemCount });
 		}
 	}
 
@@ -6942,7 +6942,7 @@ class TodoCardManager {
 
 		this.todoContainer.innerHTML = `
       <div class="todo-card-header">
-        <span class="todo-card-title">任务进度</span>
+        <span class="todo-card-title">${getMessage("todoProgressTitle")}</span>
         <span class="todo-progress">${completed}/${total}</span>
       </div>
       <div class="todo-progress-bar">
@@ -7294,13 +7294,13 @@ class ConfirmationOverlay {
         <div class="confirmation-content">
           <div class="confirmation-buttons">
             <button class="confirmation-btn primary" data-action="confirm">
-              ✓ 确认效果
+              ${getMessage("confirmEffect")}
             </button>
             <button class="confirmation-btn secondary" data-action="undo">
-              ↶ 撤销
+              ${getMessage("undoShort")}
             </button>
           </div>
-          <span class="confirmation-hint">或继续输入</span>
+          <span class="confirmation-hint">${getMessage("orKeepTyping")}</span>
         </div>
       `;
 		} else {
@@ -7309,24 +7309,24 @@ class ConfirmationOverlay {
         <div class="confirmation-content">
           <div class="confirmation-buttons">
             <button class="confirmation-btn primary" data-action="confirm-all">
-              ✓ 全部确认
+              ${getMessage("confirmAll")}
             </button>
             <div class="confirmation-dropdown-wrapper" style="position: relative;">
               <button class="confirmation-dropdown-trigger" data-action="dropdown">
-                ↶ 撤销最后一步
+                ${getMessage("undoLastStep")}
                 <span class="icon icon-chevron-down arrow" style="width:10px;height:10px" aria-hidden="true"></span>
               </button>
               <div class="confirmation-dropdown hidden">
                 <button class="confirmation-dropdown-item" data-action="undo-last">
-                  ↶ 撤销最后一步
+                  ${getMessage("undoLastStep")}
                 </button>
                 <button class="confirmation-dropdown-item danger" data-action="undo-all">
-                  ↶↶ 全部撤销
+                  ${getMessage("undoAllSteps")}
                 </button>
               </div>
             </div>
           </div>
-          <span class="confirmation-hint">或继续输入</span>
+          <span class="confirmation-hint">${getMessage("orKeepTyping")}</span>
         </div>
         <div class="confirmation-timeout">
           <div class="confirmation-timeout-bar" style="width: 100%"></div>
@@ -7546,18 +7546,18 @@ function getConfirmationOverlay() {
  */
 const ERROR_BANNER_CONFIGS = {
 	API_KEY_INVALID: {
-		message: "API Key 无效，请检查设置",
-		actionText: "去设置→",
+		messageKey: "errApiKeyInvalid",
+		actionKey: "goToSettings",
 		action: "settings",
 	},
 	NETWORK_ERROR: {
-		message: "网络错误，请检查网络连接",
-		actionText: "重试",
+		messageKey: "errNetwork",
+		actionKey: "retry",
 		action: "retry",
 	},
 	API_ERROR: {
-		message: "API 调用失败",
-		actionText: "重试",
+		messageKey: "errApi",
+		actionKey: "retry",
 		action: "retry",
 	},
 };
@@ -7579,12 +7579,12 @@ function showErrorBanner(errorType, options = {}) {
 	}
 
 	// 设置错误消息
-	const message = options.customMessage || config.message;
+	const message = options.customMessage || getMessage(config.messageKey);
 	DOM.errorBannerMessage.textContent = message;
 
 	// 设置操作按钮
-	if (config.actionText && config.action) {
-		DOM.errorBannerAction.textContent = config.actionText;
+	if (config.actionKey && config.action) {
+		DOM.errorBannerAction.textContent = getMessage(config.actionKey);
 		DOM.errorBannerAction.classList.remove("hidden");
 		DOM.errorBannerAction.dataset.action = config.action;
 
