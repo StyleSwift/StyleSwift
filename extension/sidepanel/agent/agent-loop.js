@@ -573,6 +573,7 @@ export async function agentLoop(prompt, uiCallbacks) {
     }
     const userMsg = { role: "user", content: textOnlyContent };
     fullHistory.push(userMsg);
+    _saveState.userMsg = userMsg;
     let llmHistory = extractEffectiveHistory(fullHistory);
     llmHistory = deduplicateToolResults(llmHistory);
 
@@ -856,11 +857,11 @@ export async function agentLoop(prompt, uiCallbacks) {
     if (err instanceof AgentError) {
       if (_saveState) {
         try {
-          const { domain, sessionId, fullHistory, snapshots } = _saveState;
-          await saveHistory(domain, sessionId, {
-            messages: fullHistory,
-            snapshots,
-          });
+          const { domain, sessionId, fullHistory, snapshots, userMsg } = _saveState;
+          // 首次回复前就失败：不保存本轮用户消息，否则「重试」会重复发送它
+          const messages =
+            fullHistory.at(-1) === userMsg ? fullHistory.slice(0, -1) : fullHistory;
+          await saveHistory(domain, sessionId, { messages, snapshots });
         } catch {}
       }
     }

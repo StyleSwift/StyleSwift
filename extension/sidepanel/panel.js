@@ -1031,23 +1031,25 @@ async function loadSessionForDomain(domain) {
 		}
 
 		// 加载会话样式到 Content Script（接管 early-inject.js 的样式）
+		// 无样式时也发送：空 css 会清掉上一个会话留在页面上的样式
 		const stylesKey = currentSession.stylesKey;
 		const { [stylesKey]: sessionStyles = "" } =
 			await chrome.storage.local.get(stylesKey);
 
+		try {
+			const { sendToContentScript } = await import("./tools.js");
+			await sendToContentScript({
+				tool: "load_session_css",
+				args: { css: sessionStyles },
+			});
+		} catch (error) {
+			console.warn(
+				"[Panel] Failed to load session CSS on init:",
+				error.message,
+			);
+		}
+
 		if (sessionStyles && sessionStyles.trim()) {
-			try {
-				const { sendToContentScript } = await import("./tools.js");
-				await sendToContentScript({
-					tool: "load_session_css",
-					args: { css: sessionStyles },
-				});
-			} catch (error) {
-				console.warn(
-					"[Panel] Failed to load session CSS on init:",
-					error.message,
-				);
-			}
 			// 同步 active_styles（确保与当前会话一致）
 			await chrome.storage.local.set({
 				[currentSession.activeStylesKey]: sessionStyles,

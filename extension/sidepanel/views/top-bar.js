@@ -123,6 +123,11 @@ export async function refreshStyleControls() {
  */
 export async function handleUndoStyleClick() {
 	if (AppState.agentStatus === "running") return;
+	// 会话属于其他页面时，撤销会把它的样式写到当前页
+	if (scopeMismatch) {
+		showError(getMessage("scopeMismatchBlocked"));
+		return;
+	}
 	try {
 		const { executeTool } = await import("../tools.js");
 		const result = await executeTool("apply_styles", { mode: "rollback_last" });

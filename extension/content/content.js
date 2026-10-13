@@ -1210,26 +1210,23 @@ chrome.storage.local.get(stylesDisabledKey).then((r) => {
 // === 页面级样式：当前路径的生效样式 key（页面级优先，路径规则同 session/context.js）===
 const currentPath = () => location.pathname.replace(/\/+$/, "") || "/";
 
-async function effectiveStyles() {
-  const pageKey = `active_styles:${location.hostname}:page:${currentPath()}`;
+async function effectiveStyles(path = currentPath()) {
+  const pageKey = `active_styles:${location.hostname}:page:${path}`;
   const domainKey = `active_styles:${location.hostname}`;
   const r = await chrome.storage.local.get([pageKey, domainKey]);
   return r[pageKey] ? { key: pageKey, css: r[pageKey] } : { key: domainKey, css: r[domainKey] || "" };
 }
 
-// SPA 导航不刷新页面：路径变化且生效 key 改变时切换样式
+// SPA 导航不刷新页面：路径变化且新旧路径的生效 key 不同时切换样式
+// 两个 key 都按当前 storage 解析，scope 切换后也不会用到过期的 key
 // ponytail: 1s 轮询 location，需要更及时时改用 Navigation API 事件
 let lastPath = currentPath();
-let lastEffectiveKey = null;
-effectiveStyles().then((e) => {
-  lastEffectiveKey = e.key;
-});
 setInterval(async () => {
   if (currentPath() === lastPath) return;
+  const prevPath = lastPath;
   lastPath = currentPath();
-  const { key, css } = await effectiveStyles();
-  if (key === lastEffectiveKey) return;
-  lastEffectiveKey = key;
+  const [prev, { key, css }] = await Promise.all([effectiveStyles(prevPath), effectiveStyles()]);
+  if (key === prev.key) return;
   removeEarlyInjectStyle();
   cssStack.length = 0;
   if (css.trim()) cssStack.push(css);
