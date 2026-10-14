@@ -30,7 +30,7 @@ StyleSwift 目前只有自研 Agent 内核，用户必须自备 API Key。很多
 
 ### 不在范围内
 
-- 跨引擎的对话上下文延续（切换引擎后，新引擎看不到之前的对话）
+- 重新打开会话时回放本机引擎的工具调用卡片（只保留文字）
 - 本机引擎运行中插入用户消息（会排队到下一轮）
 - 签名安装包（.exe / .pkg）
 - Firefox / Safari
@@ -70,7 +70,8 @@ StyleSwift 目前只有自研 Agent 内核，用户必须自备 API Key。很多
   - 写 host manifest 和启动器（launcher 中写死当前 node 的绝对路径）
   - Windows：写入 `HKCU\Software\{Google\Chrome|Microsoft\Edge}\NativeMessagingHosts\com.styleswift.bridge`
   - macOS / Linux：写入对应浏览器的 `NativeMessagingHosts/` 目录
-  - 默认 `allowed_origins` 是商店版扩展 ID；开发时用 `--extension-id` 覆盖或追加
+  - 默认 `allowed_origins` 是商店版扩展 ID（`llchggmimjgnbjlcgpkjmplhfbkjjcli`）；开发时用 `--extension-id` 追加
+  - 无 Node 的单行安装：`bridge/scripts/install.ps1`（Windows，`irm <raw-url> | iex`）和 `install.sh`（macOS/Linux，`curl -fsSL <raw-url> | sh`）。脚本检测到没有 node 时，先用 winget / brew 安装 Node LTS（Linux 上则提示用户手动安装），再执行 `npx -y styleswift-bridge install`。脚本托管在仓库的 GitHub raw 地址上
 - `styleswift-bridge uninstall`：删除注册信息
 - `host`：由 Chrome 拉起，包含以下部分
   - 消息帧：4 字节小端长度 + JSON。host → 扩展的单条消息不能超过 1MB，超长字符串截断后再转发
@@ -88,14 +89,19 @@ adapter.detect()  // → {installed, version?, loggedIn?, error?}
 adapter.run({ prompt, system, mcpUrl, mcpToken, resume, workDir }) // → AsyncIterable<EngineEvent>，可 kill()
 ```
 
+以下参数均已在 Claude Code 2.1.292 / Codex CLI 0.139.0 上实测（2026-10-14）。
+
 | | Claude Code | Codex |
 |---|---|---|
-| 启动 | `claude -p --input-format stream-json --output-format stream-json --verbose` | `codex exec --json`（多轮续接用 `codex exec resume <id>`） |
-| 系统提示词 | `--system-prompt-file` | 写入工作目录的 `AGENTS.md`，或用 `-c` 覆盖（实现时验证） |
-| MCP 注入 | `--mcp-config <file> --strict-mcp-config` | `-c mcp_servers.styleswift.url=...`（实现时验证 HTTP + header 的支持情况） |
-| 关闭内置能力 | `--tools "" --setting-sources ""`，`--allowedTools mcp__styleswift` | `--sandbox read-only`，审批策略设为不询问，只放行 MCP |
-| 续接 | `--resume <session_id>` | thread id |
-| 登录检测 | 读取 init 事件或运行最小命令（实现时确定低成本做法） | `codex login status` |
+| 启动 | `claude -p --input-format stream-json --output-format stream-json --verbose`，prompt 经 stdin | `codex exec --json --skip-git-repo-check -`；续接 `codex exec resume <thread_id> --json ... -`；prompt 经 stdin |
+| 系统提示词 | `--system-prompt-file <file>` | 写入 CLI 工作目录下的 `AGENTS.md` |
+| MCP 注入 | `--mcp-config <file> --strict-mcp-config`（`type:"http"` + `headers.Authorization`） | `-c mcp_servers.styleswift.url="…"`、`-c mcp_servers.styleswift.bearer_token_env_var="STYLESWIFT_MCP_TOKEN"`（token 经环境变量传入）、`-c mcp_servers.styleswift.default_tools_approval_mode="approve"`（否则 never 策略下 MCP 调用被拒） |
+| 关闭内置能力 | `--tools "" --setting-sources ""`，`--allowedTools mcp__styleswift` | `--ignore-user-config --ignore-rules`、`-c sandbox_mode="read-only"`、`-c approval_policy="never"`、`-c web_search="disabled"`、`--disable shell_tool/image_generation/apps/goals/multi_agent/plugins`。`apply_patch` 无法移除，靠只读沙箱拦截写入 |
+| 模型 | 跟随用户的 CLI 设置 | 由于 `--ignore-user-config`，需从 `$CODEX_HOME/config.toml`（默认 `~/.codex`）读取顶层 `model` / `model_reasoning_effort`，用 `-m` / `-c` 传入 |
+| 工具发现 | 直接可见 | MCP 工具总是延迟在 `tool_search` 后，无开关可关；提示词中需明确「工具在 `styleswift` 命名空间，先用 tool_search 加载」 |
+| 续接 ID | init 事件的 `session_id` | `thread.started` 事件的 `thread_id` |
+| 登录检测（不耗额度） | `claude auth status` → JSON `loggedIn` | `codex login status` → 退出码 0 |
+| 版本检测 | `claude --version` | `codex --version` |
 
 Windows 下 CLI 可能是 `.cmd`（npm 安装），需要经 shell 启动。所有参数只能是固定 flag、临时文件路径或 UUID，用户输入一律通过 stdin 或文件传递，不拼进命令行。
 
@@ -116,7 +122,7 @@ Windows 下 CLI 可能是 `.cmd`（npm 安装），需要经 shell 启动。所�
 - `extension/sidepanel/agent/engines/local.js`：通用本机引擎（取代原型里的 `claude-code-engine.js`），负责连接、检测、运行、工具往返、把统一事件映射到 `uiCallbacks`
 - `agentLoop`：公共部分（并发保护、Tab 锁定、页面访问检查、会话解析、历史 / 快照 / 标题保存）保持不变；只把「循环本体」按引擎分流
 - 工具集：本机引擎使用 `ALL_TOOLS` 去掉 `Task` / `TodoWrite` / `think`，再加上 `capture_screenshot`
-- 系统提示词：本机引擎单独一版，去掉内置循环专用的工具说明，保留会话上下文、用户画像、技能描述、当前样式摘要
+- 系统提示词：本机引擎单独一版。从 `SYSTEM_BASE` 中去掉 `## Task Planning`、`## Quality Audit`、`## Think Tool Usage` 三节，加入会话上下文、用户画像、技能描述，以及会话 meta 中的 `activeStylesSummary`（内置引擎目前没有注入这一项，本设计不改动内置引擎）
 
 ### 3.5 安全边界
 
@@ -160,7 +166,7 @@ Windows 下 CLI 可能是 `.cmd`（npm 安装），需要经 shell 启动。所�
 - 下拉列出三个引擎及其状态；不可用的显示为灰色，附「去设置」；内置引擎没有 Key 时显示「配置 API Key」
 - Agent 运行期间禁用切换
 - 选中尚未连接的本机引擎时，以弹层形式打开与 4.1 相同的检测和安装流程
-- 会话中途切换时，消息流里插入分隔线：「已切换到 Codex · 新引擎看不到之前的对话，已应用的样式会保留」
+- 会话中途切换时，消息流里插入分隔线：「已切换到 Codex · 之前的对话会以文字带入」
 
 ### 4.3 设置页「AI 引擎」分组
 
@@ -178,6 +184,7 @@ Windows 下 CLI 可能是 `.cmd`（npm 安装），需要经 shell 启动。所�
 | `LOCAL_QUOTA` | 额度用尽或被限流 | 显示 CLI 原始提示 | 切换引擎 |
 | `LOCAL_CLI_MISSING` | CLI 被卸载 | 未找到 Claude Code | 安装文档 |
 | `LOCAL_PROTOCOL_MISMATCH` | Bridge 版本不兼容 | 请更新 Bridge | 复制更新命令 |
+| `LOCAL_ENGINE_ERROR` | 其他 CLI 报错（如「该模型需要更新版本的 CLI」） | 显示 CLI 原始报错（截断到 200 字） | 切换引擎 |
 
 - 冷启动时显示「正在启动 Claude Code…」，第一条事件到达后消失
 - 每个错误码怎么判定（依据退出码、stderr、result 事件中的哪些字段），由各适配器在实现时用真实输出确定，并写进测试数据
@@ -195,12 +202,13 @@ Windows 下 CLI 可能是 `.cmd`（npm 安装），需要经 shell 启动。所�
 
 删除 StyleSwift 会话时，同时删除对应的 `engine_session:*` 键。
 
-### 5.2 历史
+### 5.2 历史（以纯文本延续上下文）
 
-- 本机引擎每一轮的用户消息、助手最终文本、工具调用记录都写入 `fullHistory`，每条带 `_engine` 字段
-- 内置引擎组装 LLM 历史时过滤掉 `_engine` 不是 `builtin` 的消息（没有该字段的旧消息视为 `builtin`）
-- 本机引擎靠 CLI 自己的会话续接，扩展不回放历史给它
-- 续接失败时，自动新开 CLI 会话重试一次，并在消息流里提示「本机会话已失效，已重新开始」
+- 本机引擎每一轮只在 `fullHistory` 中写入两条纯文本消息：用户消息、助手最终回复（`content` 为字符串，带 `_engine` 字段用于展示）。不写工具调用块，因此不存在跨引擎工具 ID 混用的问题，也不需要改动压缩逻辑
+- 内置引擎照常读取 `fullHistory`，把本机引擎的轮次当作普通对话
+- 本机引擎：如果有 `engine_session` 映射，就用 CLI 续接；如果没有（该会话首次使用该引擎），就把 `fullHistory` 中最近的纯文本对话（最多 8000 字）作为 `[Previous conversation]` 附在本轮 prompt 前面
+- 续接失败时，删除映射，按「无映射」的方式重跑一次（这时会带上文字记录），并在消息流里提示「本机会话已失效，已重新开始」
+- 之前曾决定「各引擎上下文相互隔离」。在发现隔离方案与现有压缩逻辑冲突（压缩时会用过滤后的历史覆盖 `fullHistory`）后，于 2026-10-14 改为本方案
 
 ### 5.3 不变的部分
 
