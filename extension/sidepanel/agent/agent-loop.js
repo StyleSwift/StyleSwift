@@ -611,14 +611,23 @@ export async function agentLoop(prompt, uiCallbacks) {
           signal,
         );
         response = { content: [{ type: "text", text }] };
-        fullHistory.push({ role: "assistant", content: text, _engine: engine });
+        fullHistory.push({ role: "assistant", content: [{ type: "text", text }], _engine: engine });
         if (pendingUserMessages.length === 0) break;
-        // 运行中追加的消息：本轮结束后合并为下一轮
-        localPrompt = pendingUserMessages.map((m) => (typeof m.content === "string" ? m.content : "")).filter(Boolean).join("\n");
-        for (const m of pendingUserMessages) {
+        // 运行中追加的消息：本轮结束后合并为下一轮（图片忽略，保留文字）
+        const queued = pendingUserMessages;
+        pendingUserMessages = [];
+        const partsOf = (c) => (Array.isArray(c) ? c : []);
+        if (queued.some((m) => partsOf(m.content).some((c) => c.type === "image_url"))) {
+          uiCallbacks.appendText?.(getMessage("localImagesIgnored") + "\n\n");
+        }
+        localPrompt = queued
+          .map((m) => (typeof m.content === "string" ? m.content : partsOf(m.content).filter((c) => c.type === "text").map((c) => c.text).join("\n")))
+          .filter(Boolean)
+          .join("\n");
+        for (const m of queued) {
           if (onQueuedMessageProcessed && typeof m.content === "string") onQueuedMessageProcessed(m.content);
         }
-        pendingUserMessages = [];
+        if (!localPrompt) break;
         fullHistory.push({ role: "user", content: localPrompt, _engine: engine });
         uiCallbacks.onNewIteration?.();
       }

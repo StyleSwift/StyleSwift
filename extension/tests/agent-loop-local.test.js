@@ -48,14 +48,20 @@ globalThis.indexedDB = {
 };
 
 const localRuns = [];
+let duringFirstRun = null;
 vi.mock("../sidepanel/agent/engines/local-engine.js", () => ({
-  runLocalEngine: async (args) => { localRuns.push(args); return "reply from codex"; },
+  runLocalEngine: async (args) => {
+    localRuns.push(args);
+    if (localRuns.length === 1) duringFirstRun?.();
+    return "reply from codex";
+  },
 }));
 
-const { agentLoop } = await import("../sidepanel/agent/agent-loop.js");
+const { agentLoop, queueUserMessage } = await import("../sidepanel/agent/agent-loop.js");
+const { serializeToClaude, serializeToOpenAI } = await import("../sidepanel/agent/message-serialization.js");
 const { loadAndPrepareHistory } = await import("../sidepanel/session.js");
 
-beforeEach(() => { localRuns.length = 0; for (const k of Object.keys(store)) delete store[k]; store.agent_engine = "codex"; });
+beforeEach(() => { localRuns.length = 0; duringFirstRun = null; for (const k of Object.keys(store)) delete store[k]; store.agent_engine = "codex"; });
 
 describe("agentLoop with a local engine", () => {
   test("delegates to runLocalEngine and stores plain-text turns tagged with the engine", async () => {
@@ -67,7 +73,7 @@ describe("agentLoop with a local engine", () => {
     const { messages } = await loadAndPrepareHistory("a.com", sessionId);
     expect(messages.slice(-2)).toEqual([
       expect.objectContaining({ role: "user", content: "make it dark", _engine: "codex" }),
-      expect.objectContaining({ role: "assistant", content: "reply from codex", _engine: "codex" }),
+      expect.objectContaining({ role: "assistant", content: [{ type: "text", text: "reply from codex" }], _engine: "codex" }),
     ]);
   });
 
@@ -79,5 +85,36 @@ describe("agentLoop with a local engine", () => {
     );
     expect(localRuns[0].prompt).toBe("match this");
     expect(texts.join("")).toMatch(/localImagesIgnored/);
+  });
+
+  test("history from a local turn still serializes for the built-in engine", async () => {
+    await agentLoop("make it dark", { appendText() {} });
+    store.agent_engine = "builtin";
+    const { messages } = await loadAndPrepareHistory("a.com", localRuns[0].sessionId);
+    expect(() => serializeToClaude(messages)).not.toThrow();
+    expect(JSON.stringify(serializeToClaude(messages))).toContain("reply from codex");
+    expect(JSON.stringify(serializeToOpenAI("", messages))).toContain("reply from codex");
+  });
+
+  test("queued message with an image keeps its text, shows the notice, and runs a second turn", async () => {
+    const texts = [];
+    duringFirstRun = () => queueUserMessage([
+      { type: "text", text: "also blue" },
+      { type: "image_url", image_url: { url: "data:image/png;base64,AA" } },
+    ]);
+    await agentLoop("make it dark", { appendText: (t) => texts.push(t) });
+    expect(localRuns).toHaveLength(2);
+    expect(localRuns[1].prompt).toBe("also blue");
+    expect(texts.join("").match(/localImagesIgnored/g)).toHaveLength(1);
+  });
+
+  test("queued image-only message runs no extra turn and stores no empty user message", async () => {
+    const texts = [];
+    duringFirstRun = () => queueUserMessage([{ type: "image_url", image_url: { url: "data:image/png;base64,AA" } }]);
+    await agentLoop("make it dark", { appendText: (t) => texts.push(t) });
+    expect(localRuns).toHaveLength(1);
+    expect(texts.join("")).toMatch(/localImagesIgnored/);
+    const { messages } = await loadAndPrepareHistory("a.com", localRuns[0].sessionId);
+    expect(messages.filter((m) => m.role === "user" && m.content === "")).toHaveLength(0);
   });
 });
