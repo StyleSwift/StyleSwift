@@ -8,7 +8,7 @@
 
 1. 在 `chrome://extensions` 重新加载开发版（unpacked）扩展。
 2. Bridge 已为开发版扩展 ID `ifbcoafkoaijjhffpciaonbldchfflmf` 安装（见下方「自动化检查」）。第 2 项需要先 `node bridge/cli.mjs uninstall`，验完再重新 `install --extension-id ifbcoafkoaijjhffpciaonbldchfflmf`。
-3. Codex 使用本机配置的 `gpt-6-astra` 模型需要较新的 Codex CLI：先运行 `npm i -g @openai/codex` 升级（当前已装 0.139.0，见「自动化检查」中的冒烟结果）。
+3. 开发者的 `~/.codex/config.toml` 当前选的是 `gpt-6.1-sol`，Codex CLI 0.139.0 对 ChatGPT 账号拒绝该模型（报错 "not supported when using Codex with a ChatGPT account"）。运行 Codex 相关项（6、7、11、13）之前，二选一：把 `~/.codex/config.toml` 里的 `model` 改成账号支持的模型（冒烟测试用 `gpt-5.5` 通过了）；或升级 Codex CLI，并用 `codex exec "hi"` 确认配置的模型可用。
 4. Windows 先验；有 macOS 设备时重复一遍。
 
 任何 ❌：回到对应 Task 修复并补测试，再重跑该项。
