@@ -47,53 +47,56 @@ async function runOnce({ engine, prompt, system, tabId, resume, key }, ui, signa
   };
 
   ui.onEngineStarting?.(engineLabel(engine));
-  await runBridge(
-    { engine, prompt, system, tools: LOCAL_TOOLS, resume },
-    {
-      onEvent: (ev) => {
-        markStarted();
-        switch (ev.type) {
-          case "session":
-            chrome.storage.local.set({ [key]: ev.id });
-            break;
-          case "text":
-            nextBubbleIfNeeded();
-            progressed = true;
-            reply.push(ev.text);
-            ui.appendText?.(ev.text);
-            break;
-          case "thinking":
-            ui.appendReasoning?.(ev.text);
-            break;
-          case "tool_use":
-            nextBubbleIfNeeded();
-            progressed = true;
-            ui.showToolCall?.({ type: "tool_use", id: ev.id, name: ev.name, input: ev.input });
-            break;
-          case "tool_result":
-            ui.showToolResult?.(ev.id, ev.text);
-            afterToolResult = true;
-            break;
-          case "error":
-            error ??= ev;
-            break;
-        }
+  try {
+    await runBridge(
+      { engine, prompt, system, tools: LOCAL_TOOLS, resume },
+      {
+        onEvent: (ev) => {
+          markStarted();
+          switch (ev.type) {
+            case "session":
+              chrome.storage.local.set({ [key]: ev.id });
+              break;
+            case "text":
+              nextBubbleIfNeeded();
+              progressed = true;
+              reply.push(ev.text);
+              ui.appendText?.(ev.text);
+              break;
+            case "thinking":
+              ui.appendReasoning?.(ev.text);
+              break;
+            case "tool_use":
+              nextBubbleIfNeeded();
+              progressed = true;
+              ui.showToolCall?.({ type: "tool_use", id: ev.id, name: ev.name, input: ev.input });
+              break;
+            case "tool_result":
+              ui.showToolResult?.(ev.id, ev.text);
+              afterToolResult = true;
+              break;
+            case "error":
+              error ??= ev;
+              break;
+          }
+        },
+        onToolCall: async (name, args) => {
+          ui.showToolExecuting?.(name);
+          try {
+            return toMcpContent(await executeTool(name, args, { abortSignal: signal, tabId, uiCallbacks: ui }));
+          } catch (err) {
+            return [{ type: "text", text: `Error: ${err.message}` }];
+          }
+        },
       },
-      onToolCall: async (name, args) => {
-        ui.showToolExecuting?.(name);
-        try {
-          return toMcpContent(await executeTool(name, args, { abortSignal: signal, tabId, uiCallbacks: ui }));
-        } catch (err) {
-          return [{ type: "text", text: `Error: ${err.message}` }];
-        }
-      },
-    },
-    signal,
-  );
-  markStarted();
+      signal,
+    );
+  } finally {
+    markStarted();
+  }
 
   if (error) {
-    throw Object.assign(new AgentError(error.code, error.message), { resumeFailed: Boolean(resume) && !progressed });
+    throw Object.assign(new AgentError(error.code, error.message), { resumeFailed: Boolean(resume) && !progressed && error.code === "LOCAL_ENGINE_ERROR" });
   }
   return reply.join("\n\n");
 }
@@ -108,7 +111,7 @@ export async function runLocalEngine({ engine, prompt, system, tabId, domain, se
   try {
     return await runOnce({ engine, prompt, system, tabId, resume, key }, ui, signal);
   } catch (err) {
-    if (!err.resumeFailed) throw err;
+    if (!err.resumeFailed || signal?.aborted) throw err;
     await chrome.storage.local.remove(key);
     ui.onEngineNotice?.(getMessage("localSessionExpired"));
     return fresh();

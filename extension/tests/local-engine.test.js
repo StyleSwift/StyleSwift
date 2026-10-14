@@ -1,4 +1,5 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
+import { AgentError } from "../sidepanel/agent/llm-client.js";
 
 const store = {};
 globalThis.chrome = {
@@ -17,7 +18,8 @@ let script; // (request) => { events: EngineEvent[], toolCalls?: [name,args][] }
 vi.mock("../sidepanel/agent/engines/bridge-client.js", () => ({
   runBridge: async (request, { onEvent, onToolCall }) => {
     runs.push(request);
-    const { events, toolCalls = [] } = script(request, runs.length);
+    const { events, toolCalls = [], throws } = script(request, runs.length);
+    if (throws) throw throws;
     for (const [name, args] of toolCalls) request._toolResults = [...(request._toolResults || []), await onToolCall(name, args)];
     for (const e of events) onEvent(e);
   },
@@ -103,6 +105,23 @@ describe("runLocalEngine", () => {
     script = () => ({ events: [{ type: "text", text: "partial" }, { type: "error", code: "LOCAL_QUOTA", message: "usage limit" }] });
     await expect(runLocalEngine(base, ui().cb, signal)).rejects.toMatchObject({ code: "LOCAL_QUOTA", message: "usage limit" });
     expect(runs).toHaveLength(1);
+  });
+
+  test("non-engine errors before progress on a resumed run do not trigger the fallback", async () => {
+    store["engine_session:codex:a.com:s1"] = "thread-1";
+    script = () => ({ events: [{ type: "error", code: "LOCAL_QUOTA", message: "usage limit" }] });
+    const { calls, cb } = ui();
+    await expect(runLocalEngine(base, cb, signal)).rejects.toMatchObject({ code: "LOCAL_QUOTA" });
+    expect(runs).toHaveLength(1);
+    expect(store["engine_session:codex:a.com:s1"]).toBe("thread-1");
+    expect(calls.some((c) => c[0] === "notice")).toBe(false);
+  });
+
+  test("a rejecting bridge still clears the starting state", async () => {
+    script = () => ({ events: [], throws: new AgentError("LOCAL_BRIDGE_UNAVAILABLE", "no bridge") });
+    const { calls, cb } = ui();
+    await expect(runLocalEngine(base, cb, signal)).rejects.toMatchObject({ code: "LOCAL_BRIDGE_UNAVAILABLE" });
+    expect(calls.map((c) => c[0])).toEqual(["starting", "started"]);
   });
 
   test("tool calls are executed through executeTool", async () => {
