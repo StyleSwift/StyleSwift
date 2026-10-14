@@ -6,7 +6,7 @@
 
 **Give your favorite websites a fresh look with a single sentence**
 
-[![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-blue.svg)](https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli) [![PPIO](https://img.shields.io/badge/PPIO-Sponsor-blue.svg)](https://ppio.com/) [![OpenAI](https://img.shields.io/badge/OpenAI-GPT‑4o-412991?logo=openai&logoColor=white)](https://openai.com/) [![Anthropic](https://img.shields.io/badge/Anthropic-Claude‑3.5‑Sonnet-d4a57b?logo=anthropic&logoColor=white)](https://www.anthropic.com/) [![Google](https://img.shields.io/badge/Google-Gemini‑2.0-4285F4?logo=google&logoColor=white)](https://ai.google.dev/) [![DeepSeek](https://img.shields.io/badge/DeepSeek-V3/R1-5B5FC7?logo=deepseek&logoColor=white)](https://www.deepseek.com/) [![Moonshot](https://img.shields.io/badge/Moonshot-Kimi-FF6B35)](https://moonshot.cn/) [![Zhipu](https://img.shields.io/badge/智谱AI-GLM‑4-4D6BFF)](https://open.bigmodel.cn/) [![Alibaba](https://img.shields.io/badge/阿里云-通义千问-FF6A00?logo=alibaba&logoColor=white)](https://tongyi.aliyun.com/) [![Baidu](https://img.shields.io/badge/百度-文心一言-2932E1?logo=baidu&logoColor=white)](https://yiyan.baidu.com/) [![SiliconFlow](https://img.shields.io/badge/SiliconFlow-API-7C3AED)](https://siliconflow.cn/) [![Groq](https://img.shields.io/badge/Groq-Llama‑3-F55036?logo=groq&logoColor=white)](https://groq.com/)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome-Web%20Store-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli) [![Manifest V3](https://img.shields.io/badge/Manifest-V3-34A853)](extension/manifest.json) [![License: SSPL](https://img.shields.io/badge/License-SSPL-orange.svg)](docs/legal/LICENSE) [![CI](https://github.com/StyleSwift/StyleSwift/actions/workflows/ci.yml/badge.svg)](https://github.com/StyleSwift/StyleSwift/actions/workflows/ci.yml) [![PPIO](https://img.shields.io/badge/PPIO-Sponsor-blue.svg)](https://ppio.com/)
 
 [English](#english) | [中文](#中文)
 
@@ -20,38 +20,21 @@
 
 **StyleSwift is an AI Agent that transforms any website's appearance with a single sentence.**
 
-Just describe what you want: "Make it look like The Matrix" or "Give me an e-ink reading mode" — the Agent understands your intent, analyzes the page, and applies styles automatically.
+Just describe what you want: "Make it look like The Matrix" or "Give me an e-ink reading mode". The Agent understands your intent, analyzes the page, and applies styles automatically.
 
-### Why Different from Claude Code?
+### Highlights
 
-Claude Code is powerful, but not designed for web styling. StyleSwift fills that gap:
-
-| Claude Code | StyleSwift |
-|-------------|------------|
-| General-purpose coding assistant | Specialized for web styling |
-| Manual DOM inspection needed | Auto page analysis with `grep`, `get_page_structure` |
-| Basic CSS generation | Customized tools → 80% better style quality |
-| Styles may conflict with site CSS | Seamless integration with official styles |
-| High token usage (full page dump) | Efficient token usage (fetch what's needed) |
-| No style persistence | Style skills library, cross-site reuse |
-| No visual feedback loop | QualityAudit sub-agent auto-detects issues |
-
-**Key Advantages**:
-- 🔄 **Easy Style Switching** — Apply, rollback, transfer styles between sites
-- 🎨 **Seamless Integration** — Generated styles blend with official CSS, no visual glitches
-- ⚡ **Better Quality** — Specialized tools produce 80% more polished results
-- 💰 **Token Efficient** — Model decides what info is needed, no full page dumps
-
-### Core Capabilities
-
-| Capability | Description |
-|------------|-------------|
-| **Natural Language Understanding** | Parse intent, plan execution — no preset workflows needed |
-| **Autonomous Page Analysis** | Model decides what info is needed, calls tools on demand |
-| **Dynamic Style Generation** | Generate optimal CSS based on intent and page characteristics |
-| **Visual Quality Loop** | Auto-detect issues after styling (contrast, accessibility), self-repair |
-| **Style Learning & Transfer** | Extract visual features, reuse styles across websites |
-| **Multi-turn Memory** | Session isolation, context management, history compression |
+| | |
+|---|---|
+| **Natural language styling** | Describe the look you want. The Agent plans its own steps, no preset workflows |
+| **Autonomous page analysis** | The model fetches only what it needs (`get_page_structure`, `grep`) instead of dumping the whole page, which saves tokens |
+| **Blends with the site** | Generated CSS works with the site's own styles, without visual glitches |
+| **Visual quality loop** | A QualityAudit sub-agent screenshots the result, checks contrast and accessibility, and fixes what it finds |
+| **Style skills** | Save a look you like, reuse it on other sites, export and import it as a `.md` file |
+| **Page or site scope** | Apply a style to the current page only, or to the whole site |
+| **Undo and on/off switch** | Persistent undo history, a per-site style switch, and a toolbar badge (`ON` / `OFF`) on styled sites |
+| **Your choice of model** | Use your own API key, or the Claude Code / Codex already logged in on your computer |
+| **Multi-turn sessions** | Per-site sessions, context management, history compression |
 
 ### Effect Preview
 
@@ -65,67 +48,113 @@ Claude Code is powerful, but not designed for web styling. StyleSwift fills that
 :---:|:---:|:---:
 **Old Newspaper Style** | **The Matrix Style** | **Cyberpunk Style**
 
-Simply describe your design intent, and StyleSwift creates unique visual experiences for any website.
-
 </div>
 
 ### Quick Start
 
-#### Installation
+#### 1. Install the extension
 
 **Chrome Web Store**: https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli
 
-**From Source**:
+**From source**:
+
 ```bash
 git clone https://github.com/StyleSwift/StyleSwift.git
 ```
 
-Load in Chrome:
 1. Go to `chrome://extensions/`
 2. Enable "Developer mode"
-3. Click "Load unpacked"
-4. Select `extension` folder
+3. Click "Load unpacked" and select the `extension` folder
 
-#### Usage
+#### 2. Choose an engine
 
-1. **Configure API**: Enter your API Key (supports OpenAI/Anthropic format)
-2. **Open Panel**: Click extension icon
-3. **Describe Your Need**:
+**Option A: Built-in engine (API key)**
+
+On first launch, pick a provider and paste your API key. Presets: PPIO, DeepSeek, Zhipu GLM, Alibaba Bailian, SiliconFlow, Anthropic, OpenAI, Google Gemini. Any OpenAI- or Anthropic-compatible endpoint works through "Custom".
+
+**Option B: Local Claude Code / Codex (no API key)**
+
+If [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or [Codex](https://github.com/openai/codex) is installed and logged in on your computer, StyleSwift can use it through a small local bridge. Install the bridge (Node.js 18+):
+
+```bash
+npx -y styleswift-bridge@latest install
+```
+
+No Node.js? Windows (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/StyleSwift/StyleSwift/main/bridge/scripts/install.ps1 | iex
+```
+
+macOS / Linux:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/StyleSwift/StyleSwift/main/bridge/scripts/install.sh | sh
+```
+
+Then click "Check again" in the side panel, and switch engines with the switcher next to the input box.
+
+- The CLI's own tools (shell, file access, web search) are turned off. It can only call StyleSwift's page tools.
+- Unpacked extension: add `--extension-id <ID from chrome://extensions>` to the install command.
+- Uninstall: `npx styleswift-bridge uninstall`. Details: [bridge/README.md](bridge/README.md).
+
+#### 3. Start styling
+
+1. Click the extension icon to open the side panel
+2. Describe what you want:
    - "Give this page a dark mode"
    - "Make the navigation larger"
-   - "Hide this ad" (use element picker first)
-4. **Style Transfer**: Save successful styles, reuse on other sites
+   - "Hide this ad" (pick the element with the element picker first)
+3. Not happy? Undo, or turn the style off for this site
+4. Like it? Save it as a style skill and use it on other sites
 
-### Architecture Overview
+### How It Works
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   Agent Core Loop                        │
-│  User Msg → Context → Model Reasoning → Tool → Result   │
-│                          ↓                               │
-│              ┌─────────────────────┐                     │
-│              │    Tools System     │                     │
-│              │  Page Ops | Styles  │                     │
-│              │  Profile | Skills   │                     │
-│              └─────────────────────┘                     │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│            Runtime Carrier (Chrome Extension)            │
-│   Side Panel (UI) ←→ Content Script (Page Ops)          │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────── Side Panel ────────────────────┐
+│  Agent loop: sessions · history · undo · scope     │
+│    ├─ Built-in engine ──▶ LLM API (your key)       │
+│    └─ Local engine ─────▶ styleswift-bridge        │
+│                             └─▶ Claude Code / Codex│
+│  Tools: get_page_structure · grep · apply_styles   │
+│         edit_css · capture_screenshot · skills ... │
+└──────────────────────────┬─────────────────────────┘
+                           │
+┌──────────────────────────▼─────────────────────────┐
+│  Content Script: reads the page, injects CSS       │
+└────────────────────────────────────────────────────┘
 ```
 
-**Core Design**: Code provides atomic capabilities (tools), model handles reasoning and decision-making. See [ARCHITECTURE.md](doc/ARCHITECTURE.md) for details.
+**Core design**: code provides atomic capabilities (tools); the model handles reasoning and decisions. Both engines share the same tools. See [ARCHITECTURE.md](docs/ARCHITECTURE.md) and the [ADRs](docs/ADR/).
+
+### Development
+
+```bash
+npm install
+npm test                  # unit tests (Vitest), extension + bridge
+npm run lint              # ESLint
+npm run test:integration  # Playwright, loads the extension in Chrome
+```
+
+```
+extension/   Chrome extension (MV3): side panel, content scripts, service worker, skills, themes
+bridge/      styleswift-bridge: Native Messaging host for local Claude Code / Codex
+website/     Official website (FastAPI)
+docs/        Architecture, ADRs, feature docs, legal
+```
+
+### Contributing
+
+Issues and pull requests are welcome: [GitHub Issues](https://github.com/StyleSwift/StyleSwift/issues). Before your first pull request, please read the [Contributor License Agreement](docs/guides/CONTRIBUTING.md).
 
 ### License
 
-Server Side Public License (SSPL). See [LICENSE](LICENSE).
+Server Side Public License (SSPL), see [LICENSE](docs/legal/LICENSE). For commercial licensing, see [COMMERCIAL_LICENSE.md](docs/legal/COMMERCIAL_LICENSE.md). The `bridge/` package is MIT licensed.
 
 ### Acknowledgments
 
-- [impeccable](https://github.com/pbakaus/impeccable) — style generation quality
-- [learn-claude-code](https://github.com/shareAI-lab/learn-claude-code) — Agent design philosophy
+- [impeccable](https://github.com/pbakaus/impeccable): style generation quality
+- [learn-claude-code](https://github.com/shareAI-lab/learn-claude-code): Agent design philosophy
 
 ---
 
@@ -135,38 +164,21 @@ Server Side Public License (SSPL). See [LICENSE](LICENSE).
 
 **数字女娲 (StyleSwift) 是一个 AI Agent，一句话就能改变任何网站的外观。**
 
-只需描述你的想法：「让它看起来像黑客帝国」或「给我一个墨水屏阅读模式」——Agent 会理解你的意图、分析页面、自动应用样式。
+只需描述你的想法：「让它看起来像黑客帝国」或「给我一个墨水屏阅读模式」。Agent 会理解你的意图、分析页面、自动应用样式。
 
-### 与 Claude Code 的不同之处
+### 核心亮点
 
-Claude Code 很强大，但并非为网页样式设计而生。数字女娲填补了这个空白：
-
-| Claude Code | 数字女娲 |
-|-------------|----------|
-| 通用编程助手 | 专为网页样式设计 |
-| 需手动检查 DOM | 自动页面分析（`grep`、`get_page_structure`） |
-| 基础 CSS 生成 | 定制化工具 → 样式生成效果提升 80% |
-| 样式可能与站点 CSS 冲突 | 与官方样式无缝衔接，无视觉瑕疵 |
-| Token 消耗高（全页导出） | Token 高效（按需获取信息） |
-| 无样式持久化 | 样式技能库，跨站点复用 |
-| 无视觉反馈循环 | QualityAudit 子代理自动检测问题 |
-
-**核心优势**：
-- 🔄 **轻松切换** — 应用、回滚、跨站点迁移样式
-- 🎨 **无缝衔接** — 生成的样式与官方 CSS 融合，无视觉冲突
-- ⚡ **效果更好** — 专用工具生成效果提升 80%
-- 💰 **更省 Token** — 模型按需获取信息，不导出全页
-
-### Agent 核心能力
-
-| 能力 | 说明 |
-|------|------|
-| **自然语言理解** | 解析意图，自主规划执行步骤，无需预设工作流 |
-| **自主页面分析** | 模型决定需要哪些页面信息，按需调用工具 |
-| **动态样式生成** | 根据意图和页面特征，生成最优 CSS 规则 |
-| **视觉质检循环** | 样式应用后自动检测问题（对比度、可访问性），可自主修复 |
-| **风格学习迁移** | 提取视觉特征，跨网站复用风格，持续学习用户偏好 |
-| **多轮对话记忆** | 会话隔离、上下文管理、历史压缩 |
+| | |
+|---|---|
+| **一句话改样式** | 描述你想要的效果，Agent 自主规划步骤，无需预设工作流 |
+| **自主页面分析** | 模型按需获取页面信息（`get_page_structure`、`grep`），不导出全页，更省 Token |
+| **与站点无缝衔接** | 生成的 CSS 与网站自身样式融合，无视觉瑕疵 |
+| **视觉质检循环** | QualityAudit 子代理截图检查对比度、可访问性等问题，并自主修复 |
+| **风格技能** | 保存喜欢的风格，在其他网站复用，支持导出 / 导入 `.md` 文件 |
+| **页面级 / 全站作用域** | 样式可只作用于当前页面，也可作用于整个站点 |
+| **撤销与开关** | 持久化撤销历史、按站点开关样式，已改样式的网站在工具栏图标上显示 `ON` / `OFF` |
+| **模型自由选择** | 用自己的 API Key，或直接用本机已登录的 Claude Code / Codex |
+| **多轮对话** | 按站点隔离会话、上下文管理、历史压缩 |
 
 ### 效果预览
 
@@ -180,67 +192,113 @@ Claude Code 很强大，但并非为网页样式设计而生。数字女娲填�
 :---:|:---:|:---:
 **报纸风格** | **黑客帝国风格** | **赛博朋克风格**
 
-只需一句话，数字女娲即可理解你的设计意图并智能应用样式，为任何网站打造独特的视觉体验。
-
 </div>
 
 ### 快速入手
 
-#### 安装
+#### 1. 安装扩展
 
 **Chrome 应用商店**：https://chromewebstore.google.com/detail/styleswift/llchggmimjgnbjlcgpkjmplhfbkjjcli
 
 **从源码安装**：
+
 ```bash
 git clone https://github.com/StyleSwift/StyleSwift.git
 ```
 
-在 Chrome 中加载：
 1. 打开 `chrome://extensions/`
 2. 启用「开发者模式」
-3. 点击「加载已解压的扩展程序」
-4. 选择 `extension` 文件夹
+3. 点击「加载已解压的扩展程序」，选择 `extension` 文件夹
 
-#### 使用
+#### 2. 选择引擎
 
-1. **配置 API**：首次启动输入 API Key（支持 OpenAI/Anthropic 格式）
-2. **打开面板**：点击扩展图标打开侧边栏
-3. **自然语言交互**：
+**方式 A：内置引擎（API Key）**
+
+首次启动时选择服务商并粘贴 API Key。预设：PPIO、DeepSeek、智谱 GLM、阿里百炼、硅基流动、Anthropic、OpenAI、Google Gemini；其他兼容 OpenAI / Anthropic 格式的接口可选「自定义」。
+
+**方式 B：本机 Claude Code / Codex（无需 API Key）**
+
+如果本机已安装并登录 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 或 [Codex](https://github.com/openai/codex)，StyleSwift 可以通过本地 Bridge 直接使用它们。安装 Bridge（需要 Node.js 18+）：
+
+```bash
+npx -y styleswift-bridge@latest install
+```
+
+没有 Node.js？Windows（PowerShell）：
+
+```powershell
+irm https://raw.githubusercontent.com/StyleSwift/StyleSwift/main/bridge/scripts/install.ps1 | iex
+```
+
+macOS / Linux：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/StyleSwift/StyleSwift/main/bridge/scripts/install.sh | sh
+```
+
+装好后在侧边栏点击「重新检测」，之后可用输入框旁的引擎切换器随时切换。
+
+- CLI 自带的工具（执行命令、读写文件、联网搜索）全部关闭，只能调用 StyleSwift 的页面工具。
+- 从源码加载的扩展：安装命令后追加 `--extension-id <chrome://extensions 中的 ID>`。
+- 卸载：`npx styleswift-bridge uninstall`。详见 [bridge/README.md](bridge/README.md)。
+
+#### 3. 开始使用
+
+1. 点击扩展图标打开侧边栏
+2. 描述你的需求：
    - 「给这个页面换个深色模式」
    - 「把导航栏放大一点」
-   - 「隐藏这个广告」（先点元素选择器）
-4. **风格迁移**：保存成功的风格，在其他网站复用
+   - 「隐藏这个广告」（先用元素选择器选中）
+3. 不满意？撤销，或关闭该站点的样式
+4. 很满意？保存为风格技能，在其他网站复用
 
-### 架构概览
+### 工作原理
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   Agent 核心循环                          │
-│  用户消息 → 上下文 → 模型推理 → 工具调用 → 结果           │
-│                          ↓                               │
-│              ┌─────────────────────┐                     │
-│              │      工具系统        │                     │
-│              │  页面操作 | 样式管理 │                     │
-│              │  用户画像 | 技能库   │                     │
-│              └─────────────────────┘                     │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│            运行载体 (Chrome 扩展)                         │
-│   Side Panel (UI) ←→ Content Script (页面操作)          │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────── 侧边栏 ────────────────────────┐
+│  Agent 循环：会话 · 历史 · 撤销 · 作用域             │
+│    ├─ 内置引擎 ──▶ 大模型 API（你的 Key）            │
+│    └─ 本机引擎 ──▶ styleswift-bridge                │
+│                      └─▶ Claude Code / Codex       │
+│  工具：get_page_structure · grep · apply_styles     │
+│        edit_css · capture_screenshot · 技能 ...     │
+└──────────────────────────┬─────────────────────────┘
+                           │
+┌──────────────────────────▼─────────────────────────┐
+│  Content Script：读取页面、注入 CSS                  │
+└────────────────────────────────────────────────────┘
 ```
 
-**核心设计**：代码提供原子化能力（工具），模型负责推理和决策。详见 [ARCHITECTURE.md](doc/ARCHITECTURE.md)。
+**核心设计**：代码提供原子化能力（工具），模型负责推理和决策；两种引擎共用同一套工具。详见 [ARCHITECTURE.md](docs/ARCHITECTURE.md) 和 [架构决策记录](docs/ADR/)。
+
+### 开发
+
+```bash
+npm install
+npm test                  # 单元测试（Vitest），含扩展与 bridge
+npm run lint              # ESLint
+npm run test:integration  # Playwright，在 Chrome 中加载扩展测试
+```
+
+```
+extension/   Chrome 扩展（MV3）：侧边栏、内容脚本、Service Worker、技能、主题
+bridge/      styleswift-bridge：连接本机 Claude Code / Codex 的 Native Messaging host
+website/     官网（FastAPI）
+docs/        架构、ADR、功能文档、法律文件
+```
+
+### 参与贡献
+
+欢迎提交 Issue 和 Pull Request：[GitHub Issues](https://github.com/StyleSwift/StyleSwift/issues)。首次提交 PR 前请阅读[贡献者许可协议](docs/guides/CONTRIBUTING.md)。
 
 ### 许可证
 
-Server Side Public License (SSPL)。详见 [LICENSE](LICENSE)。
+Server Side Public License (SSPL)，详见 [LICENSE](docs/legal/LICENSE)。商业授权见 [COMMERCIAL_LICENSE.md](docs/legal/COMMERCIAL_LICENSE.md)。`bridge/` 目录采用 MIT 许可。
 
 ### 致谢
 
-- [impeccable](https://github.com/pbakaus/impeccable) — 显著提升样式生成质量
-- [learn-claude-code](https://github.com/shareAI-lab/learn-claude-code) — Agent 设计理念
+- [impeccable](https://github.com/pbakaus/impeccable)：显著提升样式生成质量
+- [learn-claude-code](https://github.com/shareAI-lab/learn-claude-code)：Agent 设计理念
 
 ### 联系方式
 
