@@ -58,13 +58,18 @@ describe("streamCli", () => {
   }
 
   test("maps JSON lines, skips non-JSON, passes stdin", async () => {
+    const stdinText = "test-stdin-content";
+    const scriptCode = `let stdin='';process.stdin.on('data',d=>stdin+=d);process.stdin.on('end',()=>{console.log(JSON.stringify({n:1,stdin:stdin.trim()}));console.log("log noise");console.log(JSON.stringify({n:2}));process.stderr.write('boom');process.exit(0);});`;
     const run = streamCli({
       name: node, resolve: false,
-      args: ["-e", script(['{"n":1}', "log noise", '{"n":2}'])],
-      cwd: process.cwd(), stdin: "hi\n",
-      mapEvent: (raw) => [{ type: "text", text: String(raw.n) }],
+      args: ["-e", scriptCode],
+      cwd: process.cwd(), stdin: stdinText,
+      mapEvent: (raw) => [{ type: "text", text: String(raw.n) + (raw.stdin ? ":" + raw.stdin : "") }],
     });
-    expect(await collect(run.events)).toEqual([{ type: "text", text: "1" }, { type: "text", text: "2" }]);
+    expect(await collect(run.events)).toEqual([
+      { type: "text", text: "1:test-stdin-content" },
+      { type: "text", text: "2" }
+    ]);
   });
 
   test("non-zero exit without error event yields classified error from stderr", async () => {
@@ -84,6 +89,42 @@ describe("streamCli", () => {
     });
     const events = await collect(run.events);
     expect(events[0].code).toBe("LOCAL_CLI_MISSING");
+    expect(cleaned).toBe(true);
+  });
+
+  test("kill() before iteration starts prevents spawn and runs cleanup", async () => {
+    let cleaned = false;
+    const run = streamCli({
+      name: node, resolve: false,
+      args: ["-e", script(['{"n":1}'])],
+      cwd: process.cwd(), stdin: "",
+      mapEvent: () => [{ type: "text", text: "event" }],
+      cleanup: () => { cleaned = true; },
+    });
+    run.kill(); // Call kill before starting iteration
+    const events = await collect(run.events);
+    expect(events).toEqual([]); // No events because generator returned early
+    expect(cleaned).toBe(true); // cleanup still ran
+  });
+
+  test("breaking from for-await kills the child", async () => {
+    let cleaned = false;
+    const scriptCode = `process.stdin.resume();console.log(JSON.stringify({n:1}));setTimeout(()=>process.exit(0),30000);`;
+    const run = streamCli({
+      name: node, resolve: false,
+      args: ["-e", scriptCode],
+      cwd: process.cwd(), stdin: "",
+      mapEvent: (raw) => [{ type: "text", text: String(raw.n) }],
+      cleanup: () => { cleaned = true; },
+    });
+    let count = 0;
+    for await (const e of run.events) {
+      count++;
+      if (count === 1) break; // Break after first event
+    }
+    expect(count).toBe(1);
+    // Give a moment for the child to be killed
+    await new Promise(resolve => setTimeout(resolve, 100));
     expect(cleaned).toBe(true);
   });
 });

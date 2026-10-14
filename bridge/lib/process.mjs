@@ -63,27 +63,53 @@ export function contentText(content) {
   return content.map((c) => (c.type === "text" ? c.text : `[${c.type}]`)).join("\n");
 }
 
+/** Kill process, with special handling for Windows shell spawns */
+function killChild(child) {
+  if (!child) return;
+  // On Windows, a .cmd spawn uses shell:true, which only kills cmd.exe, not the CLI.
+  // Use taskkill to terminate the whole process tree.
+  if (process.platform === "win32" && child._useShell) {
+    spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true });
+  } else {
+    child.kill();
+  }
+}
+
 /**
  * 启动 CLI，把 stdout 的每行 JSON 经 mapEvent 转为 EngineEvent 流。
  * 非零退出且没有产生过 error 事件时，用 stderr 补一个 error 事件。
  */
 export function streamCli({ name, args, cwd, env, stdin, mapEvent, cleanup, resolve = true }) {
   let child = null;
+  let exited = false;
+  let killed = false;
   async function* events() {
     try {
+      if (killed) return; // kill() was called before iteration
       const bin = resolve ? await resolveBin(name) : name;
+      if (killed) return; // kill() was called during resolveBin
       if (!bin) {
         yield { type: "error", code: "LOCAL_CLI_MISSING", message: `${name} not found in PATH` };
         return;
       }
       child = spawnCli(bin, args, { cwd, env });
+      // Mark if spawned through shell (for Windows taskkill)
+      if (/\.(cmd|bat)$/i.test(bin)) {
+        child._useShell = true;
+      }
       child.stdin.on("error", () => {}); // 进程提前退出时写 stdin 会 EPIPE
       child.stdin.end(stdin);
       let stderr = "";
       child.stderr.on("data", (c) => (stderr += c));
       const exit = new Promise((done) => {
-        child.on("error", (err) => done({ code: -1, spawnError: err }));
-        child.on("close", (code) => done({ code }));
+        child.on("error", (err) => {
+          exited = true;
+          done({ code: -1, spawnError: err });
+        });
+        child.on("close", (code) => {
+          exited = true;
+          done({ code });
+        });
       });
       let sawError = false;
       for await (const line of createInterface({ input: child.stdout })) {
@@ -106,8 +132,18 @@ export function streamCli({ name, args, cwd, env, stdin, mapEvent, cleanup, reso
         yield { type: "error", code: classifyError(message), message };
       }
     } finally {
+      // Kill child if it hasn't exited yet (consumer break, throw, etc.)
+      if (!exited) {
+        killChild(child);
+      }
       cleanup?.();
     }
   }
-  return { events: events(), kill: () => child?.kill() };
+  return {
+    events: events(),
+    kill: () => {
+      killed = true;
+      killChild(child);
+    },
+  };
 }
