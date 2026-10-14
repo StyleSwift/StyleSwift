@@ -328,3 +328,15 @@ describe('确认浮层组件单元测试', () => {
     });
   });
 });
+
+describe("local engine error mapping", () => {
+  it("every local error code has a banner action", async () => {
+    const { AGENT_ERROR_UI } = await import("../sidepanel/ui/agent-error-ui.js");
+    expect(AGENT_ERROR_UI.LOCAL_BRIDGE_UNAVAILABLE).toMatchObject({ key: "errLocalBridgeUnavailable", action: "localSetup" });
+    expect(AGENT_ERROR_UI.LOCAL_NOT_LOGGED_IN).toMatchObject({ key: "errLocalNotLoggedIn", action: "localSetup" });
+    expect(AGENT_ERROR_UI.LOCAL_CLI_MISSING).toMatchObject({ key: "errLocalCliMissing", action: "localSetup" });
+    expect(AGENT_ERROR_UI.LOCAL_PROTOCOL_MISMATCH).toMatchObject({ key: "errLocalProtocolMismatch", action: "localSetup" });
+    expect(AGENT_ERROR_UI.LOCAL_QUOTA).toMatchObject({ raw: true, action: "switchEngine" });
+    expect(AGENT_ERROR_UI.LOCAL_ENGINE_ERROR).toMatchObject({ raw: true, action: "switchEngine" });
+  });
+});

@@ -27,6 +27,7 @@ import {
   SESSION_EXPIRE_DAYS,
   CURRENT_SCHEMA_VERSION,
 } from "./constants.js";
+import { ENGINES, engineSessionKey } from "../agent/engines/prefs.js";
 
 // Re-export context
 export { SessionContext, currentSession, setCurrentSession, getCurrentSession, extractPath };
@@ -256,7 +257,8 @@ export async function deleteSession(domain, sessionId) {
     const metaKey = `sessions:${domain}:${sessionId}:meta`;
     const stylesKey = `sessions:${domain}:${sessionId}:styles`;
     const stylesHistoryKey = `sessions:${domain}:${sessionId}:styles_history`;
-    await chrome.storage.local.remove([metaKey, stylesKey, stylesHistoryKey]);
+    const engineKeys = ENGINES.filter((e) => e.local).map((e) => engineSessionKey(e.id, domain, sessionId));
+    await chrome.storage.local.remove([metaKey, stylesKey, stylesHistoryKey, ...engineKeys]);
 
     const activeId = await getActiveSession(domain);
     if (activeId === sessionId) {

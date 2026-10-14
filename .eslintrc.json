@@ -1,0 +1,20 @@
+{
+  "root": true,
+  "extends": "eslint:recommended",
+  "parserOptions": { "ecmaVersion": 2022, "sourceType": "module" },
+  "env": { "browser": true, "es2022": true, "webextensions": true },
+  "rules": {
+    "no-empty": ["error", { "allowEmptyCatch": true }],
+    "no-constant-condition": ["error", { "checkLoops": false }],
+    "no-unused-vars": ["warn", { "args": "none", "caughtErrors": "none" }],
+    "no-case-declarations": "warn",
+    "no-useless-escape": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["extension/tests/**/*.js"],
+      "env": { "node": true },
+      "globals": { "describe": "readonly", "test": "readonly", "it": "readonly", "expect": "readonly", "vi": "readonly", "beforeEach": "readonly", "afterEach": "readonly", "beforeAll": "readonly", "afterAll": "readonly" }
+    }
+  ]
+}

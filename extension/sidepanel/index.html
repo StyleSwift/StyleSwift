@@ -21,6 +21,15 @@
           <p class="tagline" data-i18n="tagline">Transform any webpage with a single sentence</p>
         </div>
 
+        <button id="choose-local-engine" class="engine-choice-card" data-testid="choose-local-engine">
+          <strong data-i18n="useLocalAgentTitle">Use local Claude Code / Codex</strong>
+          <span class="hint" data-i18n="useLocalAgentDesc">No API key needed, for developers with a subscription</span>
+        </button>
+        <div id="local-onboarding" class="local-onboarding hidden">
+          <div id="local-setup-onboarding"></div>
+          <button id="use-api-key-instead" class="btn btn-ghost" data-i18n="useApiKeyInstead">Use an API key instead</button>
+        </div>
+
         <div class="setup-form">
           <div class="form-group">
             <label for="provider-select" data-i18n="providerLabel">AI Provider</label>
@@ -186,6 +195,10 @@
               <input type="file" id="image-upload-input" data-testid="image-upload-input" accept="image/*" multiple hidden>
             </div>
             <div class="input-toolbar-right">
+              <button id="engine-btn" class="toolbar-btn engine-btn" data-testid="engine-btn" aria-haspopup="menu" aria-expanded="false">
+                <span class="engine-label"></span>
+                <span class="icon icon-chevron-down" style="width:10px;height:10px" aria-hidden="true"></span>
+              </button>
               <button id="send-btn" class="send-btn" data-testid="send-btn" data-i18n-title="send" data-i18n-aria-label="send">
                 <span class="icon icon-send" style="width:13px;height:13px" aria-hidden="true"></span>
               </button>
@@ -195,6 +208,7 @@
             </div>
           </div>
         </div>
+        <div id="engine-menu" class="engine-menu hidden" role="menu" data-testid="engine-menu"></div>
       </footer>
       
     </section>
@@ -269,6 +283,13 @@
             <button id="save-profile-btn" class="btn-secondary" data-i18n="saveProfile">Save Profile</button>
           </div>
           <div id="profile-status" class="status-message hidden"></div>
+        </div>
+
+        <div class="settings-group">
+          <h3 data-i18n="localAgentTitle">Local agent</h3>
+          <p class="hint" data-i18n="localAgentDesc">Use the Claude Code or Codex already signed in on this computer. No API key needed.</p>
+          <div id="local-setup-settings"></div>
+          <div id="local-engine-status" class="status-message hidden"></div>
         </div>
 
         <div class="settings-group">

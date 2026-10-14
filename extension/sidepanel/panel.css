@@ -6630,3 +6630,46 @@ pre code {
     scroll-behavior: auto !important;
   }
 }
+
+/* ===== 本机 Agent 设置面板 ===== */
+.local-setup { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.local-cmd { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.local-cmd-label { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.local-cmd code {
+  display: block; padding: 6px var(--spacing-sm); border-radius: var(--radius-xs); font-size: var(--font-size-sm);
+  background: var(--color-bg-secondary); word-break: break-all; user-select: all;
+}
+.local-copy { align-self: flex-start; }
+.local-engine { display: flex; align-items: center; gap: var(--spacing-sm); padding: 6px 0; }
+.local-engine-status { flex: 1; font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.local-engine[data-state="ready"] .local-engine-status { color: var(--color-success); }
+
+/* ===== 引导页本机入口 ===== */
+.engine-choice-card {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
+  padding: var(--spacing-md); margin-bottom: var(--spacing-md); border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid var(--color-border-strong); background: transparent;
+  font-family: var(--font-family); color: var(--color-text-primary);
+}
+.engine-choice-card:hover { border-color: var(--color-primary); }
+.local-onboarding { display: flex; flex-direction: column; gap: var(--spacing-md); }
+
+/* ===== 引擎切换器 ===== */
+.engine-btn { width: auto; gap: var(--spacing-xs); padding: 0 var(--spacing-sm); font-size: var(--font-size-sm); }
+.input-area { position: relative; }
+.engine-menu {
+  position: absolute; right: var(--spacing-md); bottom: calc(100% + var(--spacing-xs)); z-index: var(--z-dropdown); min-width: 200px;
+  padding: var(--spacing-xs); border-radius: var(--radius-sm); border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-primary); box-shadow: var(--shadow-xl);
+}
+.engine-menu-title { padding: 6px var(--spacing-sm); font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.engine-menu-item {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--spacing-md); width: 100%; padding: var(--spacing-sm); border: 0;
+  border-radius: var(--radius-xs); background: transparent; cursor: pointer; text-align: left;
+  font: inherit; font-size: var(--font-size-md); color: var(--color-text-primary);
+}
+.engine-menu-item:hover { background: var(--color-bg-hover); }
+.engine-menu-item[aria-checked="true"] { font-weight: var(--font-weight-semibold); }
+.engine-menu-item[data-available="false"] > span:first-child { opacity: 0.5; }
+.engine-menu-item .hint { font-size: var(--font-size-xs); font-weight: var(--font-weight-normal); color: var(--color-text-tertiary); }
+.engine-notice { margin: var(--spacing-sm) auto; font-size: var(--font-size-sm); color: var(--color-text-secondary); text-align: center; }

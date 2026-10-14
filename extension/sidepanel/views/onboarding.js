@@ -3,14 +3,25 @@
  * 从 panel.js 拆分（行为不变）
  */
 
-import { DEFAULT_API_BASE, DEFAULT_MODEL, PROVIDER_PRESETS, normalizeApiBase, saveSettings, validateConnection } from "../api.js";
+import { DEFAULT_API_BASE, DEFAULT_MODEL, PROVIDER_PRESETS, checkFirstRun, normalizeApiBase, saveSettings, validateConnection } from "../api.js";
 import { formatMessage, getMessage, isChineseLanguage } from "../i18n.js";
 import { AppState, DOM } from "../panel-state.js";
 import { initMainView, showLoading, switchView } from "../panel.js";
+import { requestNativePermission } from "../agent/engines/bridge-client.js";
+import { getEngine, isLocalEngine, setEngine } from "../agent/engines/prefs.js";
+import { renderLocalSetup } from "./local-setup.js";
 
 // ============================================================================
 // 引导页逻辑
 // ============================================================================
+
+/**
+ * 是否需要显示引导页：未配置 API Key 且未选择本机引擎
+ */
+export async function needsOnboarding() {
+	const { needsSetup } = await checkFirstRun();
+	return needsSetup && !isLocalEngine(await getEngine());
+}
 
 /**
  * 初始化引导页
@@ -51,6 +62,51 @@ export function initOnboarding() {
 		apiGuideLink.href = `chrome-extension://${chrome.runtime.id}/api-guide/api-guide.html`;
 		apiGuideLink.setAttribute("target", "_blank");
 	}
+
+	initLocalOnboarding();
+}
+
+/**
+ * 引导页「使用本机 Claude Code / Codex」：选中可用引擎即完成配置，无需 API Key
+ */
+function initLocalOnboarding() {
+	const card = document.getElementById("choose-local-engine");
+	const panel = document.getElementById("local-onboarding");
+	const form = document.querySelector("#onboarding-view .setup-form");
+	let setup = null;
+
+	const show = (local) => {
+		card.classList.toggle("hidden", local);
+		form.classList.toggle("hidden", local);
+		panel.classList.toggle("hidden", !local);
+		card.disabled = local;
+		if (!local) {
+			setup?.destroy();
+			setup = null;
+		}
+	};
+
+	card.addEventListener("click", async () => {
+		// 权限框必须在用户手势内弹出：先同步禁用卡片（防重复点击），再把 request 作为第一个 await
+		card.disabled = true;
+		try {
+			await requestNativePermission(); // 已授权时直接 resolve；拒绝则面板显示无权限状态
+		} catch (err) {
+			console.warn("[Onboarding] Native permission request failed:", err);
+		}
+		show(true);
+		setup = renderLocalSetup(document.getElementById("local-setup-onboarding"), {
+			onReady: async (engineId) => {
+				setup.destroy();
+				await setEngine(engineId);
+				AppState.apiKeyStatus = "valid"; // 已配置：本机引擎可用
+				switchView("main");
+				initMainView();
+			},
+		});
+		setup.refresh();
+	});
+	document.getElementById("use-api-key-instead").addEventListener("click", () => show(false));
 }
 
 /**

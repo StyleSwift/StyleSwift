@@ -1159,3 +1159,17 @@ describe('updateStylesSummary', () => {
     expect(meta.activeStylesSummary).toBe('3 条规则，涉及 body, .header .nav, .footer 等');
   });
 });
+
+describe("deleteSession engine mappings", () => {
+  test("removes local engine session ids for the deleted session", async () => {
+    await chrome.storage.local.set({
+      "sessions:a.com:index": [{ id: "s1" }],
+      "engine_session:codex:a.com:s1": "t-1",
+      "engine_session:claude-code:a.com:s1": "c-1",
+      "engine_session:codex:a.com:s2": "keep",
+    });
+    await deleteSession("a.com", "s1");
+    const all = await chrome.storage.local.get(["engine_session:codex:a.com:s1", "engine_session:claude-code:a.com:s1", "engine_session:codex:a.com:s2"]);
+    expect(all).toEqual({ "engine_session:codex:a.com:s2": "keep" });
+  });
+});

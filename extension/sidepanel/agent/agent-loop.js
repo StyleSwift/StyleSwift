@@ -588,7 +588,53 @@ export async function agentLoop(prompt, uiCallbacks) {
       estimateTokenCount(system) +
       estimateTokenCount(JSON.stringify(ALL_TOOLS));
 
-    while (iterations++ < MAX_ITERATIONS) {
+    // 本机引擎（Claude Code / Codex）：CLI 自己跑 agent 循环，这里负责桥接并以纯文本记录历史
+    const { getEngine, isLocalEngine } = await import("./engines/prefs.js");
+    const engine = await getEngine();
+    const useLocalEngine = isLocalEngine(engine);
+    if (useLocalEngine) {
+      const { runLocalEngine } = await import("./engines/local-engine.js");
+      const { buildLocalSystemPrompt } = await import("./engines/local-prompt.js");
+      const { getMessage } = await import("../i18n.js");
+      if (hasImagesInPrompt) uiCallbacks.appendText?.(getMessage("localImagesIgnored") + "\n\n");
+      const localSystem = buildLocalSystemPrompt({
+        sessionContext: buildSessionContext(domain, sessionMeta, profileHint),
+        skillDescriptions,
+        stylesSummary: sessionMeta.activeStylesSummary,
+      });
+      userMsg._engine = engine;
+      let localPrompt = textOnlyContent;
+      for (;;) {
+        const text = await runLocalEngine(
+          { engine, prompt: localPrompt, system: localSystem, tabId, domain, sessionId, history: fullHistory.slice(0, -1) },
+          uiCallbacks,
+          signal,
+        );
+        response = { content: [{ type: "text", text }] };
+        // 空文本块会让内置引擎之后的 API 调用报错
+        if (text) fullHistory.push({ role: "assistant", content: [{ type: "text", text }], _engine: engine });
+        if (pendingUserMessages.length === 0) break;
+        // 运行中追加的消息：本轮结束后合并为下一轮（图片忽略，保留文字）
+        const queued = pendingUserMessages;
+        pendingUserMessages = [];
+        const partsOf = (c) => (Array.isArray(c) ? c : []);
+        if (queued.some((m) => partsOf(m.content).some((c) => c.type === "image_url"))) {
+          uiCallbacks.appendText?.(getMessage("localImagesIgnored") + "\n\n");
+        }
+        localPrompt = queued
+          .map((m) => (typeof m.content === "string" ? m.content : partsOf(m.content).filter((c) => c.type === "text").map((c) => c.text).join("\n")))
+          .filter(Boolean)
+          .join("\n");
+        for (const m of queued) {
+          if (onQueuedMessageProcessed && typeof m.content === "string") onQueuedMessageProcessed(m.content);
+        }
+        if (!localPrompt) break;
+        fullHistory.push({ role: "user", content: localPrompt, _engine: engine });
+        uiCallbacks.onNewIteration?.();
+      }
+    }
+
+    while (!useLocalEngine && iterations++ < MAX_ITERATIONS) {
       if (signal.aborted) {
         throw new DOMException("Aborted", "AbortError");
       }

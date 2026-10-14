@@ -3,7 +3,7 @@
  * 从 panel.js 拆分（行为不变）
  */
 
-import { DEFAULT_API_BASE, DEFAULT_MODEL, checkFirstRun, getSettings, saveSettings, validateConnection } from "../api.js";
+import { DEFAULT_API_BASE, DEFAULT_MODEL, getSettings, saveSettings, validateConnection } from "../api.js";
 import { formatMessage, getMessage, getUILanguage } from "../i18n.js";
 import { AppState, DOM, stateManager } from "../panel-state.js";
 import { initMainView, showError, switchView } from "../panel.js";
@@ -11,6 +11,7 @@ import { runGetUserProfile, runUpdateUserProfile } from "../profile.js";
 import { SkillLoader } from "../skill-loader.js";
 import { MAX_SKILL_FILE_BYTES, StyleSkillStore, formatSkillFile, parseSkillFile } from "../style-skill.js";
 import { escapeHtml, iconHtml } from "../ui/dom-utils.js";
+import { needsOnboarding } from "./onboarding.js";
 import { showConfirmModal } from "./session-list.js";
 import { deleteSkillWithConfirmation, getDisabledSkills, getDisabledUserSkills, renderSkillChips, setSkillEnabled, setUserSkillEnabled, skillDisplayText } from "./skill-area.js";
 
@@ -50,6 +51,9 @@ export async function initSettingsView() {
 	if (versionEl) {
 		versionEl.textContent = `StyleSwift v${chrome.runtime.getManifest().version}`;
 	}
+
+	// 本机 Agent 分组：每次进入都重新检测（含重复进入时的早退路径）
+	initLocalAgentSettings();
 
 	// 防止重复绑定事件监听器（使用 data 属性标记）
 	const settingsView = document.getElementById("settings-view");
@@ -146,6 +150,28 @@ export async function initSettingsView() {
 	await renderUserSkillList();
 }
 
+let localSetup = null;
+
+/**
+ * 设置页「本机 Agent」分组：每次进入设置页重新检测
+ */
+async function initLocalAgentSettings() {
+	const { renderLocalSetup } = await import("./local-setup.js");
+	const { setEngine } = await import("../agent/engines/prefs.js");
+	const { engineDisplayName } = await import("./engine-switcher.js");
+	const status = document.getElementById("local-engine-status");
+	status.className = "status-message hidden";
+	localSetup?.destroy();
+	localSetup = renderLocalSetup(document.getElementById("local-setup-settings"), {
+		onReady: async (engineId) => {
+			await setEngine(engineId);
+			status.textContent = formatMessage("engineSwitched", { engine: engineDisplayName(engineId) });
+			status.className = "status-message success";
+		},
+	});
+	localSetup.refresh();
+}
+
 /** API 配置有未保存改动 / 上次返回时验证失败（再次返回即放弃改动）/ 用户画像有改动 */
 export let settingsDirty = false;
 export let settingsSaveFailed = false;
@@ -201,6 +227,10 @@ export async function handleSettingsBack() {
 	settingsDirty = false;
 	settingsSaveFailed = false;
 
+	// 确定离开设置页：停止本机 Agent 检测轮询
+	localSetup?.destroy();
+	localSetup = null;
+
 	if (profileDirty) {
 		try {
 			await runUpdateUserProfile(DOM.settingsUserProfile.value.trim());
@@ -211,8 +241,7 @@ export async function handleSettingsBack() {
 	}
 
 	// 根据已保存的配置决定返回哪个视图
-	const { needsSetup } = await checkFirstRun();
-	if (needsSetup) {
+	if (await needsOnboarding()) {
 		switchView("onboarding");
 		return;
 	}
@@ -227,6 +256,8 @@ export async function handleSettingsBack() {
 		}
 	}
 	switchView("main");
+	const { refreshEngineLabel } = await import("./engine-switcher.js");
+	await refreshEngineLabel();
 }
 
 /**
