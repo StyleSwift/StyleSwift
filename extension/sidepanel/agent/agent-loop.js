@@ -588,7 +588,20 @@ export async function agentLoop(prompt, uiCallbacks) {
       estimateTokenCount(system) +
       estimateTokenCount(JSON.stringify(ALL_TOOLS));
 
-    while (iterations++ < MAX_ITERATIONS) {
+    // 本机 Claude Code 引擎：由 CLI 自己跑 agent 循环，这里只负责桥接和保存历史
+    const { getEngine, runClaudeCode } = await import("./claude-code-engine.js");
+    const useClaudeCode = (await getEngine()) === "claude-code";
+    if (useClaudeCode) {
+      const text = await runClaudeCode(
+        { prompt: textOnlyContent, system, tabId, resumeKey: `cc_session:${domain}:${sessionId}` },
+        uiCallbacks,
+        signal,
+      );
+      response = { content: [{ type: "text", text }] };
+      fullHistory.push({ role: "assistant", content: response.content });
+    }
+
+    while (!useClaudeCode && iterations++ < MAX_ITERATIONS) {
       if (signal.aborted) {
         throw new DOMException("Aborted", "AbortError");
       }

@@ -9,7 +9,7 @@
 		"48": "icons/icon-48.png",
 		"128": "icons/icon-128.png"
 	},
-	"permissions": ["activeTab", "storage", "sidePanel", "scripting"],
+	"permissions": ["activeTab", "storage", "sidePanel", "scripting", "nativeMessaging"],
 
 	"externally_connectable": {
 		"matches": [
