@@ -848,6 +848,17 @@ async function initMainView() {
 	});
 
 	await loadCurrentTab();
+
+	const { initEngineSwitcher } = await import("./views/engine-switcher.js");
+	await initEngineSwitcher({
+		isBusy: () => AppState.agentStatus === "running",
+		hasMessages: () => Boolean(DOM.messagesContainer?.querySelector(".message-user, .message-assistant")),
+		onNotice: renderEngineNotice,
+		openSettings: () => {
+			initSettingsView();
+			switchView("settings");
+		},
+	});
 }
 
 /**
@@ -1596,6 +1607,18 @@ async function handleSendClick() {
 			 */
 			onCompressionEnd: () => {
 				hideCompressionStatus();
+			},
+
+			/** 本机引擎冷启动：显示「正在启动 X…」，第一条事件到达后移除 */
+			onEngineStarting: (label) => {
+				showCompressionStatus("engine_starting", formatMessage("engineStarting", { engine: label }));
+			},
+			onEngineStarted: () => {
+				hideCompressionStatus();
+			},
+			/** 本机引擎提示（如会话失效重开），渲染为消息流内的提示行 */
+			onEngineNotice: (text) => {
+				renderEngineNotice(text);
 			},
 		};
 
@@ -2442,6 +2465,17 @@ function addMessageToContainer(messageElement) {
 }
 
 /**
+ * 消息流内的引擎提示行（切换引擎、本机会话重开）
+ * @param {string} text
+ */
+export function renderEngineNotice(text) {
+	const el = document.createElement("div");
+	el.className = "engine-notice";
+	el.textContent = text;
+	addMessageToContainer(el);
+}
+
+/**
  * 清空对话区所有消息
  */
 function clearMessages() {
@@ -2551,8 +2585,10 @@ let compressionStatusEl = null;
  *   - 'compressing_history': 开始压缩历史记录
  *   - 'summarizing_history': 正在生成摘要
  *   - 'compressing_tool_results': 正在压缩工具结果
+ *   - 'engine_starting': 本机引擎冷启动（文案由 textOverride 提供）
+ * @param {string} [textOverride] - 自定义状态文案
  */
-function showCompressionStatus(phase) {
+function showCompressionStatus(phase, textOverride) {
 	// 获取当前助手消息气泡
 	const assistantMessages = DOM.messagesContainer?.querySelectorAll(".message-assistant");
 	if (!assistantMessages || assistantMessages.length === 0) {
@@ -2588,14 +2624,19 @@ function showCompressionStatus(phase) {
 			icon: "loader",
 			text: getMessage("compressingToolResults"),
 		},
+		engine_starting: {
+			icon: "loader",
+			text: "",
+		},
 	};
 
 	const config = statusConfig[phase] || statusConfig.compression_history;
+	const text = textOverride ?? config.text;
 
 	compressionStatusEl.innerHTML = `
 		<div class="compression-status-content">
 			<span class="compression-icon">${iconHtml(config.icon, 14, "spin")}</span>
-			<span class="compression-text">${config.text}</span>
+			<span class="compression-text">${escapeHtml(text)}</span>
 		</div>
 	`;
 

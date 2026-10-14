@@ -195,6 +195,10 @@
               <input type="file" id="image-upload-input" data-testid="image-upload-input" accept="image/*" multiple hidden>
             </div>
             <div class="input-toolbar-right">
+              <button id="engine-btn" class="toolbar-btn engine-btn" data-testid="engine-btn" aria-haspopup="menu" aria-expanded="false">
+                <span class="engine-label"></span>
+                <span class="icon icon-chevron-down" style="width:10px;height:10px" aria-hidden="true"></span>
+              </button>
               <button id="send-btn" class="send-btn" data-testid="send-btn" data-i18n-title="send" data-i18n-aria-label="send">
                 <span class="icon icon-send" style="width:13px;height:13px" aria-hidden="true"></span>
               </button>
@@ -204,6 +208,7 @@
             </div>
           </div>
         </div>
+        <div id="engine-menu" class="engine-menu hidden" role="menu" data-testid="engine-menu"></div>
       </footer>
       
     </section>

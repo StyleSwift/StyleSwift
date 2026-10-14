@@ -494,6 +494,11 @@ export async function handleSkillChipClick(skill) {
 			onTodoUpdate: (todos, meta) => {
 				todoCardManager.updateTodos(todos, meta?.awaitingConfirmation);
 			},
+
+			// Local-engine notice (e.g. session reopened); no status bar here, so onEngineStarting/Started are omitted
+			onEngineNotice: (text) => {
+				streamingRenderer.appendText(`${text}\n\n`);
+			},
 		};
 
 		const response = await agentLoop(prompt, uiCallbacks);
