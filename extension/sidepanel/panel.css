@@ -6630,3 +6630,16 @@ pre code {
     scroll-behavior: auto !important;
   }
 }
+
+/* ===== 本机 Agent 设置面板 ===== */
+.local-setup { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.local-cmd { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.local-cmd-label { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.local-cmd code {
+  display: block; padding: 6px var(--spacing-sm); border-radius: var(--radius-xs); font-size: var(--font-size-sm);
+  background: var(--color-bg-secondary); word-break: break-all; user-select: all;
+}
+.local-copy { align-self: flex-start; }
+.local-engine { display: flex; align-items: center; gap: var(--spacing-sm); padding: 6px 0; }
+.local-engine-status { flex: 1; font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.local-engine[data-state="ready"] .local-engine-status { color: var(--color-success); }
