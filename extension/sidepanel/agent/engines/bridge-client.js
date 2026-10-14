@@ -7,6 +7,8 @@ import { AgentError } from "../llm-client.js";
 
 export const HOST_NAME = "com.styleswift.bridge";
 export const PROTOCOL_VERSION = 1;
+// host 连上却不回 detect_result 时，引擎菜单和引导面板不能一直卡住
+export const DETECT_TIMEOUT_MS = 10000;
 const PERMISSION = { permissions: ["nativeMessaging"] };
 
 export const hasNativePermission = () => chrome.permissions.contains(PERMISSION);
@@ -22,16 +24,25 @@ export async function detectBridge() {
       resolve({ status: "not-installed", error: err.message });
       return;
     }
+    let settled = false;
+    const finish = (result, disconnect) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (disconnect) port.disconnect();
+      resolve(result);
+    };
+    const timer = setTimeout(() => finish({ status: "not-installed", error: "Bridge did not respond" }, true), DETECT_TIMEOUT_MS);
     port.onDisconnect.addListener(() =>
-      resolve({ status: "not-installed", error: chrome.runtime.lastError?.message }),
+      finish({ status: "not-installed", error: chrome.runtime.lastError?.message }),
     );
     port.onMessage.addListener((msg) => {
       if (msg.type !== "detect_result") return;
-      port.disconnect();
-      resolve(
+      finish(
         msg.protocol === PROTOCOL_VERSION
           ? { status: "ok", bridgeVersion: msg.bridgeVersion, engines: msg.engines }
           : { status: "outdated", bridgeVersion: msg.bridgeVersion },
+        true,
       );
     });
     port.postMessage({ type: "detect" });

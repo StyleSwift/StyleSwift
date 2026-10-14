@@ -30,7 +30,7 @@ globalThis.chrome = {
   },
 };
 
-const { detectBridge, engineState, runBridge, PROTOCOL_VERSION } = await import("../sidepanel/agent/engines/bridge-client.js");
+const { detectBridge, engineState, runBridge, PROTOCOL_VERSION, DETECT_TIMEOUT_MS } = await import("../sidepanel/agent/engines/bridge-client.js");
 
 beforeEach(() => { granted = true; hostBehavior = null; chrome.runtime.lastError = null; });
 
@@ -52,6 +52,32 @@ describe("detectBridge", () => {
     expect(await detectBridge()).toEqual({ status: "ok", bridgeVersion: "0.1.0", engines: { codex: { installed: true, loggedIn: true } } });
     hostBehavior = (_m, port) => port.emit({ type: "detect_result", ok: true, version: "x" }); // 原型 host
     expect((await detectBridge()).status).toBe("outdated");
+  });
+
+  test("host that never answers → not-installed after the timeout; late replies are ignored", async () => {
+    vi.useFakeTimers();
+    try {
+      const p = detectBridge();
+      await vi.advanceTimersByTimeAsync(DETECT_TIMEOUT_MS);
+      expect(await p).toEqual({ status: "not-installed", error: "Bridge did not respond" });
+      expect(lastPort.disconnect).toHaveBeenCalledTimes(1);
+      lastPort.emit({ type: "detect_result", protocol: PROTOCOL_VERSION, engines: {} });
+      lastPort.drop();
+      expect(lastPort.disconnect).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("an answer before the timeout clears the timer", async () => {
+    vi.useFakeTimers();
+    try {
+      hostBehavior = (_m, port) => port.emit({ type: "detect_result", protocol: PROTOCOL_VERSION, bridgeVersion: "0.1.0", engines: {} });
+      expect((await detectBridge()).status).toBe("ok");
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
