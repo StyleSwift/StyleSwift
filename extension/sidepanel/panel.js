@@ -15,9 +15,6 @@
 // ============================================================================
 
 import {
-	checkFirstRun,
-} from "./api.js";
-import {
 	applyTranslations,
 	formatMessage,
 	getMessage,
@@ -33,7 +30,7 @@ import {
 } from "./session/context.js";
 
 import { AppState, DOM, stateManager } from "./panel-state.js";
-import { initOnboarding } from "./views/onboarding.js";
+import { initOnboarding, needsOnboarding } from "./views/onboarding.js";
 import { handleNewSession, showConfirmModal, updateStatusIndicator } from "./views/session-list.js";
 import { initSettingsView } from "./views/settings.js";
 import { initSkillArea, setSkillAreaVisible } from "./views/skill-area.js";
@@ -2308,11 +2305,7 @@ async function init() {
 
 	// === Step 2: 检测 API Key ===
 	try {
-		const { needsSetup } = await checkFirstRun();
-		const { getEngine, isLocalEngine } = await import("./agent/engines/prefs.js");
-		const usesLocalEngine = isLocalEngine(await getEngine());
-
-		if (needsSetup && !usesLocalEngine) {
+		if (await needsOnboarding()) {
 			// === Step 3a: 首次使用，显示引导页 ===
 			console.log("[Panel] First run detected, showing onboarding");
 			initOnboarding();

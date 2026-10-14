@@ -3,7 +3,7 @@
  * 从 panel.js 拆分（行为不变）
  */
 
-import { DEFAULT_API_BASE, DEFAULT_MODEL, checkFirstRun, getSettings, saveSettings, validateConnection } from "../api.js";
+import { DEFAULT_API_BASE, DEFAULT_MODEL, getSettings, saveSettings, validateConnection } from "../api.js";
 import { formatMessage, getMessage, getUILanguage } from "../i18n.js";
 import { AppState, DOM, stateManager } from "../panel-state.js";
 import { initMainView, showError, switchView } from "../panel.js";
@@ -11,6 +11,7 @@ import { runGetUserProfile, runUpdateUserProfile } from "../profile.js";
 import { SkillLoader } from "../skill-loader.js";
 import { MAX_SKILL_FILE_BYTES, StyleSkillStore, formatSkillFile, parseSkillFile } from "../style-skill.js";
 import { escapeHtml, iconHtml } from "../ui/dom-utils.js";
+import { needsOnboarding } from "./onboarding.js";
 import { showConfirmModal } from "./session-list.js";
 import { deleteSkillWithConfirmation, getDisabledSkills, getDisabledUserSkills, renderSkillChips, setSkillEnabled, setUserSkillEnabled, skillDisplayText } from "./skill-area.js";
 
@@ -211,8 +212,7 @@ export async function handleSettingsBack() {
 	}
 
 	// 根据已保存的配置决定返回哪个视图
-	const { needsSetup } = await checkFirstRun();
-	if (needsSetup) {
+	if (await needsOnboarding()) {
 		switchView("onboarding");
 		return;
 	}
