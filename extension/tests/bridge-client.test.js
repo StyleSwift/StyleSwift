@@ -101,4 +101,20 @@ describe("runBridge", () => {
     await expect(p).rejects.toMatchObject({ name: "AbortError" });
     expect(lastPort.disconnect).toHaveBeenCalled();
   });
+
+  test("onToolCall rejects → sends error result and continues on done", async () => {
+    hostBehavior = (m, port) => {
+      if (m.type === "run") {
+        port.emit({ type: "tool_call", id: 7, name: "grep", args: { q: 1 } });
+      }
+      if (m.type === "tool_result") port.emit({ type: "done" });
+    };
+    await runBridge(
+      { engine: "codex", prompt: "p", system: "s", tools: [] },
+      { onEvent: () => {}, onToolCall: async () => { throw new Error("boom"); } },
+      new AbortController().signal,
+    );
+    expect(lastPort.posted[1]).toMatchObject({ type: "tool_result", id: 7 });
+    expect(lastPort.posted[1].content[0].text).toContain("boom");
+  });
 });

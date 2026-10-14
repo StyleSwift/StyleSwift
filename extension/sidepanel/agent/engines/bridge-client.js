@@ -74,7 +74,12 @@ export function runBridge(request, { onEvent, onToolCall }, signal) {
       if (msg.type === "event") onEvent(msg.event);
       else if (msg.type === "done") finish();
       else if (msg.type === "tool_call") {
-        const content = await onToolCall(msg.name, msg.args);
+        let content;
+        try {
+          content = await onToolCall(msg.name, msg.args);
+        } catch (err) {
+          content = [{ type: "text", text: `Error: ${err.message}` }];
+        }
         if (!settled) port.postMessage({ type: "tool_result", id: msg.id, content });
       }
     });
