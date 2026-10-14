@@ -44,12 +44,18 @@ export function createMcpServer({ onToolCall }) {
       } catch {
         return res.writeHead(400).end();
       }
+      if (msg === null || typeof msg !== "object") return res.writeHead(400).end();
       if (msg.id === undefined) return res.writeHead(202).end(); // notification
-      const result = await handleRpc(msg);
-      const out = result === null
-        ? { jsonrpc: "2.0", id: msg.id, error: { code: -32601, message: `Unknown method ${msg.method}` } }
-        : { jsonrpc: "2.0", id: msg.id, result };
-      res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(out));
+      try {
+        const result = await handleRpc(msg);
+        const out = result === null
+          ? { jsonrpc: "2.0", id: msg.id, error: { code: -32601, message: `Unknown method ${msg.method}` } }
+          : { jsonrpc: "2.0", id: msg.id, result };
+        res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(out));
+      } catch (err) {
+        const out = { jsonrpc: "2.0", id: msg.id, error: { code: -32603, message: err.message } };
+        res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(out));
+      }
     });
   });
 

@@ -67,4 +67,39 @@ describe("mcp server", () => {
     const bad = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${server.token}` }, body: "{" });
     expect(bad.status).toBe(400);
   });
+
+  test("onToolCall that rejects returns -32603 error, server stays alive", async () => {
+    server = createMcpServer({
+      onToolCall: async () => { throw new Error("tool failed"); },
+    });
+    const url = await server.start();
+    const res = await (await rpc(url, server.token, {
+      jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "bad", arguments: {} },
+    })).json();
+    expect(res.error.code).toBe(-32603);
+    expect(res.error.message).toBe("tool failed");
+    // verify server still responds
+    const ping = await (await rpc(url, server.token, { jsonrpc: "2.0", id: 5, method: "ping" })).json();
+    expect(ping.result).toEqual({});
+  });
+
+  test("tools/call with no params returns -32603 error", async () => {
+    server = createMcpServer({ onToolCall: async () => [] });
+    const url = await server.start();
+    const res = await (await rpc(url, server.token, {
+      jsonrpc: "2.0", id: 6, method: "tools/call",
+    })).json();
+    expect(res.error.code).toBe(-32603);
+  });
+
+  test("non-object JSON body returns 400", async () => {
+    server = createMcpServer({ onToolCall: async () => [] });
+    const url = await server.start();
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${server.token}` },
+      body: "null",
+    });
+    expect(res.status).toBe(400);
+  });
 });
