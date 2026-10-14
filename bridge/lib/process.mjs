@@ -64,12 +64,15 @@ export function contentText(content) {
 }
 
 /** Kill process, with special handling for Windows shell spawns */
-function killChild(child) {
+function killChild(child, useShell) {
   if (!child) return;
+  // Avoid taskkill on a stale/reused pid if child already exited
+  if (child.exitCode !== null || child.killed) return;
   // On Windows, a .cmd spawn uses shell:true, which only kills cmd.exe, not the CLI.
   // Use taskkill to terminate the whole process tree.
-  if (process.platform === "win32" && child._useShell) {
-    spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true });
+  if (process.platform === "win32" && useShell) {
+    const tk = spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true });
+    tk.on("error", () => {}); // Suppress spawn failures to avoid crashing host
   } else {
     child.kill();
   }
@@ -83,6 +86,7 @@ export function streamCli({ name, args, cwd, env, stdin, mapEvent, cleanup, reso
   let child = null;
   let exited = false;
   let killed = false;
+  let useShell = false;
   async function* events() {
     try {
       if (killed) return; // kill() was called before iteration
@@ -93,9 +97,9 @@ export function streamCli({ name, args, cwd, env, stdin, mapEvent, cleanup, reso
         return;
       }
       child = spawnCli(bin, args, { cwd, env });
-      // Mark if spawned through shell (for Windows taskkill)
+      // Track if spawned through shell (for Windows taskkill)
       if (/\.(cmd|bat)$/i.test(bin)) {
-        child._useShell = true;
+        useShell = true;
       }
       child.stdin.on("error", () => {}); // 进程提前退出时写 stdin 会 EPIPE
       child.stdin.end(stdin);
@@ -134,7 +138,7 @@ export function streamCli({ name, args, cwd, env, stdin, mapEvent, cleanup, reso
     } finally {
       // Kill child if it hasn't exited yet (consumer break, throw, etc.)
       if (!exited) {
-        killChild(child);
+        killChild(child, useShell);
       }
       cleanup?.();
     }
@@ -143,7 +147,7 @@ export function streamCli({ name, args, cwd, env, stdin, mapEvent, cleanup, reso
     events: events(),
     kill: () => {
       killed = true;
-      killChild(child);
+      killChild(child, useShell);
     },
   };
 }

@@ -109,12 +109,16 @@ describe("streamCli", () => {
 
   test("breaking from for-await kills the child", async () => {
     let cleaned = false;
-    const scriptCode = `process.stdin.resume();console.log(JSON.stringify({n:1}));setTimeout(()=>process.exit(0),30000);`;
+    let childPid = null;
+    const scriptCode = `process.stdin.resume();console.log(JSON.stringify({n:1,pid:process.pid}));setTimeout(()=>{},30000);`;
     const run = streamCli({
       name: node, resolve: false,
       args: ["-e", scriptCode],
       cwd: process.cwd(), stdin: "",
-      mapEvent: (raw) => [{ type: "text", text: String(raw.n) }],
+      mapEvent: (raw) => {
+        if (raw.pid) childPid = raw.pid;
+        return [{ type: "text", text: String(raw.n) }];
+      },
       cleanup: () => { cleaned = true; },
     });
     let count = 0;
@@ -123,8 +127,23 @@ describe("streamCli", () => {
       if (count === 1) break; // Break after first event
     }
     expect(count).toBe(1);
-    // Give a moment for the child to be killed
-    await new Promise(resolve => setTimeout(resolve, 100));
+    expect(childPid).not.toBeNull();
     expect(cleaned).toBe(true);
+
+    // Prove the child was actually killed: poll process.kill(pid, 0) until ESRCH
+    // with a 5s timeout (well under the 30s sleep in the script)
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      try {
+        process.kill(childPid, 0); // ESRCH if process doesn't exist
+        await new Promise(resolve => setTimeout(resolve, 50));
+      } catch (err) {
+        if (err.code === "ESRCH") {
+          return; // Process is dead, test passes
+        }
+        throw err;
+      }
+    }
+    throw new Error(`Child process ${childPid} still alive after 5s`);
   });
 });
