@@ -51,8 +51,6 @@ export async function initSettingsView() {
 		versionEl.textContent = `StyleSwift v${chrome.runtime.getManifest().version}`;
 	}
 
-	await initClaudeCodeToggle();
-
 	// 防止重复绑定事件监听器（使用 data 属性标记）
 	const settingsView = document.getElementById("settings-view");
 	if (settingsView && settingsView.dataset.listenersAttached === "true") {
@@ -989,39 +987,6 @@ export async function handleVerifyConnection() {
 		DOM.verifyConnectionBtn.disabled = false;
 		DOM.verifyConnectionBtn.classList.remove("loading");
 	}
-}
-
-/**
- * 本机 Claude Code 开关：勾选时先检测 bridge 与 CLI，连通才启用
- */
-async function initClaudeCodeToggle() {
-	const toggle = document.getElementById("settings-use-claude-code");
-	const status = document.getElementById("claude-code-status");
-	const { ENGINE_KEY, getEngine, detectClaudeCode } = await import("../agent/claude-code-engine.js");
-	const showStatus = (text, type) => {
-		status.textContent = text;
-		status.className = `status-message ${type}`;
-	};
-
-	toggle.checked = (await getEngine()) === "claude-code";
-	toggle.onchange = async () => {
-		if (!toggle.checked) {
-			await chrome.storage.local.set({ [ENGINE_KEY]: "builtin" });
-			status.classList.add("hidden");
-			return;
-		}
-		toggle.disabled = true;
-		showStatus("正在检测 Claude Code…", "loading");
-		const result = await detectClaudeCode();
-		toggle.disabled = false;
-		if (result.ok) {
-			await chrome.storage.local.set({ [ENGINE_KEY]: "claude-code" });
-			showStatus(`已连接 ${result.version}`, "success");
-		} else {
-			toggle.checked = false;
-			showStatus(`连接失败：${result.error}`, "error");
-		}
-	};
 }
 
 /**

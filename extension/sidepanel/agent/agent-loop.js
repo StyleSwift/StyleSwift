@@ -588,20 +588,43 @@ export async function agentLoop(prompt, uiCallbacks) {
       estimateTokenCount(system) +
       estimateTokenCount(JSON.stringify(ALL_TOOLS));
 
-    // 本机 Claude Code 引擎：由 CLI 自己跑 agent 循环，这里只负责桥接和保存历史
-    const { getEngine, runClaudeCode } = await import("./claude-code-engine.js");
-    const useClaudeCode = (await getEngine()) === "claude-code";
-    if (useClaudeCode) {
-      const text = await runClaudeCode(
-        { prompt: textOnlyContent, system, tabId, resumeKey: `cc_session:${domain}:${sessionId}` },
-        uiCallbacks,
-        signal,
-      );
-      response = { content: [{ type: "text", text }] };
-      fullHistory.push({ role: "assistant", content: response.content });
+    // 本机引擎（Claude Code / Codex）：CLI 自己跑 agent 循环，这里负责桥接并以纯文本记录历史
+    const { getEngine, isLocalEngine } = await import("./engines/prefs.js");
+    const engine = await getEngine();
+    const useLocalEngine = isLocalEngine(engine);
+    if (useLocalEngine) {
+      const { runLocalEngine } = await import("./engines/local-engine.js");
+      const { buildLocalSystemPrompt } = await import("./engines/local-prompt.js");
+      const { getMessage } = await import("../i18n.js");
+      if (hasImagesInPrompt) uiCallbacks.appendText?.(getMessage("localImagesIgnored") + "\n\n");
+      const localSystem = buildLocalSystemPrompt({
+        sessionContext: buildSessionContext(domain, sessionMeta, profileHint),
+        skillDescriptions,
+        stylesSummary: sessionMeta.activeStylesSummary,
+      });
+      userMsg._engine = engine;
+      let localPrompt = textOnlyContent;
+      for (;;) {
+        const text = await runLocalEngine(
+          { engine, prompt: localPrompt, system: localSystem, tabId, domain, sessionId, history: fullHistory.slice(0, -1) },
+          uiCallbacks,
+          signal,
+        );
+        response = { content: [{ type: "text", text }] };
+        fullHistory.push({ role: "assistant", content: text, _engine: engine });
+        if (pendingUserMessages.length === 0) break;
+        // 运行中追加的消息：本轮结束后合并为下一轮
+        localPrompt = pendingUserMessages.map((m) => (typeof m.content === "string" ? m.content : "")).filter(Boolean).join("\n");
+        for (const m of pendingUserMessages) {
+          if (onQueuedMessageProcessed && typeof m.content === "string") onQueuedMessageProcessed(m.content);
+        }
+        pendingUserMessages = [];
+        fullHistory.push({ role: "user", content: localPrompt, _engine: engine });
+        uiCallbacks.onNewIteration?.();
+      }
     }
 
-    while (!useClaudeCode && iterations++ < MAX_ITERATIONS) {
+    while (!useLocalEngine && iterations++ < MAX_ITERATIONS) {
       if (signal.aborted) {
         throw new DOMException("Aborted", "AbortError");
       }
