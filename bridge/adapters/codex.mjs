@@ -4,6 +4,7 @@
  * - MCP 工具总是延迟在 tool_search 后，需在 AGENTS.md 中提示模型先加载
  * - approval_policy=never 下 MCP 调用默认被拒，需 default_tools_approval_mode=approve
  * - --ignore-user-config 会丢掉用户的模型设置，需从 config.toml 读回
+ * - skills.include_instructions=false 去掉用户 skills 清单；$CODEX_HOME/AGENTS.md 无开关可关（见 spec 实现差异）
  */
 
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -45,6 +46,7 @@ export function buildCodexArgs({ mcpUrl, resume, model, effort }) {
     "-c", "approval_policy=never",
     "-c", "web_search=disabled",
     "-c", "include_apply_patch_tool=false",
+    "-c", "skills.include_instructions=false", // 不注入用户的 skills 清单
     ...DISABLED_FEATURES.flatMap((f) => ["--disable", f]),
     "-c", `mcp_servers.${MCP_NAME}.url=${mcpUrl}`,
     "-c", `mcp_servers.${MCP_NAME}.bearer_token_env_var=${TOKEN_ENV}`,

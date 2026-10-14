@@ -10,6 +10,8 @@
 > - 运行中排队的消息只合并文字；含图片时提示已忽略，纯图片的排队消息不会再触发一轮
 > - Bridge 取消时会结束 CLI 子进程（Windows 下 .cmd 启动用 taskkill /T）；每次运行恰好一个 `done`
 > - 错误横幅动作「检查本机 Agent」「切换引擎」会清除错误状态
+> - Codex 用 `-c skills.include_instructions=false` 去掉用户 skills 清单（`~/.codex/skills`、`~/.agents/skills`）。但 Codex 0.139 总会读取 `$CODEX_HOME/AGENTS.override.md` 或 `AGENTS.md`，放在 StyleSwift 提示词之前。没有 flag、`-c` 或 feature 能关掉它：0.139 源码在加载 `Config` 时无条件读取该文件，`--ignore-user-config` 也不例外。唯一办法是换一个 `CODEX_HOME`，但那样要复制 `auth.json`，token 刷新轮换可能让用户掉登录，所以不采用。因此 3.5 第 2 条对 Codex 的全局 AGENTS.md 不成立
+> - Bridge 工作目录改为 `~/.styleswift/bridge-work`（0700，按用户隔离），含 token / 提示词的文件为 0600，不再放在系统临时目录（3.5 第 3 条）
 >
 > 前置：已完成 Claude Code 单引擎原型（`bridge/host.mjs`、`bridge/install.mjs`、`extension/sidepanel/agent/claude-code-engine.js`），扩展内手动验证可跑通。本设计在原型基础上定义正式版本。
 

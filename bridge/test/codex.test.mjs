@@ -25,6 +25,7 @@ describe("buildCodexArgs", () => {
       "approval_policy=never",
       "web_search=disabled",
       "include_apply_patch_tool=false",
+      "skills.include_instructions=false",
       "mcp_servers.styleswift.url=http://127.0.0.1:9/mcp",
       "mcp_servers.styleswift.bearer_token_env_var=STYLESWIFT_MCP_TOKEN",
       "mcp_servers.styleswift.default_tools_approval_mode=approve",
