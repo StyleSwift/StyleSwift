@@ -71,6 +71,26 @@ describe("engine switcher", () => {
     expect(store.agent_engine).toBe("codex");
   });
 
+  test("choosing while a run started after the menu opened does not switch", async () => {
+    let busy = false;
+    await initEngineSwitcher(deps({ isBusy: () => busy }));
+    await openEngineMenu();
+    busy = true;
+    document.querySelector('#engine-menu [data-engine="claude-code"]').click();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(store.agent_engine).toBeUndefined();
+    expect(document.querySelector("#engine-menu").classList.contains("hidden")).toBe(true);
+  });
+
+  test("a run starting during detection keeps the menu closed", async () => {
+    let busy = false;
+    await initEngineSwitcher(deps({ isBusy: () => busy }));
+    const opening = openEngineMenu();
+    busy = true;
+    await opening;
+    expect(document.querySelector("#engine-menu").classList.contains("hidden")).toBe(true);
+  });
+
   test("busy agent blocks opening the menu", async () => {
     await initEngineSwitcher(deps({ isBusy: () => true }));
     document.querySelector("#engine-btn").click();

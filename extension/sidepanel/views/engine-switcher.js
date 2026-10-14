@@ -34,6 +34,7 @@ function closeMenu() {
 
 async function choose(engineId) {
   closeMenu();
+  if (deps.isBusy()) return;
   if ((await getEngine()) === engineId) return;
   await setEngine(engineId);
   await refreshEngineLabel();
@@ -44,6 +45,7 @@ export async function openEngineMenu() {
   if (deps.isBusy()) return;
   const menu = document.getElementById("engine-menu");
   const [current, keyOk, detection] = await Promise.all([getEngine(), hasApiKey(), detectBridge()]);
+  if (deps.isBusy()) return; // 检测期间开始了运行
   menu.innerHTML =
     `<div class="engine-menu-title">${getMessage("engineMenuTitle")}</div>` +
     ENGINES.map((e) => {
