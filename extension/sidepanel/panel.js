@@ -24,6 +24,7 @@ import { StreamingTextRenderer } from "./ui/streaming-renderer.js";
 import { ToolCardManager, getToolDisplayName } from "./ui/tool-card-manager.js";
 import { TodoCardManager } from "./ui/todo-card-manager.js";
 import { ConfirmationOverlay } from "./ui/confirmation-overlay.js";
+import { AGENT_ERROR_UI } from "./ui/agent-error-ui.js";
 import { escapeHtml, iconHtml } from "./ui/dom-utils.js";
 import {
 	extractPath,
@@ -3107,20 +3108,8 @@ const ERROR_ACTION_LABEL_KEYS = {
 	settings: "goToSettings",
 	retry: "retry",
 	newSession: "newSession",
-};
-
-/**
- * Agent 错误码 → 横幅类型、文案与操作
- */
-const AGENT_ERROR_UI = {
-	API_KEY_INVALID: { type: "API_KEY_INVALID", key: "errApiKeyInvalid", action: "settings" },
-	ACCESS_DENIED: { type: "API_KEY_INVALID", key: "errAccessDenied", action: "settings" },
-	MODEL_NOT_FOUND: { type: "API_ERROR", key: "errModelNotFound", action: "settings" },
-	INSUFFICIENT_BALANCE: { type: "API_ERROR", key: "errInsufficientBalance", action: "retry" },
-	RATE_LIMITED: { type: "API_ERROR", key: "errRateLimited", action: "retry" },
-	MAX_RETRIES: { type: "API_ERROR", key: "errRateLimited", action: "retry" },
-	CONTEXT_TOO_LONG: { type: "API_ERROR", key: "errContextTooLong", action: "newSession" },
-	NETWORK_ERROR: { type: "NETWORK_ERROR", key: "errNetwork", action: "retry" },
+	localSetup: "localSetupAction",
+	switchEngine: "switchEngineAction",
 };
 
 /**
@@ -3133,9 +3122,11 @@ function showAgentError(error, onRetry) {
 		error.code || (error instanceof TypeError ? "NETWORK_ERROR" : null);
 	const ui = AGENT_ERROR_UI[code];
 	const type = ui?.type || "API_ERROR";
-	const customMessage = ui
-		? getMessage(ui.key)
-		: `${getMessage("errApi")}: ${String(error.message || "").slice(0, 200)}`;
+	const customMessage = ui?.raw
+		? String(error.message || "").slice(0, 200)
+		: ui
+			? getMessage(ui.key)
+			: `${getMessage("errApi")}: ${String(error.message || "").slice(0, 200)}`;
 	setErrorState(type);
 	showErrorBanner(type, { customMessage, action: ui?.action, onRetry });
 }
@@ -3225,7 +3216,7 @@ function initErrorBanner() {
 
 	// 操作按钮
 	if (DOM.errorBannerAction) {
-		DOM.errorBannerAction.addEventListener("click", () => {
+		DOM.errorBannerAction.addEventListener("click", async () => {
 			const action = DOM.errorBannerAction.dataset.action;
 
 			switch (action) {
@@ -3251,6 +3242,20 @@ function initErrorBanner() {
 					clearErrorState();
 					handleNewSession();
 					break;
+
+				case "localSetup": {
+					hideErrorBanner();
+					const { openLocalSetupModal } = await import("./views/engine-switcher.js");
+					openLocalSetupModal();
+					break;
+				}
+
+				case "switchEngine": {
+					hideErrorBanner();
+					const { openEngineMenu } = await import("./views/engine-switcher.js");
+					openEngineMenu();
+					break;
+				}
 			}
 		});
 	}

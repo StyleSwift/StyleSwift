@@ -52,6 +52,9 @@ export async function initSettingsView() {
 		versionEl.textContent = `StyleSwift v${chrome.runtime.getManifest().version}`;
 	}
 
+	// 本机 Agent 分组：每次进入都重新检测（含重复进入时的早退路径）
+	initLocalAgentSettings();
+
 	// 防止重复绑定事件监听器（使用 data 属性标记）
 	const settingsView = document.getElementById("settings-view");
 	if (settingsView && settingsView.dataset.listenersAttached === "true") {
@@ -147,6 +150,28 @@ export async function initSettingsView() {
 	await renderUserSkillList();
 }
 
+let localSetup = null;
+
+/**
+ * 设置页「本机 Agent」分组：每次进入设置页重新检测
+ */
+async function initLocalAgentSettings() {
+	const { renderLocalSetup } = await import("./local-setup.js");
+	const { setEngine } = await import("../agent/engines/prefs.js");
+	const { engineDisplayName } = await import("./engine-switcher.js");
+	const status = document.getElementById("local-engine-status");
+	status.className = "status-message hidden";
+	localSetup?.destroy();
+	localSetup = renderLocalSetup(document.getElementById("local-setup-settings"), {
+		onReady: async (engineId) => {
+			await setEngine(engineId);
+			status.textContent = formatMessage("engineSwitched", { engine: engineDisplayName(engineId) });
+			status.className = "status-message success";
+		},
+	});
+	localSetup.refresh();
+}
+
 /** API 配置有未保存改动 / 上次返回时验证失败（再次返回即放弃改动）/ 用户画像有改动 */
 export let settingsDirty = false;
 export let settingsSaveFailed = false;
@@ -202,6 +227,10 @@ export async function handleSettingsBack() {
 	settingsDirty = false;
 	settingsSaveFailed = false;
 
+	// 确定离开设置页：停止本机 Agent 检测轮询
+	localSetup?.destroy();
+	localSetup = null;
+
 	if (profileDirty) {
 		try {
 			await runUpdateUserProfile(DOM.settingsUserProfile.value.trim());
@@ -227,6 +256,8 @@ export async function handleSettingsBack() {
 		}
 	}
 	switchView("main");
+	const { refreshEngineLabel } = await import("./engine-switcher.js");
+	await refreshEngineLabel();
 }
 
 /**
