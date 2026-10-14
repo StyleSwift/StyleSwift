@@ -16,6 +16,7 @@ const LOOP_ONLY_TOOLS = new Set(["Task", "TodoWrite", "think"]);
 export const LOCAL_TOOLS = [...ALL_TOOLS.filter((t) => !LOOP_ONLY_TOOLS.has(t.name)), CAPTURE_SCREENSHOT_TOOL].map(
   ({ name, description, input_schema }) => ({ name, description, input_schema }),
 );
+const LOCAL_TOOL_NAMES = new Set(LOCAL_TOOLS.map((t) => t.name));
 
 export function toMcpContent(output) {
   if (output && typeof output === "object" && output._screenshot_result) {
@@ -81,6 +82,7 @@ async function runOnce({ engine, prompt, system, tabId, resume, key }, ui, signa
           }
         },
         onToolCall: async (name, args) => {
+          if (!LOCAL_TOOL_NAMES.has(name)) return [{ type: "text", text: `Error: unknown tool ${name}` }];
           ui.showToolExecuting?.(name);
           try {
             return toMcpContent(await executeTool(name, args, { abortSignal: signal, tabId, uiCallbacks: ui }));
@@ -108,6 +110,11 @@ export async function runLocalEngine({ engine, prompt, system, tabId, domain, se
     runOnce({ engine, prompt: withTranscript(prompt, buildTranscript(history)), system, tabId, key }, ui, signal);
 
   if (!resume) return fresh();
+  // 中途换过引擎：CLI 会话缺了中间几轮，改用文字记录重新开始
+  if (history.findLast((m) => m.role === "assistant")?._engine !== engine) {
+    await chrome.storage.local.remove(key);
+    return fresh();
+  }
   try {
     return await runOnce({ engine, prompt, system, tabId, resume, key }, ui, signal);
   } catch (err) {

@@ -48,6 +48,8 @@ function ui() {
 
 const base = { engine: "codex", prompt: "make it dark", system: "SYS", tabId: 1, domain: "a.com", sessionId: "s1", history: [{ role: "user", content: "earlier" }] };
 const signal = new AbortController().signal;
+// 最近一条助手消息出自同一引擎 → 可续接
+const resumable = { ...base, history: [...base.history, { role: "assistant", content: [{ type: "text", text: "ok" }], _engine: "codex" }] };
 
 beforeEach(() => { runs.length = 0; for (const k of Object.keys(store)) delete store[k]; });
 
@@ -83,7 +85,7 @@ describe("runLocalEngine", () => {
   test("with a stored session it resumes and sends the bare prompt", async () => {
     store["engine_session:codex:a.com:s1"] = "thread-1";
     script = () => ({ events: [{ type: "text", text: "ok" }] });
-    await runLocalEngine(base, ui().cb, signal);
+    await runLocalEngine(resumable, ui().cb, signal);
     expect(runs[0]).toMatchObject({ resume: "thread-1", prompt: "make it dark" });
   });
 
@@ -93,7 +95,7 @@ describe("runLocalEngine", () => {
       ? { events: [{ type: "error", code: "LOCAL_ENGINE_ERROR", message: "session not found" }] }
       : { events: [{ type: "session", id: "thread-2" }, { type: "text", text: "fresh" }] });
     const { calls, cb } = ui();
-    expect(await runLocalEngine(base, cb, signal)).toBe("fresh");
+    expect(await runLocalEngine(resumable, cb, signal)).toBe("fresh");
     expect(runs[1].resume).toBeUndefined();
     expect(runs[1].prompt).toMatch(/^\[Previous conversation\]/);
     expect(store["engine_session:codex:a.com:s1"]).toBe("thread-2");
@@ -103,7 +105,7 @@ describe("runLocalEngine", () => {
   test("errors after progress are thrown as AgentError with the engine's code", async () => {
     store["engine_session:codex:a.com:s1"] = "thread-1";
     script = () => ({ events: [{ type: "text", text: "partial" }, { type: "error", code: "LOCAL_QUOTA", message: "usage limit" }] });
-    await expect(runLocalEngine(base, ui().cb, signal)).rejects.toMatchObject({ code: "LOCAL_QUOTA", message: "usage limit" });
+    await expect(runLocalEngine(resumable, ui().cb, signal)).rejects.toMatchObject({ code: "LOCAL_QUOTA", message: "usage limit" });
     expect(runs).toHaveLength(1);
   });
 
@@ -111,9 +113,25 @@ describe("runLocalEngine", () => {
     store["engine_session:codex:a.com:s1"] = "thread-1";
     script = () => ({ events: [{ type: "error", code: "LOCAL_QUOTA", message: "usage limit" }] });
     const { calls, cb } = ui();
-    await expect(runLocalEngine(base, cb, signal)).rejects.toMatchObject({ code: "LOCAL_QUOTA" });
+    await expect(runLocalEngine(resumable, cb, signal)).rejects.toMatchObject({ code: "LOCAL_QUOTA" });
     expect(runs).toHaveLength(1);
     expect(store["engine_session:codex:a.com:s1"]).toBe("thread-1");
+    expect(calls.some((c) => c[0] === "notice")).toBe(false);
+  });
+
+  test.each([
+    ["another local engine", { _engine: "claude-code" }],
+    ["the built-in engine", {}],
+  ])("last assistant turn by %s → drop the stale mapping and run fresh with the transcript", async (_label, tag) => {
+    store["engine_session:codex:a.com:s1"] = "thread-old";
+    script = () => ({ events: [{ type: "session", id: "thread-new" }, { type: "text", text: "ok" }] });
+    const history = [...resumable.history, { role: "user", content: "in between" }, { role: "assistant", content: [{ type: "text", text: "other" }], ...tag }];
+    const { calls, cb } = ui();
+    await runLocalEngine({ ...base, history }, cb, signal);
+    expect(runs).toHaveLength(1);
+    expect(runs[0].resume).toBeUndefined();
+    expect(runs[0].prompt).toMatch(/^\[Previous conversation\][\s\S]*in between/);
+    expect(store["engine_session:codex:a.com:s1"]).toBe("thread-new");
     expect(calls.some((c) => c[0] === "notice")).toBe(false);
   });
 
@@ -131,5 +149,14 @@ describe("runLocalEngine", () => {
     await runLocalEngine(base, cb, signal);
     expect(req._toolResults).toEqual([[{ type: "text", text: "ran grep" }], [{ type: "image", mimeType: "image/png", data: "QUJD" }]]);
     expect(calls.filter((c) => c[0] === "executing").map((c) => c[1])).toEqual(["grep", "capture_screenshot"]);
+  });
+
+  test("tool names outside LOCAL_TOOLS are rejected without executing", async () => {
+    let req;
+    script = (r) => { req = r; return { events: [], toolCalls: [["Task", {}], ["rm_rf", {}]] }; };
+    const { calls, cb } = ui();
+    await runLocalEngine(base, cb, signal);
+    expect(req._toolResults).toEqual([[{ type: "text", text: "Error: unknown tool Task" }], [{ type: "text", text: "Error: unknown tool rm_rf" }]]);
+    expect(calls.some((c) => c[0] === "executing")).toBe(false);
   });
 });
