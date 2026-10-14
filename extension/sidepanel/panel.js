@@ -3245,6 +3245,7 @@ function initErrorBanner() {
 
 				case "localSetup": {
 					hideErrorBanner();
+					clearErrorState();
 					const { openLocalSetupModal } = await import("./views/engine-switcher.js");
 					openLocalSetupModal();
 					break;
@@ -3252,6 +3253,7 @@ function initErrorBanner() {
 
 				case "switchEngine": {
 					hideErrorBanner();
+					clearErrorState();
 					const { openEngineMenu } = await import("./views/engine-switcher.js");
 					openEngineMenu();
 					break;
