@@ -12,6 +12,7 @@ export default defineConfig({
     environment: 'jsdom',
     include: [
       'extension/tests/*.test.js',
+      'bridge/test/*.test.mjs',
     ],
     exclude: [
       'extension/tests/integration/**',
