@@ -611,7 +611,8 @@ export async function agentLoop(prompt, uiCallbacks) {
           signal,
         );
         response = { content: [{ type: "text", text }] };
-        fullHistory.push({ role: "assistant", content: [{ type: "text", text }], _engine: engine });
+        // 空文本块会让内置引擎之后的 API 调用报错
+        if (text) fullHistory.push({ role: "assistant", content: [{ type: "text", text }], _engine: engine });
         if (pendingUserMessages.length === 0) break;
         // 运行中追加的消息：本轮结束后合并为下一轮（图片忽略，保留文字）
         const queued = pendingUserMessages;

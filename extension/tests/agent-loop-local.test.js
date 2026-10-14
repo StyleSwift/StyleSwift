@@ -49,11 +49,12 @@ globalThis.indexedDB = {
 
 const localRuns = [];
 let duringFirstRun = null;
+let localReply = "reply from codex";
 vi.mock("../sidepanel/agent/engines/local-engine.js", () => ({
   runLocalEngine: async (args) => {
     localRuns.push(args);
     if (localRuns.length === 1) duringFirstRun?.();
-    return "reply from codex";
+    return localReply;
   },
 }));
 
@@ -61,7 +62,7 @@ const { agentLoop, queueUserMessage } = await import("../sidepanel/agent/agent-l
 const { serializeToClaude, serializeToOpenAI } = await import("../sidepanel/agent/message-serialization.js");
 const { loadAndPrepareHistory } = await import("../sidepanel/session.js");
 
-beforeEach(() => { localRuns.length = 0; duringFirstRun = null; for (const k of Object.keys(store)) delete store[k]; store.agent_engine = "codex"; });
+beforeEach(() => { localRuns.length = 0; duringFirstRun = null; localReply = "reply from codex"; for (const k of Object.keys(store)) delete store[k]; store.agent_engine = "codex"; });
 
 describe("agentLoop with a local engine", () => {
   test("delegates to runLocalEngine and stores plain-text turns tagged with the engine", async () => {
@@ -116,5 +117,13 @@ describe("agentLoop with a local engine", () => {
     expect(texts.join("")).toMatch(/localImagesIgnored/);
     const { messages } = await loadAndPrepareHistory("a.com", localRuns[0].sessionId);
     expect(messages.filter((m) => m.role === "user" && m.content === "")).toHaveLength(0);
+  });
+
+  test("an empty local reply stores no empty assistant message", async () => {
+    localReply = "";
+    await agentLoop("make it dark", { appendText() {} });
+    const { messages } = await loadAndPrepareHistory("a.com", localRuns[0].sessionId);
+    expect(messages.filter((m) => m.role === "assistant")).toHaveLength(0);
+    expect(messages.at(-1)).toMatchObject({ role: "user", content: "make it dark" });
   });
 });
