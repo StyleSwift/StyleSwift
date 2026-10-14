@@ -66,7 +66,7 @@ StyleSwift 目前只有自研 Agent 内核，用户必须自备 API Key。很多
 
 ### 3.1 `styleswift-bridge`（npm 包，仓库 `bridge/` 目录）
 
-- `styleswift-bridge install [--extension-id <id>] [--browser chrome|edge]`
+- `styleswift-bridge install [--extension-id <id>]`（同时注册 Chrome 与 Edge；文件复制到稳定目录 `%LOCALAPPDATA%StyleSwiftridge` / `~/.styleswift/bridge`，避免 npx 缓存被清理）
   - 写 host manifest 和启动器（launcher 中写死当前 node 的绝对路径）
   - Windows：写入 `HKCU\Software\{Google\Chrome|Microsoft\Edge}\NativeMessagingHosts\com.styleswift.bridge`
   - macOS / Linux：写入对应浏览器的 `NativeMessagingHosts/` 目录
@@ -107,12 +107,12 @@ Windows 下 CLI 可能是 `.cmd`（npm 安装），需要经 shell 启动。所�
 
 ### 3.3 扩展 ↔ Bridge 协议
 
-所有消息都带 `v`（协议版本）。
+协议版本由 `detect_result.protocol` 和 `run.protocol` 双向校验（不单设 hello 消息）。
 
 | 方向 | 消息 |
 |---|---|
-| 扩展 → host | `{type:'hello'}`、`{type:'detect'}`、`{type:'run', engine, prompt, system, tools, resume}`、`{type:'tool_result', id, content}` |
-| host → 扩展 | `{type:'hello', bridgeVersion, protocol}`、`{type:'detect_result', engines:{claude-code:{…}, codex:{…}}}`、`{type:'event', event: EngineEvent}`、`{type:'tool_call', id, name, args}`、`{type:'done', code, error?}` |
+| 扩展 → host | `{type:'detect'}`、`{type:'run', protocol, engine, prompt, system, tools, resume}`、`{type:'tool_result', id, content}` |
+| host → 扩展 | `{type:'detect_result', protocol, bridgeVersion, engines:{claude-code:{…}, codex:{…}}}`、`{type:'event', event: EngineEvent}`、`{type:'tool_call', id, name, args}`、`{type:'done'}`（每次 run 恰好一个，错误以 error 事件传递） |
 
 - 协议不兼容时，扩展显示「请更新 Bridge」并给出更新命令
 - 取消 = 扩展断开端口 → host 收到 stdin EOF → 结束子进程并退出
@@ -168,10 +168,10 @@ Windows 下 CLI 可能是 `.cmd`（npm 安装），需要经 shell 启动。所�
 - 选中尚未连接的本机引擎时，以弹层形式打开与 4.1 相同的检测和安装流程
 - 会话中途切换时，消息流里插入分隔线：「已切换到 Codex · 之前的对话会以文字带入」
 
-### 4.3 设置页「AI 引擎」分组
+### 4.3 设置页「本机 Agent」分组
 
-- 内置引擎：现有的 API Key / 地址 / 模型 / 视觉模型配置挪到这里
-- 本机引擎：Bridge 状态、各 CLI 的状态、「重新检测」、安装 / 更新 / 卸载命令
+- 现有 API Key / 视觉模型分组保持不变（即内置引擎配置）
+- 新增「本机 Agent」分组：与引导页共用同一个检测 / 安装面板，可在此选择本机引擎
 
 ### 4.4 运行时状态与异常
 
@@ -217,7 +217,8 @@ Tab 锁定、受限页面检查、页面级 scope、撤销快照、会话标题�
 ### 5.4 首版的取舍
 
 - 运行中用户追加的消息先排队，本轮结束后作为下一轮发出
-- 如果 `result` 事件带用量 / 费用就显示，没有就不显示
+- 用户在本机引擎下附加参考图片：首版只发送文本，并在回复开头提示「本机引擎暂不支持图片，已忽略附图」
+- 不展示用量 / 费用（推迟到有需求时再做）
 
 ---
 
