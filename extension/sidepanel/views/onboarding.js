@@ -7,6 +7,8 @@ import { DEFAULT_API_BASE, DEFAULT_MODEL, PROVIDER_PRESETS, normalizeApiBase, sa
 import { formatMessage, getMessage, isChineseLanguage } from "../i18n.js";
 import { AppState, DOM } from "../panel-state.js";
 import { initMainView, showLoading, switchView } from "../panel.js";
+import { setEngine } from "../agent/engines/prefs.js";
+import { renderLocalSetup } from "./local-setup.js";
 
 // ============================================================================
 // 引导页逻辑
@@ -51,6 +53,43 @@ export function initOnboarding() {
 		apiGuideLink.href = `chrome-extension://${chrome.runtime.id}/api-guide/api-guide.html`;
 		apiGuideLink.setAttribute("target", "_blank");
 	}
+
+	initLocalOnboarding();
+}
+
+/**
+ * 引导页「使用本机 Claude Code / Codex」：选中可用引擎即完成配置，无需 API Key
+ */
+function initLocalOnboarding() {
+	const card = document.getElementById("choose-local-engine");
+	const panel = document.getElementById("local-onboarding");
+	const form = document.querySelector("#onboarding-view .setup-form");
+	let setup = null;
+
+	const show = (local) => {
+		card.classList.toggle("hidden", local);
+		form.classList.toggle("hidden", local);
+		panel.classList.toggle("hidden", !local);
+		if (!local) {
+			setup?.destroy();
+			setup = null;
+		}
+	};
+
+	card.addEventListener("click", () => {
+		show(true);
+		setup = renderLocalSetup(document.getElementById("local-setup-onboarding"), {
+			onReady: async (engineId) => {
+				setup.destroy();
+				await setEngine(engineId);
+				AppState.apiKeyStatus = "valid"; // 已配置：本机引擎可用
+				switchView("main");
+				initMainView();
+			},
+		});
+		setup.refresh();
+	});
+	document.getElementById("use-api-key-instead").addEventListener("click", () => show(false));
 }
 
 /**

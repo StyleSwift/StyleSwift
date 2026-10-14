@@ -6643,3 +6643,13 @@ pre code {
 .local-engine { display: flex; align-items: center; gap: var(--spacing-sm); padding: 6px 0; }
 .local-engine-status { flex: 1; font-size: var(--font-size-sm); color: var(--color-text-secondary); }
 .local-engine[data-state="ready"] .local-engine-status { color: var(--color-success); }
+
+/* ===== 引导页本机入口 ===== */
+.engine-choice-card {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
+  padding: var(--spacing-md); margin-bottom: var(--spacing-md); border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid var(--color-border-strong); background: transparent;
+  font-family: var(--font-family); color: var(--color-text-primary);
+}
+.engine-choice-card:hover { border-color: var(--color-primary); }
+.local-onboarding { display: flex; flex-direction: column; gap: var(--spacing-md); }

@@ -2309,8 +2309,10 @@ async function init() {
 	// === Step 2: 检测 API Key ===
 	try {
 		const { needsSetup } = await checkFirstRun();
+		const { getEngine, isLocalEngine } = await import("./agent/engines/prefs.js");
+		const usesLocalEngine = isLocalEngine(await getEngine());
 
-		if (needsSetup) {
+		if (needsSetup && !usesLocalEngine) {
 			// === Step 3a: 首次使用，显示引导页 ===
 			console.log("[Panel] First run detected, showing onboarding");
 			initOnboarding();

@@ -21,6 +21,15 @@
           <p class="tagline" data-i18n="tagline">Transform any webpage with a single sentence</p>
         </div>
 
+        <button id="choose-local-engine" class="engine-choice-card" data-testid="choose-local-engine">
+          <strong data-i18n="useLocalAgentTitle">Use local Claude Code / Codex</strong>
+          <span class="hint" data-i18n="useLocalAgentDesc">No API key needed, for developers with a subscription</span>
+        </button>
+        <div id="local-onboarding" class="local-onboarding hidden">
+          <div id="local-setup-onboarding"></div>
+          <button id="use-api-key-instead" class="btn btn-ghost" data-i18n="useApiKeyInstead">Use an API key instead</button>
+        </div>
+
         <div class="setup-form">
           <div class="form-group">
             <label for="provider-select" data-i18n="providerLabel">AI Provider</label>
