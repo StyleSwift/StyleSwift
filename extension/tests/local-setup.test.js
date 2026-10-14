@@ -61,6 +61,57 @@ describe("renderLocalSetup", () => {
     expect(detectBridge).not.toHaveBeenCalled();
   });
 
+  test("unchanged poll result keeps the same DOM nodes", async () => {
+    vi.useFakeTimers();
+    detection = { status: "not-installed" };
+    const { detectBridge } = await import("../sidepanel/agent/engines/bridge-client.js");
+    const ui = renderLocalSetup(container, { onReady() {}, pollMs: 3000 });
+    await ui.refresh();
+    const copyBtn = container.querySelector("[data-copy]");
+    detectBridge.mockClear();
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(detectBridge).toHaveBeenCalledTimes(1);
+    expect(container.contains(copyBtn)).toBe(true);
+    ui.destroy();
+  });
+
+  test("removed container stops polling without destroy()", async () => {
+    vi.useFakeTimers();
+    detection = { status: "not-installed" };
+    const { detectBridge } = await import("../sidepanel/agent/engines/bridge-client.js");
+    const ui = renderLocalSetup(container, { onReady() {}, pollMs: 3000 });
+    await ui.refresh();
+    container.remove();
+    detectBridge.mockClear();
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(detectBridge).not.toHaveBeenCalled();
+  });
+
+  test("detectBridge rejection is treated as not-installed", async () => {
+    detection = { status: "not-installed" };
+    const { detectBridge } = await import("../sidepanel/agent/engines/bridge-client.js");
+    detectBridge.mockRejectedValueOnce(new Error("boom"));
+    const ui = renderLocalSetup(container, { onReady() {} });
+    await ui.refresh();
+    expect(container.querySelector(".local-setup").dataset.state).toBe("not-installed");
+    ui.destroy();
+  });
+
+  test("refresh while a detect is in flight is skipped", async () => {
+    detection = { status: "not-installed" };
+    const { detectBridge } = await import("../sidepanel/agent/engines/bridge-client.js");
+    let release;
+    detectBridge.mockClear();
+    detectBridge.mockImplementationOnce(() => new Promise((r) => { release = () => r(detection); }));
+    const ui = renderLocalSetup(container, { onReady() {} });
+    const first = ui.refresh();
+    await ui.refresh();
+    expect(detectBridge).toHaveBeenCalledTimes(1);
+    release();
+    await first;
+    ui.destroy();
+  });
+
   test("ok lists engines with states; only ready engines can be chosen", async () => {
     detection = { status: "ok", engines: {
       "claude-code": { installed: true, loggedIn: true, version: "2.1.292" },

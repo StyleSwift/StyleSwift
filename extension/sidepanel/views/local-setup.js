@@ -78,6 +78,8 @@ function render(detection) {
 export function renderLocalSetup(container, { onReady, pollMs = 3000 }) {
   let timer = null;
   let destroyed = false;
+  let inFlight = false;
+  let lastHtml = "";
 
   const stopPolling = () => {
     clearInterval(timer);
@@ -86,15 +88,39 @@ export function renderLocalSetup(container, { onReady, pollMs = 3000 }) {
 
   async function refresh() {
     if (destroyed) return;
-    const detection = await detectBridge();
-    if (destroyed) return;
-    container.innerHTML = render(detection);
-    // 未安装 / 过旧时自动轮询，等用户在终端装完
-    if (["not-installed", "outdated"].includes(detection.status)) {
-      timer ??= setInterval(refresh, pollMs);
-    } else {
-      stopPolling();
+    // 调用方没调 destroy() 就移除了容器：停止轮询，避免反复唤起本机 host
+    if (!container.isConnected) return destroy();
+    if (inFlight) return;
+    inFlight = true;
+    try {
+      let detection;
+      try {
+        detection = await detectBridge();
+      } catch (err) {
+        detection = { status: "not-installed", error: err.message };
+      }
+      if (destroyed) return;
+      // 结果未变则不重绘，保住焦点、选区和“已复制”
+      const html = render(detection);
+      if (html !== lastHtml) {
+        container.innerHTML = html;
+        lastHtml = html;
+      }
+      // 未安装 / 过旧时自动轮询，等用户在终端装完
+      if (["not-installed", "outdated"].includes(detection.status)) {
+        timer ??= setInterval(refresh, pollMs);
+      } else {
+        stopPolling();
+      }
+    } finally {
+      inFlight = false;
     }
+  }
+
+  function destroy() {
+    destroyed = true;
+    stopPolling();
+    container.removeEventListener("click", onClick);
   }
 
   async function onClick(e) {
@@ -107,8 +133,10 @@ export function renderLocalSetup(container, { onReady, pollMs = 3000 }) {
       if (await requestNativePermission()) await refresh();
       else container.querySelector(".hint").textContent = getMessage("localPermissionDenied");
     } else if (btn.dataset.action === "recheck") {
-      container.querySelector(".local-setup").dataset.checking = "true";
+      const panel = container.querySelector(".local-setup");
+      panel.dataset.checking = "true";
       await refresh();
+      delete panel.dataset.checking; // 结果未变时不会重绘，需手动清除
     } else if (btn.dataset.action === "use") {
       onReady(btn.dataset.engine);
     }
@@ -116,12 +144,5 @@ export function renderLocalSetup(container, { onReady, pollMs = 3000 }) {
 
   container.addEventListener("click", onClick);
   container.innerHTML = `<div class="local-setup" data-state="checking"><p class="hint">${getMessage("localChecking")}</p></div>`;
-  return {
-    refresh,
-    destroy() {
-      destroyed = true;
-      stopPolling();
-      container.removeEventListener("click", onClick);
-    },
-  };
+  return { refresh, destroy };
 }
