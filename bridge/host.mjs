@@ -6,12 +6,22 @@
 
 import { mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { adapters } from "./adapters/index.mjs";
+import { mergePath } from "./lib/env-path.mjs";
 import { createDecoder, encodeMessage } from "./lib/framing.mjs";
 import { createHost } from "./lib/host-core.mjs";
 
-const { version } = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
+const readJson = (name) => JSON.parse(readFileSync(new URL(name, import.meta.url), "utf8"));
+let saved = {};
+try {
+  saved = readJson("./env.json"); // install 时记录的终端 PATH
+} catch {
+  // 开发时直接运行仓库里的 host.mjs，没有 env.json
+}
+process.env.PATH = mergePath({ current: process.env.PATH, saved: saved.PATH, nodeDir: dirname(process.execPath), delimiter });
+
+const { version } = readJson("./package.json");
 const workRoot = join(tmpdir(), "styleswift-bridge");
 mkdirSync(workRoot, { recursive: true });
 

@@ -24,6 +24,8 @@ function install(argv) {
   for (const entry of ["host.mjs", "package.json", "lib", "adapters"]) {
     cpSync(join(SRC, entry), join(dir, entry), { recursive: true });
   }
+  // 从 Dock / Finder 启动的 Chrome 不继承终端 PATH，host 启动时合并回去（见 lib/env-path.mjs）
+  writeFileSync(join(dir, "env.json"), JSON.stringify({ PATH: process.env.PATH }));
 
   const launcherPath = launcherFile({ platform: ctx.platform, dir });
   writeFileSync(launcherPath, launcherScript({ platform: ctx.platform, nodePath: process.execPath, hostPath: join(dir, "host.mjs") }));
