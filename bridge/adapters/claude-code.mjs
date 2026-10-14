@@ -87,10 +87,10 @@ export const claudeCode = {
     const cwd = claudeWorkDir(workRoot);
     mkdirSync(cwd, { recursive: true });
     const { systemFile, mcpFile } = claudeRunFiles(workRoot);
-    writeFileSync(systemFile, system);
+    writeFileSync(systemFile, system, { mode: 0o600 });
     writeFileSync(mcpFile, JSON.stringify({
       mcpServers: { [MCP_NAME]: { type: "http", url: mcpUrl, headers: { Authorization: `Bearer ${mcpToken}` } } },
-    }));
+    }), { mode: 0o600 });
     return streamCli({
       name: "claude",
       args: buildClaudeArgs({ systemFile, mcpFile, resume }),

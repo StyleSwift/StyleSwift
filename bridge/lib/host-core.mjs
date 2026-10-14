@@ -5,12 +5,15 @@
 import { createMcpServer } from "./mcp-server.mjs";
 
 export const PROTOCOL_VERSION = 1;
+export const SHUTDOWN_TIMEOUT_MS = 2000;
+// 续接 ID 会进入 CLI 参数：只允许 UUID / thread id 形态
+const RESUME_RE = /^[A-Za-z0-9_-]{1,128}$/;
 
 export function createHost({ adapters, send, bridgeVersion, workRoot }) {
   const pending = new Map(); // tool_call id → resolve
   let seq = 0;
   let current = null;
-  let busy = false;
+  let active = null; // 当前 run 的完成 promise（含适配器清理）
 
   const mcp = createMcpServer({
     onToolCall: (name, args) =>
@@ -41,9 +44,19 @@ export function createHost({ adapters, send, bridgeVersion, workRoot }) {
     }
     const adapter = adapters[msg.engine];
     if (!adapter) return fail("LOCAL_ENGINE_ERROR", `Unknown engine: ${msg.engine}`);
-    if (busy) return fail("LOCAL_ENGINE_ERROR", "Another run is in progress");
-    busy = true; // 同步占位，避免 await 期间被并发 run 越过
+    if (msg.resume != null && !(typeof msg.resume === "string" && RESUME_RE.test(msg.resume))) {
+      return fail("LOCAL_ENGINE_ERROR", "Invalid resume id");
+    }
+    if (active) return fail("LOCAL_ENGINE_ERROR", "Another run is in progress");
+    // 同步占位，避免 await 期间被并发 run 越过
+    active = stream(adapter, msg).finally(() => {
+      active = null;
+      send({ type: "done" });
+    });
+    return active;
+  }
 
+  async function stream(adapter, msg) {
     try {
       mcp.setTools(msg.tools ?? []);
       current = adapter.run({
@@ -59,8 +72,6 @@ export function createHost({ adapters, send, bridgeVersion, workRoot }) {
       send({ type: "event", event: { type: "error", code: "LOCAL_ENGINE_ERROR", message: String(err?.message || err) } }, { truncate: true });
     } finally {
       current = null;
-      busy = false;
-      send({ type: "done" });
     }
   }
 
@@ -73,9 +84,14 @@ export function createHost({ adapters, send, bridgeVersion, workRoot }) {
         pending.delete(msg.id);
       }
     },
-    shutdown() {
+    /** 结束当前运行并等待其清理（events 的 finally），最多等 timeoutMs */
+    async shutdown(timeoutMs = SHUTDOWN_TIMEOUT_MS) {
       current?.kill();
       mcp.close();
+      if (!active) return;
+      let timer;
+      await Promise.race([active, new Promise((r) => (timer = setTimeout(r, timeoutMs)))]);
+      clearTimeout(timer);
     },
   };
 }

@@ -110,7 +110,7 @@ export const codex = {
   run({ prompt, system, mcpUrl, mcpToken, resume, workRoot }) {
     // Codex 按 UUID 续接，不依赖工作目录；每次运行用独立目录放 AGENTS.md
     const cwd = mkdtempSync(join(workRoot, "codex-"));
-    writeFileSync(join(cwd, "AGENTS.md"), system + CODEX_TOOL_HINT);
+    writeFileSync(join(cwd, "AGENTS.md"), system + CODEX_TOOL_HINT, { mode: 0o600 });
     return streamCli({
       name: "codex",
       args: buildCodexArgs({ mcpUrl, resume, ...userCodexModel() }),

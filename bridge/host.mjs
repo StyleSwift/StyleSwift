@@ -5,7 +5,7 @@
  */
 
 import { mkdirSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { adapters } from "./adapters/index.mjs";
 import { mergePath } from "./lib/env-path.mjs";
@@ -22,8 +22,9 @@ try {
 process.env.PATH = mergePath({ current: process.env.PATH, saved: saved.PATH, nodeDir: dirname(process.execPath), delimiter });
 
 const { version } = readJson("./package.json");
-const workRoot = join(tmpdir(), "styleswift-bridge");
-mkdirSync(workRoot, { recursive: true });
+// 按用户隔离：MCP 配置文件里有 Bearer token
+const workRoot = join(homedir(), ".styleswift", "bridge-work");
+mkdirSync(workRoot, { recursive: true, mode: 0o700 });
 
 const send = (msg, opts) => process.stdout.write(encodeMessage(msg, opts));
 const host = createHost({ adapters, send, bridgeVersion: version, workRoot });
@@ -37,8 +38,8 @@ process.stdin.on(
     }),
   ),
 );
-// 扩展断开（取消 / 关闭面板）→ 结束子进程并退出
-process.stdin.on("end", () => {
-  host.shutdown();
+// 扩展断开（取消 / 关闭面板）→ 结束子进程，等适配器清理临时文件后退出
+process.stdin.on("end", async () => {
+  await host.shutdown();
   process.exit(0);
 });

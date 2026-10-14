@@ -95,3 +95,60 @@ describe("host core", () => {
     expect(sent.some((s) => s.msg.event?.message === "Another run is in progress")).toBe(true);
   });
 });
+
+describe("host core shutdown and input validation", () => {
+  const waitFor = async (cond) => { while (!cond()) await new Promise((r) => setTimeout(r, 5)); };
+
+  test("shutdown during an active run kills it and awaits the adapter's cleanup", async () => {
+    let release;
+    let cleaned = false;
+    const adapter = {
+      detect: async () => ({}),
+      run: () => ({
+        events: (async function* () {
+          try {
+            yield { type: "text", text: "a" };
+            await new Promise((r) => (release = r));
+          } finally {
+            await new Promise((r) => setTimeout(r, 20));
+            cleaned = true;
+          }
+        })(),
+        kill: () => release(),
+      }),
+    };
+    const sent = setup({ fake: adapter });
+    host.handle({ type: "run", protocol: PROTOCOL_VERSION, engine: "fake", prompt: "p", system: "s", tools: [] });
+    await waitFor(() => sent.length > 0);
+    await host.shutdown();
+    expect(cleaned).toBe(true);
+  });
+
+  test("shutdown gives up waiting after the cap", async () => {
+    const adapter = fakeAdapter(async function* () { yield { type: "text", text: "a" }; await new Promise(() => {}); });
+    const sent = setup({ fake: adapter });
+    host.handle({ type: "run", protocol: PROTOCOL_VERSION, engine: "fake", prompt: "p", system: "s", tools: [] });
+    await waitFor(() => sent.length > 0);
+    const t = Date.now();
+    await host.shutdown(30);
+    expect(Date.now() - t).toBeLessThan(1000);
+    host = null; // 该运行永不结束，afterEach 不必再等
+  });
+
+  test.each([["../../etc"], ["a b"], ["x".repeat(129)], [123]])("invalid resume %s → LOCAL_ENGINE_ERROR + done, adapter not run", async (resume) => {
+    let ran = false;
+    const sent = setup({ fake: fakeAdapter(async function* () { ran = true; }) });
+    await host.handle({ type: "run", protocol: PROTOCOL_VERSION, engine: "fake", prompt: "p", system: "s", tools: [], resume });
+    expect(ran).toBe(false);
+    expect(sent[0].msg.event.code).toBe("LOCAL_ENGINE_ERROR");
+    expect(sent.at(-1).msg).toEqual({ type: "done" });
+  });
+
+  test("valid resume ids reach the adapter", async () => {
+    let seen;
+    const sent = setup({ fake: fakeAdapter(async function* ({ resume }) { seen = resume; }) });
+    await host.handle({ type: "run", protocol: PROTOCOL_VERSION, engine: "fake", prompt: "p", system: "s", tools: [], resume: "019a-Thread_1" });
+    expect(seen).toBe("019a-Thread_1");
+    expect(sent.at(-1).msg).toEqual({ type: "done" });
+  });
+});
