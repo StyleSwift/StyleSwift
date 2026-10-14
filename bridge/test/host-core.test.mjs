@@ -53,6 +53,7 @@ describe("host core", () => {
   test("adapter tool calls reach the extension untruncated and results flow back", async () => {
     const longCss = "a{}".repeat(MAX_STRING);
     let sent;
+    let seenCall;
     const adapter = fakeAdapter(async function* ({ mcpUrl, mcpToken }) {
       const res = await fetch(mcpUrl, {
         method: "POST",
@@ -66,12 +67,31 @@ describe("host core", () => {
       const call = sent.find((s) => s.msg.type === "tool_call");
       if (call) {
         clearInterval(pump);
-        expect(call.opts).toBeUndefined();
-        expect(call.msg.args.css).toBe(longCss);
+        seenCall = call;
         host.handle({ type: "tool_result", id: call.msg.id, content: [{ type: "text", text: "applied" }] });
       }
     }, 5);
     await host.handle({ type: "run", protocol: PROTOCOL_VERSION, engine: "fake", prompt: "p", system: "s", tools: [] });
+    expect(seenCall.opts).toBeUndefined();
+    expect(seenCall.msg.args.css).toBe(longCss);
     expect(sent.find((s) => s.msg.type === "event").msg.event).toEqual({ type: "text", text: "applied" });
+  });
+
+  test("adapter throwing mid-stream → error event and exactly one done", async () => {
+    const sent = setup({ fake: fakeAdapter(async function* () { yield { type: "text", text: "a" }; throw new Error("boom"); }) });
+    await host.handle({ type: "run", protocol: PROTOCOL_VERSION, engine: "fake", prompt: "p", system: "s", tools: [] });
+    const msgs = sent.map((s) => s.msg);
+    expect(msgs.filter((m) => m.type === "done")).toHaveLength(1);
+    expect(msgs.at(-1)).toEqual({ type: "done" });
+    expect(msgs.find((m) => m.event?.type === "error").event).toMatchObject({ code: "LOCAL_ENGINE_ERROR", message: "boom" });
+  });
+
+  test("concurrent run is rejected synchronously-claimed", async () => {
+    let calls = 0;
+    const sent = setup({ fake: fakeAdapter(async function* () { calls++; yield { type: "text", text: "x" }; }) });
+    const m = { type: "run", protocol: PROTOCOL_VERSION, engine: "fake", prompt: "p", system: "s", tools: [] };
+    await Promise.all([host.handle(m), host.handle(m)]);
+    expect(calls).toBe(1);
+    expect(sent.some((s) => s.msg.event?.message === "Another run is in progress")).toBe(true);
   });
 });

@@ -10,6 +10,7 @@ export function createHost({ adapters, send, bridgeVersion, workRoot }) {
   const pending = new Map(); // tool_call id → resolve
   let seq = 0;
   let current = null;
+  let busy = false;
 
   const mcp = createMcpServer({
     onToolCall: (name, args) =>
@@ -40,21 +41,25 @@ export function createHost({ adapters, send, bridgeVersion, workRoot }) {
     }
     const adapter = adapters[msg.engine];
     if (!adapter) return fail("LOCAL_ENGINE_ERROR", `Unknown engine: ${msg.engine}`);
-    if (current) return fail("LOCAL_ENGINE_ERROR", "Another run is in progress");
+    if (busy) return fail("LOCAL_ENGINE_ERROR", "Another run is in progress");
+    busy = true; // 同步占位，避免 await 期间被并发 run 越过
 
-    mcp.setTools(msg.tools);
-    current = adapter.run({
-      prompt: msg.prompt,
-      system: msg.system,
-      resume: msg.resume,
-      mcpUrl: await mcpUrl,
-      mcpToken: mcp.token,
-      workRoot,
-    });
     try {
+      mcp.setTools(msg.tools ?? []);
+      current = adapter.run({
+        prompt: msg.prompt,
+        system: msg.system,
+        resume: msg.resume,
+        mcpUrl: await mcpUrl,
+        mcpToken: mcp.token,
+        workRoot,
+      });
       for await (const event of current.events) send({ type: "event", event }, { truncate: true });
+    } catch (err) {
+      send({ type: "event", event: { type: "error", code: "LOCAL_ENGINE_ERROR", message: String(err?.message || err) } }, { truncate: true });
     } finally {
       current = null;
+      busy = false;
       send({ type: "done" });
     }
   }
