@@ -1,43 +1,35 @@
 # StyleSwift 宣传片
 
-45 秒，1920×1080，30fps，无声。用 [Remotion](https://www.remotion.dev/) 制作。设计文档见 `docs/superpowers/specs/2026-10-15-promo-video-design.md`。
+45 秒，1920×1080，30fps，带背景音乐和音效。用 [Remotion](https://www.remotion.dev/) 制作。设计文档见 `docs/superpowers/specs/2026-10-15-promo-video-v2-design.md`。
 
 ## 命令
 
 ```bash
 npm install
-npm run dev      # Remotion Studio 预览，可拖时间轴
-npm test         # 校验时长、可读时间、素材是否存在
-npm run render   # 输出 out/styleswift-promo.mp4
+npm run fetch-audio   # 从 Mixkit 下载音乐和音效到 public/audio/（dev 和 render 前会自动补齐缺失的文件）
+npm run dev           # Remotion Studio 预览
+npm test              # 校验时长、节拍、可读时间、素材
+npm run render        # 输出 out/styleswift-promo.mp4
 ```
 
-改文案或节奏只需要改 `src/script.ts`，改完跑一次 `npm test`。测试会检查终端和技能卡这些等宽文字有没有超出边框；大标题是比例字体，测不出宽度，改了标题要渲染一帧看看有没有超出或撞到旁边的元素，例如 `npx remotion still src/index.ts Promo out/check.png --frame=685`（帧号见下表）。
+文案、节奏和音效触发点都在 `src/script.ts`，时间单位是拍（128 BPM，每拍 14.0625 帧）。改完跑一次 `npm test`。大标题是比例字体，测试量不到宽度，改了标题要渲染一帧看看，例如 `npx remotion still src/index.ts Promo out/check.png --frame=300`。
 
-## 剪辑点（配乐对拍用）
+## 音频
 
-| 时间 | 帧 | 事件 |
+| 键名 | 来源 | 用途 |
 |---|---|---|
-| 0:00.0 | 0 | S1 开场，光标闪动 |
-| 0:01.0 | 30 | 开始打字 |
-| 0:02.7 | 80 | 回车 |
-| 0:04.0 | 120 | S2 浏览器出现 |
-| 0:06.0 | 180 | 斜向擦除，变成黑客帝国风格 |
-| 0:07.2 | 216 | 硬切 1：Windows XP |
-| 0:08.3 | 249 | 硬切 2：Y2K |
-| 0:09.3 | 279 | 硬切 3：旧报纸 |
-| 0:10.2 | 306 | 硬切 4：包豪斯 |
-| 0:11.0 | 330 | 硬切 5：温馨 |
-| 0:11.7 | 351 | 硬切 6：墨水屏 |
-| 0:12.3 | 369 | 硬切 7：韦斯·安德森 |
-| 0:13.0 | 390 | S3 Agent 终端 |
-| 0:19.2 | 575 | QualityAudit 扫描 |
-| 0:23.0 | 690 | S4 风格技能 |
-| 0:25.3 | 760 | 技能文件卡弹出 |
-| 0:30.0 | 900 | S5 本机引擎 |
-| 0:34.0 | 1020 | 引擎菜单打开 |
-| 0:38.0 | 1140 | S6 结尾卡 |
-| 0:45.0 | 1350 | 结束 |
+| music | Mixkit Stock Music #1183 “Karma”（Michael Ramir C.），从原曲第 79.16 秒开始 | 背景音乐 |
+| click | Mixkit SFX #1113 Mouse click close | 点发送 |
+| typing | Mixkit SFX #1396 Soft typing on a digital keyboard | 输入指令 |
+| sparkle | Mixkit SFX #2350 Magic sparkle whoosh | 第一次变身 |
+| whoosh | Mixkit SFX #1490 Fast whoosh transition | 之后每次变身 |
+| pop | Mixkit SFX #3005 Explainer video pops whoosh light pop | 贴纸、卡片、拼贴格 |
+| check | Mixkit SFX #2867 Confirmation tone | 步骤打勾 |
+| done | Mixkit SFX #951 Positive notification | 三步完成 |
+| shine | Mixkit SFX #2633 Sweeping sparkle presentation intro | 结尾 logo |
 
-## 授权
+想换音效，就改 `src/audio.json` 里对应的 `id` 和 `volume`，然后运行 `npm run fetch-audio`。目前的混音峰值是 -1.2 dBFS，调大音量后建议重新测一次，不要超过 -1 dBFS。
+
+**授权**：音乐使用 [Mixkit Stock Music Free License](https://mixkit.co/license/#musicFree)，可以商用，可以用于社交媒体和网络广告，不要求署名，不能用于 CD/DVD、游戏或电视广播。音效使用 [Mixkit Sound Effects Free License](https://mixkit.co/license/#sfxFree)。两者都不允许单独再分发，也不允许连同源文件一起分发，所以 `public/audio/` 不进 git。
 
 Remotion 对个人和 3 人以内的公司免费，超过需要购买公司授权：https://www.remotion.dev/license
