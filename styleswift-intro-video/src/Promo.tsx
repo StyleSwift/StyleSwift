@@ -3,6 +3,7 @@ import {Grain} from './components/Grain';
 import {S1Hook} from './scenes/S1Hook';
 import {S2Restyle} from './scenes/S2Restyle';
 import {S3Agent} from './scenes/S3Agent';
+import {S4Skills} from './scenes/S4Skills';
 import {SCENES} from './script';
 import {C} from './theme';
 
@@ -17,6 +18,9 @@ export const Promo = () => (
       </Series.Sequence>
       <Series.Sequence durationInFrames={SCENES.agent}>
         <S3Agent />
+      </Series.Sequence>
+      <Series.Sequence durationInFrames={SCENES.skills}>
+        <S4Skills />
       </Series.Sequence>
     </Series>
     <Grain />

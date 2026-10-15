@@ -39,6 +39,7 @@ export const HEADLINES: {[K in SceneName]?: readonly Headline[]} = {
     {text: 'Writes the CSS.', at: 100},
     {text: 'Checks its own work.', at: 175},
   ],
+  skills: [{text: 'Save a look. Reuse it anywhere.', at: 20}],
 };
 
 // The first shot wipes in over the original page; the rest hard-cut, faster each time (1.2s → 0.6s).
@@ -86,4 +87,27 @@ export const AGENT = {
     '.Link--muted { color: #1f5f1f !important; }',
     '.markdown-body h1 { text-shadow: 0 0 8px #00ff41; }',
   ] as readonly string[],
+};
+
+// Skills are saved by asking the agent (save_style_skill); the card mirrors extension/skills/*.md.
+export const SKILLS = {
+  cps: 60,
+  promptAt: 10,
+  prompt: 'Save this as a skill',
+  lines: [{at: 35, kind: 'call', text: 'save_style_skill(name: "The Matrix")'}] as readonly TermLine[],
+  cardAt: 70,
+  card: [
+    '---',
+    'name: The Matrix',
+    'description: Green-on-black terminal look',
+    '---',
+    '# The Matrix',
+    '- background: #000000',
+    '- text: #00ff41',
+    '- font: JetBrains Mono',
+  ] as readonly string[],
+  listAt: 120,
+  list: ['The Matrix', 'Old Newspaper', 'Bauhaus', 'E-ink Reader', 'Wes Anderson'] as readonly string[],
+  ioAt: 160,
+  io: ['Export .md', 'Import .md'] as readonly string[],
 };

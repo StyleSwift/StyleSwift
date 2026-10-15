@@ -2,7 +2,7 @@ import {describe, expect, it} from 'vitest';
 import {FPS, TOTAL_FRAMES} from './script';
 import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {AGENT, HEADLINES, HOOK, ORIGINAL_SHOT, RESTYLE, SCENES, SHOTS, type SceneName, type TermLine} from './script';
+import {AGENT, HEADLINES, HOOK, ORIGINAL_SHOT, RESTYLE, SCENES, SHOTS, SKILLS, type SceneName, type TermLine} from './script';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 
@@ -66,5 +66,12 @@ describe('script', () => {
   it('css scroll and screenshot scan finish before the lines that follow them', () => {
     expect(AGENT.cssAt + AGENT.cssLen).toBeLessThanOrEqual(AGENT.after[0].at);
     expect(AGENT.scanAt + AGENT.scanLen).toBeLessThanOrEqual(AGENT.after[1].at);
+  });
+
+  it('skill beats happen in order and the tool call finishes before the card pops', () => {
+    checkTerminal(SKILLS.lines, SKILLS.cps, SKILLS.cardAt);
+    const beats = [SKILLS.promptAt, SKILLS.lines[0].at, SKILLS.cardAt, SKILLS.listAt, SKILLS.ioAt];
+    expect([...beats].sort((a, b) => a - b)).toEqual(beats);
+    expect(SKILLS.ioAt + 30).toBeLessThanOrEqual(SCENES.skills);
   });
 });
