@@ -2,16 +2,17 @@ import {AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConf
 import {Cursor} from '../components/Cursor';
 import {Headline} from '../components/Headline';
 import {SeamReveal} from '../components/SeamReveal';
-import {SidePanel} from '../components/SidePanel';
+import {PanelShot} from '../components/PanelShot';
 import {Sticker} from '../components/Sticker';
 import {BAR, Window} from '../components/Window';
 import {HERO, PANEL_W, SEND, STAGE_B} from '../layout';
 import {activeIndex, bump} from '../lib/timing';
-import {ORIGINAL_SHOT, RESTYLE, at, domainOf} from '../script';
+import {ORIGINAL_SHOT, RESTYLE, at, panelFile, shotKey} from '../script';
 import {SETTLE} from '../theme';
 
 const PAGE = {width: HERO.width - PANEL_W, height: HERO.height - BAR};
 const clamp = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'} as const;
+const FIRST_STATES = ['sent', 'step1', 'step2', 'step3', 'done'];
 
 export const S2Restyle = () => {
   const frame = useCurrentFrame();
@@ -37,7 +38,7 @@ export const S2Restyle = () => {
         }}
       >
         <SeamReveal from={i === 0 ? ORIGINAL_SHOT : RESTYLE.shots[i - 1].file} to={shot.file} progress={progress} width={PAGE.width} height={PAGE.height} />
-        <SidePanel domain={domainOf(shot.url)} prompt={shot.prompt} stepsAt={RESTYLE.stepFrames} />
+        <PanelShot file={panelFile(shotKey(shot), i === 0 ? FIRST_STATES[activeIndex([0, ...RESTYLE.panelFrames], frame)] : 'done')} />
       </Window>
       <Headline text={RESTYLE.headline.text} at={at('restyle', RESTYLE.headline.beat)} size={124} style={{position: 'absolute', left: 110, top: 150}} />
       <Headline text={RESTYLE.sub.text} at={at('restyle', RESTYLE.sub.beat)} size={34} weight={500} style={{position: 'absolute', left: 116, top: 430}} />

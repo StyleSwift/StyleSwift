@@ -1,16 +1,17 @@
 import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {Cursor} from '../components/Cursor';
 import {Shot} from '../components/Shot';
-import {SidePanel} from '../components/SidePanel';
+import {PanelShot} from '../components/PanelShot';
 import {Window} from '../components/Window';
 import {HERO, ICON_CENTER, ICON_TIP, PANEL_W, SEND} from '../layout';
 import {speedBlur, typedText} from '../lib/timing';
-import {HOOK, ORIGINAL_SHOT, at, domainOf} from '../script';
+import {HOOK, ORIGINAL_SHOT, RESTYLE, at, panelFile, shotKey, typedFile} from '../script';
 import {C, SETTLE} from '../theme';
 
 const FLY = 700; // px the window rises from
 const CURSOR_FROM = {x: 1980, y: 1120};
 const RIPPLE_FRAMES = 14;
+const KEY = shotKey(RESTYLE.shots[0]);
 
 export const S1Hook = () => {
   const frame = useCurrentFrame();
@@ -26,7 +27,8 @@ export const S1Hook = () => {
   const [from, to, move] = frame < cursorAt ? [CURSOR_FROM, ICON_TIP, toIcon] : [ICON_TIP, SEND, toSend];
   const pressed = (start: number) => frame >= start && frame < start + 4;
   const sent = frame >= clickAt + 3;
-  const typed = sent ? '' : typedText(HOOK.prompt, frame - at('hook', HOOK.typeBeat), fps, HOOK.typeCps);
+  const typed = sent ? 0 : typedText(HOOK.prompt, frame - at('hook', HOOK.typeBeat), fps, HOOK.typeCps).length;
+  const panel = sent ? panelFile(KEY, 'sent') : typed > 0 ? typedFile(KEY, typed) : panelFile(KEY, 'empty');
   return (
     <AbsoluteFill>
       <Window
@@ -41,7 +43,7 @@ export const S1Hook = () => {
         </div>
         {/* Like Chrome's side panel, it slides in from the right and pushes the page narrower. */}
         <div style={{width: PANEL_W * open, flexShrink: 0, display: 'flex', overflow: 'hidden'}}>
-          <SidePanel domain={domainOf(HOOK.url)} typed={typed} prompt={sent ? HOOK.prompt : undefined} />
+          <PanelShot file={panel} />
         </div>
       </Window>
       {/* A ring ripples out of the toolbar icon on the click, so the small button reads even at feed size. */}

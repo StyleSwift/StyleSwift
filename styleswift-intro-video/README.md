@@ -14,6 +14,17 @@ npm run render        # 输出 out/styleswift-promo.mp4
 
 文案、节奏和音效触发点都在 `src/script.ts`，时间单位是拍（130 BPM，每拍约 13.85 帧）。换背景音乐时只需改 `BPM` 和 `MUSIC`（曲子的第一拍位置、从第几拍开始截），所有切点和音效会自动落在新拍子上。改完跑一次 `npm test`。大标题是比例字体，测试量不到宽度，改了标题要渲染一帧看看，例如 `npx remotion still src/index.ts Promo out/check.png --frame=300`。
 
+## 侧栏截图
+
+片中的插件侧栏是真实界面的截图（`public/panel/`），由 `scripts/capture-panel.cjs` 在 Chromium 里加载真实扩展截取。截图时页面工具真实运行，只有模型回复是脚本化的，所以不需要 API Key。每个网站的指令和回复写在 `scripts/panel-runs.json`；改了片中的指令，要同步改这里，然后重新截图：
+
+```bash
+CHROME_PATH="<能加载扩展的完整 Chromium/Chrome>" node scripts/capture-panel.cjs           # 全部重截
+CHROME_PATH="..." ONLY=linuxdo-cozy,douban-eink node scripts/capture-panel.cjs           # 只重截部分网站
+```
+
+需要代理才能打开目标网站时，设置 `HTTPS_PROXY`。`npm test` 会检查片中用到的每个侧栏状态都有截图，并且指令和截图时用的一致。
+
 ## 音频
 
 | 键名 | 来源 | 用途 |

@@ -1,17 +1,24 @@
 import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {Headline} from '../components/Headline';
 import {Shot} from '../components/Shot';
-import {SidePanel} from '../components/SidePanel';
-import {Sticker} from '../components/Sticker';
+import {PanelShot} from '../components/PanelShot';
 import {BAR, Window} from '../components/Window';
-import {speedBlur} from '../lib/timing';
-import {HOW, at, domainOf} from '../script';
+import {activeIndex, speedBlur} from '../lib/timing';
+import {HOW, at, panelFile, shotKey} from '../script';
 import {C, FONT, POP, SETTLE} from '../theme';
 
 const clamp = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'} as const;
 const SMALL = {left: 110, top: 420, width: 820, height: 500};
 const PAGE = {left: SMALL.left, top: SMALL.top + BAR, width: SMALL.width, height: SMALL.height - BAR};
-const PANEL = {left: 1200, top: 110, width: 420, height: 600, scale: 1.4};
+// The real panel screenshot at 1.35×, cropped to the conversation (the input bar sits below the fold).
+const PANEL = {left: 1210, top: 140, width: 540, height: 760};
+const PANEL_STATES = ['sent', 'step1', 'step2', 'step3', 'done'];
+// Regions Search Page Elements turns up on the page, as fractions of its size.
+const FOUND = [
+  {x: 0.02, y: 0.02, w: 0.96, h: 0.13},
+  {x: 0.08, y: 0.3, w: 0.38, h: 0.42},
+  {x: 0.5, y: 0.3, w: 0.44, h: 0.42},
+];
 // Magnifier route over the page, as fractions of its size: a Z.
 const ROUTE = [
   [0.15, 0.2],
@@ -40,10 +47,29 @@ const Magnifier = () => {
   );
 };
 
-const Swatches = () => {
+const Found = () => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const start = at('how', HOW.stepBeats[1]);
+  const end = at('how', HOW.stepBeats[2]);
+  if (frame < start || frame > end + 8) return null;
+  const fade = interpolate(frame, [end, end + 8], [1, 0], clamp);
+  return (
+    <>
+      {FOUND.map((r, k) => (
+        <div
+          key={k}
+          style={{position: 'absolute', left: PAGE.left + r.x * PAGE.width, top: PAGE.top + r.y * PAGE.height, width: r.w * PAGE.width, height: r.h * PAGE.height, boxSizing: 'border-box', borderRadius: 10, border: `3px dashed ${C.magenta}`, background: 'rgba(255,95,162,.08)', opacity: fade, transform: `scale(${spring({frame: frame - start - 3 * k, fps, config: POP})})`}}
+        />
+      ))}
+    </>
+  );
+};
+
+const Swatches = () => {
+  const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
+  const start = at('how', HOW.stepBeats[2]);
   const from = {x: PAGE.left + PAGE.width / 2, y: PAGE.top + PAGE.height / 2};
   const blocks = [...HOW.swatches.map((c) => ({bg: c, label: ''})), {bg: C.white, label: HOW.fontSample}];
   return (
@@ -79,14 +105,14 @@ export const S3How = () => {
           <Shot file={HOW.shot.file} />
         </div>
       </Window>
-      <div
-        style={{position: 'absolute', left: PANEL.left, top: PANEL.top, width: PANEL.width, height: PANEL.height, display: 'flex', overflow: 'hidden', borderRadius: 22, boxShadow: `0 0 0 2px ${C.ink}, 6px 8px 0 ${C.ink}`, transformOrigin: 'top left', transform: `translateX(${(1 - panelIn) * 700}px) scale(${PANEL.scale})`}}
-      >
-        <SidePanel domain={domainOf(HOW.shot.url)} prompt={HOW.shot.prompt} stepsAt={HOW.stepBeats.map((b) => at('how', b))} width={PANEL.width} />
-      </div>
+      <PanelShot
+        file={panelFile(shotKey(HOW.shot), PANEL_STATES[activeIndex([0, ...HOW.stepBeats, HOW.doneBeat].map((b) => at('how', b)), frame)])}
+        width={PANEL.width}
+        style={{position: 'absolute', left: PANEL.left, top: PANEL.top, height: PANEL.height, borderLeft: 'none', borderRadius: 22, boxShadow: `0 0 0 2px ${C.ink}, 6px 8px 0 ${C.ink}`, transform: `translateX(${(1 - panelIn) * 700}px)`, maskImage: 'linear-gradient(to bottom, #000 88%, transparent)'}}
+      />
       <Magnifier />
+      <Found />
       <Swatches />
-      <Sticker text={HOW.badge} at={at('how', HOW.stepBeats[2])} color="sun" rotate={-4} size={34} style={{left: 640, top: 384}} />
     </AbsoluteFill>
   );
 };

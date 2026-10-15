@@ -1,8 +1,8 @@
-import {existsSync} from 'node:fs';
+import {existsSync, readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {describe, expect, it} from 'vitest';
 import audio from './audio.json';
-import {BPM, CUES, END, FPS, HEADLINES, HOOK, HOW, MOSAIC, MUSIC, MUSIC_TRIM_BEFORE, ORIGINAL_SHOT, RESTYLE, SAVE, SCENE_BEATS, SCENE_ORDER, TOTAL_BEATS, TOTAL_FRAMES, at, audioFile, beat, cueFrame, sceneLength, sceneStart, soundStart} from './script';
+import {BPM, CUES, PANEL_FILES, END, FPS, HEADLINES, HOOK, HOW, MOSAIC, MUSIC, MUSIC_TRIM_BEFORE, ORIGINAL_SHOT, RESTYLE, SAVE, SCENE_BEATS, SCENE_ORDER, TOTAL_BEATS, TOTAL_FRAMES, at, audioFile, shotKey, beat, cueFrame, sceneLength, sceneStart, soundStart} from './script';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 
@@ -100,10 +100,10 @@ describe('copy', () => {
 });
 
 describe('restyle', () => {
-  it('pops the panel steps in one by one after the drop instead of all at once', () => {
-    expect(RESTYLE.stepFrames).toHaveLength(3);
-    RESTYLE.stepFrames.forEach((f, i) => expect(f).toBeGreaterThan(i === 0 ? 0 : RESTYLE.stepFrames[i - 1]));
-    expect(RESTYLE.stepFrames[2]).toBeLessThan(at('restyle', RESTYLE.shots[1].beat));
+  it('steps the panel of the first shot through its real states after the drop instead of jumping', () => {
+    expect(RESTYLE.panelFrames).toHaveLength(4); // step1, step2, step3, done
+    RESTYLE.panelFrames.forEach((f, i) => expect(f).toBeGreaterThan(i === 0 ? 0 : RESTYLE.panelFrames[i - 1]));
+    expect(RESTYLE.panelFrames[3]).toBeLessThan(at('restyle', RESTYLE.shots[1].beat));
   });
 
   it('opens on the prompt typed in the hook', () => {
@@ -131,9 +131,10 @@ describe('how', () => {
     expect(HOW.shot).toBe(RESTYLE.shots[RESTYLE.shots.length - 1]);
   });
 
-  it('lights one step per bar and chimes for each', () => {
+  it('lights one real tool card per bar, then the reply, chiming for each', () => {
     expect(HOW.stepBeats).toEqual([4, 8, 12]);
-    expect(CUES.filter((c) => c.scene === 'how').map((c) => c.sfx)).toEqual(['check', 'check', 'done']);
+    expect(HOW.doneBeat).toBeGreaterThan(12);
+    expect(CUES.filter((c) => c.scene === 'how').map((c) => c.sfx)).toEqual(['check', 'check', 'check', 'done']);
   });
 });
 
@@ -163,5 +164,19 @@ describe('finale', () => {
   it('mentions the local engines only in the end-card note', () => {
     expect(END.note.text).toMatch(/Claude Code/);
     expect(HEADLINES.filter((h) => /Claude Code|Codex/.test(h.text))).toEqual([{scene: 'end', ...END.note}]);
+  });
+});
+
+const runs: {key: string; prompt: string}[] = JSON.parse(readFileSync(fileURLToPath(new URL('../scripts/panel-runs.json', import.meta.url)), 'utf8'));
+
+describe('panel screenshots', () => {
+  it('every prompt in the film matches the one its panel screenshot was captured with', () => {
+    for (const s of RESTYLE.shots) expect(runs.find((r) => r.key === shotKey(s))?.prompt, s.file).toBe(s.prompt);
+    expect(runs.find((r) => r.key === shotKey(RESTYLE.shots[0]))?.prompt).toBe(HOOK.prompt);
+  });
+
+  it('every panel state the film shows was captured', () => {
+    expect(PANEL_FILES.length).toBeGreaterThan(0);
+    for (const f of PANEL_FILES) expect(existsSync(`${publicDir}panel/${f}`), f).toBe(true);
   });
 });

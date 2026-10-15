@@ -44,9 +44,10 @@ export type Cue = {sfx: SfxKey; scene: SceneName; beat: number; frames: number};
 
 const GITHUB = 'github.com/StyleSwift/StyleSwift';
 export const ORIGINAL_SHOT = 'github-original.jpg';
-export const PLACEHOLDER = 'Describe a look…';
-// The side panel's steps, in plain words (no tool names).
-export const PANEL_STEPS: readonly string[] = ['Reads the page', 'Picks colors & fonts', "Checks it's easy to read"];
+// The side panel is shown as real screenshots, captured by scripts/capture-panel.cjs from the real extension
+// (panel-runs.json lists the runs). Files are named <run key>-<state>.png, and a run key is its shot file name.
+export const panelFile = (key: string, state: string) => `${key}-${state}.png`;
+export const typedFile = (key: string, chars: number) => panelFile(key, `type-${String(chars).padStart(2, '0')}`);
 
 // The cursor clicks the pinned toolbar icon, the side panel slides open, then the prompt is typed and sent.
 export const HOOK = {url: GITHUB, prompt: 'make it Y2K', iconBeat: 1.5, openBeat: 3, openFrames: 12, cursorBeat: 5, typeBeat: 6.5, typeCps: 9, clickBeat: 10};
@@ -63,7 +64,7 @@ export type Shot = {beat: number; file: string; prompt: string; url: string; sti
 export const RESTYLE = {
   sweepFrames: 12,
   moveBeat: 2,
-  stepFrames: [2, 5, 8] as readonly number[], // panel steps pop in after the drop
+  panelFrames: [2, 5, 8, 11] as readonly number[], // first shot: panel shows step1, step2, step3, done after the drop
   punchBeats: [4, 8, 12, 16, 20, 24, 28] as readonly number[],
   headline: {beat: 2, text: 'Any website.\nAny vibe.'},
   sub: {beat: 4, text: 'Type a feeling. Watch the page\nchange to match.'},
@@ -78,6 +79,7 @@ export const RESTYLE = {
     {beat: 26, file: 'bilibili-wes.jpg', prompt: 'Wes Anderson', url: 'www.bilibili.com', sticker: {x: 560, y: 650, rotate: 6, color: 'magenta'}},
   ] as readonly Shot[],
 };
+export const shotKey = (s: Shot) => s.file.replace(/\.jpg$/, '');
 const RESTYLE_CUES: Cue[] = RESTYLE.shots.flatMap((s, i): Cue[] => [
   {sfx: i === 0 ? 'sparkle' : 'whoosh', scene: 'restyle', beat: s.beat, frames: i === 0 ? 90 : 40},
   {sfx: 'pop', scene: 'restyle', beat: s.beat, frames: 30},
@@ -87,12 +89,16 @@ const RESTYLE_CUES: Cue[] = RESTYLE.shots.flatMap((s, i): Cue[] => [
 export const HOW = {
   headline: {beat: 0, text: 'Just describe it.\nIt does the rest.'},
   shot: RESTYLE.shots[RESTYLE.shots.length - 1],
+  // The real tool cards View Page Structure, Search Page Elements and Apply Styles finish on these beats, then the reply.
   stepBeats: [4, 8, 12] as readonly number[],
+  doneBeat: 14,
   swatches: ['#F9F0E9', '#D4BC7C', '#A8744F', '#344165'] as readonly string[],
   fontSample: 'Aa',
-  badge: 'Easy to read ✓',
 };
-const HOW_CUES: Cue[] = HOW.stepBeats.map((b, i): Cue => ({sfx: i < 2 ? 'check' : 'done', scene: 'how', beat: b, frames: 60}));
+const HOW_CUES: Cue[] = [
+  ...HOW.stepBeats.map((b): Cue => ({sfx: 'check', scene: 'how', beat: b, frames: 60})),
+  {sfx: 'done', scene: 'how', beat: HOW.doneBeat, frames: 60},
+];
 
 export const SAVE = {
   savedBeat: 0,
@@ -143,6 +149,16 @@ export const HEADLINES: readonly (Line & {scene: SceneName})[] = [
 ];
 
 export const CUES: readonly Cue[] = [...HOOK_CUES, ...RESTYLE_CUES, ...HOW_CUES, ...SAVE_CUES, ...MOSAIC_CUES, ...END_CUES];
+
+const FIRST = shotKey(RESTYLE.shots[0]);
+// Every panel screenshot the film shows, so a test can check they were all captured.
+export const PANEL_FILES: readonly string[] = [
+  panelFile(FIRST, 'empty'),
+  ...Array.from({length: HOOK.prompt.length}, (_, i) => typedFile(FIRST, i + 1)),
+  ...['sent', 'step1', 'step2', 'step3'].map((state) => panelFile(FIRST, state)),
+  ...RESTYLE.shots.map((s) => panelFile(shotKey(s), 'done')),
+  ...['sent', 'step1', 'step2', 'step3', 'done'].map((state) => panelFile(shotKey(HOW.shot), state)),
+];
 export const cueFrame = (c: Cue) => sceneStart(c.scene) + at(c.scene, c.beat);
 // Sounds start early by their lead (frames to their loudest moment), so the peak lands on the visual.
 export const soundStart = (c: Cue) => cueFrame(c) - audio[c.sfx].lead;

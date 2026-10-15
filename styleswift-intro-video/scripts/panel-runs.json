@@ -1,0 +1,10 @@
+[
+  {"key": "github-y2k", "url": "https://github.com/StyleSwift/StyleSwift", "prompt": "make it Y2K", "capture": "full", "reply": "Done! The page now has a Y2K look: candy gradients, glossy buttons and bubbly cards."},
+  {"key": "github-matrix", "url": "https://github.com/StyleSwift/StyleSwift", "prompt": "the Matrix", "reply": "Done! Green-on-black terminal glow with monospace type throughout."},
+  {"key": "github-xp", "url": "https://github.com/StyleSwift/StyleSwift", "prompt": "Windows XP", "reply": "Done! Classic XP blues, beveled buttons and a familiar desktop feel."},
+  {"key": "linuxdo-newspaper", "url": "https://linux.do/", "prompt": "old newspaper", "reply": "Done! Yellowed paper, serif headlines and ink-dark text."},
+  {"key": "linuxdo-bauhaus", "url": "https://linux.do/", "prompt": "Bauhaus, please", "reply": "Done! Bold primary colors, geometric blocks and confident sans-serif type."},
+  {"key": "linuxdo-cozy", "url": "https://linux.do/", "prompt": "cozy café vibes", "reply": "Done! Warm creams, soft pinks and rounded, friendly corners."},
+  {"key": "douban-eink", "url": "https://book.douban.com/", "prompt": "e-ink reader", "reply": "Done! Paper-white background and crisp black text, easy on the eyes."},
+  {"key": "bilibili-wes", "url": "https://www.bilibili.com/", "prompt": "Wes Anderson", "capture": "steps", "reply": "Done! Pastel pinks, centered symmetry and a vintage serif touch."}
+]
