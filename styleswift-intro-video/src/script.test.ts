@@ -1,10 +1,19 @@
 import {describe, expect, it} from 'vitest';
 import {FPS, TOTAL_FRAMES} from './script';
-import {existsSync} from 'node:fs';
+import {existsSync, readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {AGENT, END, ENGINES, HEADLINES, HOOK, ORIGINAL_SHOT, RESTYLE, SCENES, SHOTS, SKILLS, type SceneName, type TermLine} from './script';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
+
+// Width and height from a JPEG's SOF marker, so the test needs no image library.
+const jpegSize = (file: string) => {
+  const b = readFileSync(file);
+  for (let i = 2; i < b.length; i += 2 + b.readUInt16BE(i + 2)) {
+    if (b[i + 1] >= 0xc0 && b[i + 1] <= 0xc3) return {w: b.readUInt16BE(i + 7), h: b.readUInt16BE(i + 5)};
+  }
+  throw new Error(`no SOF marker in ${file}`);
+};
 
 const typedEnd = (l: TermLine, cps: number) => l.at + Math.ceil((l.text.length * FPS) / cps);
 
@@ -30,7 +39,16 @@ describe('script', () => {
   });
 
   it('hook prompt finishes typing well before enter, and fades out inside the scene', () => {
-    const typedEnd = HOOK.typeAt + Math.ceil((HOOK.prompt.length * FPS) / HOOK.cps);
+    // Width and height from a JPEG's SOF marker, so the test needs no image library.
+const jpegSize = (file: string) => {
+  const b = readFileSync(file);
+  for (let i = 2; i < b.length; i += 2 + b.readUInt16BE(i + 2)) {
+    if (b[i + 1] >= 0xc0 && b[i + 1] <= 0xc3) return {w: b.readUInt16BE(i + 7), h: b.readUInt16BE(i + 5)};
+  }
+  throw new Error(`no SOF marker in ${file}`);
+};
+
+const typedEnd = HOOK.typeAt + Math.ceil((HOOK.prompt.length * FPS) / HOOK.cps);
     expect(typedEnd + 10).toBeLessThanOrEqual(HOOK.enterAt);
     expect(HOOK.fadeAt + 15).toBeLessThanOrEqual(SCENES.hook);
   });
@@ -89,5 +107,11 @@ describe('script', () => {
   it('end card footer stays long enough to read', () => {
     const words = END.footer.split(/\s+/).length;
     expect(SCENES.end - END.footerAt).toBeGreaterThanOrEqual(Math.ceil((words / WORDS_PER_SECOND) * FPS) + FADE_IN);
+  });
+
+  it('the wipe reveals a shot captured at the same viewport as the original', () => {
+    const before = jpegSize(`${publicDir}shots/${ORIGINAL_SHOT}`);
+    const after = jpegSize(`${publicDir}shots/${SHOTS[0].file}`);
+    expect(before.w / before.h).toBeCloseTo(after.w / after.h, 2);
   });
 });
