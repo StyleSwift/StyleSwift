@@ -2,7 +2,7 @@ import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {describe, expect, it} from 'vitest';
 import audio from './audio.json';
-import {CUES, FPS, HEADLINES, HOOK, HOW, MUSIC, MUSIC_TRIM_BEFORE, ORIGINAL_SHOT, RESTYLE, SCENE_BEATS, SCENE_ORDER, TOTAL_FRAMES, at, beat, cueFrame, sceneLength, sceneStart} from './script';
+import {CUES, FPS, HEADLINES, HOOK, HOW, MUSIC, MUSIC_TRIM_BEFORE, ORIGINAL_SHOT, RESTYLE, SAVE, SCENE_BEATS, SCENE_ORDER, TOTAL_FRAMES, at, beat, cueFrame, sceneLength, sceneStart} from './script';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 
@@ -60,7 +60,7 @@ describe('hook', () => {
 
 describe('assets', () => {
   it('every referenced image exists in public/', () => {
-    const files = ['logo.png', `shots/${ORIGINAL_SHOT}`, ...RESTYLE.shots.map((s) => `shots/${s.file}`)];
+    const files = ['logo.png', `shots/${ORIGINAL_SHOT}`, ...RESTYLE.shots.map((s) => `shots/${s.file}`), ...[SAVE.saved, ...SAVE.others].map((c) => `shots/${c.file}`)];
     for (const f of files) expect(existsSync(publicDir + f), f).toBe(true);
   });
 });
@@ -107,5 +107,17 @@ describe('how', () => {
   it('lights one step per bar and chimes for each', () => {
     expect(HOW.stepBeats).toEqual([4, 8, 12]);
     expect(CUES.filter((c) => c.scene === 'how').map((c) => c.sfx)).toEqual(['check', 'check', 'done']);
+  });
+});
+
+describe('save', () => {
+  it('saves the look the montage ended on', () => {
+    expect(SAVE.saved.file).toBe(RESTYLE.shots[RESTYLE.shots.length - 1].file);
+  });
+
+  it('pops every card in with a sound, before the headline', () => {
+    const pops = CUES.filter((c) => c.scene === 'save' && c.sfx === 'pop');
+    expect(pops).toHaveLength(1 + SAVE.others.length);
+    expect(Math.max(...SAVE.fanBeats)).toBeLessThan(SAVE.headline.beat);
   });
 });

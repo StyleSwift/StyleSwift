@@ -84,11 +84,28 @@ export const HOW = {
 };
 const HOW_CUES: Cue[] = HOW.stepBeats.map((b, i): Cue => ({sfx: i < 2 ? 'check' : 'done', scene: 'how', beat: b, frames: 60}));
 
+export const SAVE = {
+  savedBeat: 0,
+  fanBeats: [2, 2.5, 3, 3.5] as readonly number[],
+  swayBeats: [4, 8, 12] as readonly number[],
+  headline: {beat: 4, text: 'Save a look.\nUse it anywhere.'},
+  savedLabel: 'Saved',
+  saved: {file: 'bilibili-wes.jpg', name: 'Wes Anderson'},
+  others: [
+    {file: 'github-y2k.jpg', name: 'Y2K'},
+    {file: 'linuxdo-bauhaus.jpg', name: 'Bauhaus'},
+    {file: 'linuxdo-cozy.jpg', name: 'Cozy'},
+    {file: 'github-matrix.jpg', name: 'The Matrix'},
+  ] as readonly {file: string; name: string}[],
+};
+const SAVE_CUES: Cue[] = [SAVE.savedBeat, ...SAVE.fanBeats].map((b): Cue => ({sfx: 'pop', scene: 'save', beat: b, frames: 30}));
+
 export const HEADLINES: readonly (Line & {scene: SceneName})[] = [
   {scene: 'restyle', ...RESTYLE.headline},
   {scene: 'restyle', ...RESTYLE.sub},
   {scene: 'how', ...HOW.headline},
+  {scene: 'save', ...SAVE.headline},
 ];
 
-export const CUES: readonly Cue[] = [...HOOK_CUES, ...RESTYLE_CUES, ...HOW_CUES];
+export const CUES: readonly Cue[] = [...HOOK_CUES, ...RESTYLE_CUES, ...HOW_CUES, ...SAVE_CUES];
 export const cueFrame = (c: Cue) => sceneStart(c.scene) + at(c.scene, c.beat);
