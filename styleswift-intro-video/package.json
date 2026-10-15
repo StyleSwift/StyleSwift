@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "remotion studio src/index.ts",
-    "render": "remotion render src/index.ts Promo out/styleswift-promo.mp4 --jpeg-quality=95",
+    "render": "remotion render src/index.ts Promo out/styleswift-promo.mp4 --jpeg-quality=95 --color-space=bt709",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
