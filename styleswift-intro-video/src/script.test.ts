@@ -1,6 +1,10 @@
+import {existsSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
 import {describe, expect, it} from 'vitest';
 import audio from './audio.json';
-import {CUES, MUSIC, MUSIC_TRIM_BEFORE, SCENE_BEATS, SCENE_ORDER, TOTAL_FRAMES, at, beat, cueFrame, sceneLength, sceneStart} from './script';
+import {CUES, FPS, HOOK, MUSIC, MUSIC_TRIM_BEFORE, ORIGINAL_SHOT, SCENE_BEATS, SCENE_ORDER, TOTAL_FRAMES, at, beat, cueFrame, sceneLength, sceneStart} from './script';
+
+const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 
 describe('timeline', () => {
   it('runs 96 beats, exactly 45 seconds', () => {
@@ -39,5 +43,23 @@ describe('sound', () => {
       expect(item.volume, key).toBeLessThanOrEqual(1);
     }
     for (const c of CUES) expect(Object.keys(audio)).toContain(c.sfx);
+  });
+});
+
+describe('hook', () => {
+  it('types the prompt fully before the click', () => {
+    const typingEnd = at('hook', HOOK.typeBeat) + Math.ceil((HOOK.prompt.length * FPS) / HOOK.typeCps);
+    expect(typingEnd + 5).toBeLessThanOrEqual(at('hook', HOOK.clickBeat));
+    expect(HOOK.clickBeat).toBeLessThan(SCENE_BEATS.restyle - SCENE_BEATS.hook);
+  });
+
+  it('plays typing and click sounds', () => {
+    expect(CUES.filter((c) => c.scene === 'hook').map((c) => c.sfx)).toEqual(['typing', 'click']);
+  });
+});
+
+describe('assets', () => {
+  it('every referenced image exists in public/', () => {
+    for (const f of ['logo.png', `shots/${ORIGINAL_SHOT}`]) expect(existsSync(publicDir + f), f).toBe(true);
   });
 });

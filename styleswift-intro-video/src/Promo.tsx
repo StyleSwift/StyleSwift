@@ -1,10 +1,11 @@
 import type {ComponentType} from 'react';
 import {AbsoluteFill, Series} from 'remotion';
 import {Backdrop} from './components/Backdrop';
+import {S1Hook} from './scenes/S1Hook';
 import {SCENE_ORDER, type SceneName, sceneLength} from './script';
 import {Soundtrack} from './Soundtrack';
 
-const SCENES: Partial<Record<SceneName, ComponentType>> = {};
+const SCENES: Partial<Record<SceneName, ComponentType>> = {hook: S1Hook};
 
 export const Promo = () => (
   <AbsoluteFill>
