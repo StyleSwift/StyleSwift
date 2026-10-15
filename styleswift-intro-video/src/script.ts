@@ -25,3 +25,5 @@ export const SHOTS: readonly Shot[] = [
   {file: 'douban-eink.jpg', prompt: 'e-ink reader', url: 'book.douban.com'},
   {file: 'bilibili-wes.jpg', prompt: 'Wes Anderson', url: 'www.bilibili.com'},
 ];
+
+export const HOOK = {prompt: SHOTS[0].prompt, typeAt: 30, cps: 30, enterAt: 80, fadeAt: 100};
