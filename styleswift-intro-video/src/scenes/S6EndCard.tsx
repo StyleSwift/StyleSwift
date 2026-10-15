@@ -12,8 +12,8 @@ export const S6EndCard = () => {
     <Scene style={{alignItems: 'center', justifyContent: 'center', gap: 28}}>
       <Img src={staticFile('logo.png')} style={{width: 150, height: 150, opacity: pop, transform: `scale(${0.85 + 0.15 * pop})`}} />
       <Headline text={END.name} at={END.nameAt} size={128} />
-      {HEADLINES.end?.map((h) => <Headline key={h.text} text={h.text} at={h.at} size={48} />)}
-      <Headline text={END.footer} at={END.footerAt} size={24} style={{marginTop: 24, fontFamily: FONT.mono, color: C.muted}} />
+      {HEADLINES.end?.map((h) => <Headline key={h.text} text={h.text} at={h.at} size={64} />)}
+      <Headline text={END.footer} at={END.footerAt} size={36} style={{marginTop: 24, fontFamily: FONT.mono, color: C.muted}} />
     </Scene>
   );
 };
