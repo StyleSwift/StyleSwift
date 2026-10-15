@@ -11,7 +11,7 @@ npm test         # 校验时长、可读时间、素材是否存在
 npm run render   # 输出 out/styleswift-promo.mp4
 ```
 
-改文案或节奏只需要改 `src/script.ts`，改完跑一次 `npm test`。
+改文案或节奏只需要改 `src/script.ts`，改完跑一次 `npm test`。测试会检查终端和技能卡这些等宽文字有没有超出边框；大标题是比例字体，测不出宽度，改了标题要渲染一帧看看有没有超出或撞到旁边的元素，例如 `npx remotion still src/index.ts Promo out/check.png --frame=685`（帧号见下表）。
 
 ## 剪辑点（配乐对拍用）
 

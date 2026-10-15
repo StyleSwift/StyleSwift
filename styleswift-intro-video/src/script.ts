@@ -52,6 +52,16 @@ export const PANEL_CARDS: readonly string[] = ['View Page Structure', 'Search Pa
 
 export type TermLine = {at: number; kind: 'cmd' | 'call' | 'result' | 'warn' | 'ok' | 'check'; text: string};
 
+// Claude Code-style transcript: ● for tool calls, ⎿ for their results.
+export const TERM_PREFIX: Record<TermLine['kind'], string> = {
+  cmd: '$ ',
+  call: '● ',
+  result: '  ⎿  ',
+  warn: '  ⎿  ⚠ ',
+  ok: '  ⎿  ✓ ',
+  check: '  ✓ ',
+};
+
 // Tool names and argument shapes match extension/sidepanel/tools/; the numbers are illustrative.
 export const AGENT = {
   cps: 60,

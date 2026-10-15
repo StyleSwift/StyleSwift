@@ -2,7 +2,7 @@ import {describe, expect, it} from 'vitest';
 import {FPS, TOTAL_FRAMES} from './script';
 import {existsSync, readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {AGENT, END, ENGINES, HEADLINES, HOOK, ORIGINAL_SHOT, RESTYLE, SCENES, SHOTS, SKILLS, type SceneName, type TermLine} from './script';
+import {AGENT, END, ENGINES, HEADLINES, HOOK, ORIGINAL_SHOT, RESTYLE, SCENES, SHOTS, SKILLS, TERM_PREFIX, type SceneName, type TermLine} from './script';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 
@@ -14,6 +14,18 @@ const jpegSize = (file: string) => {
   }
   throw new Error(`no SOF marker in ${file}`);
 };
+
+// JetBrains Mono advances 0.6em per glyph, so each fixed-width box fits floor(inner width / (font size × 0.6))
+// characters. Recompute these if a scene's box width or font size changes.
+const MAX_CHARS = {
+  agentLine: Math.floor(946 / (26 * 0.6)), // S3 terminal: 1020 wide − 72 padding − 2 border
+  agentCss: Math.floor(864 / (20 * 0.6)), // S3 CSS box: 946 − 64 indent − 16 padding − 2 border
+  skillCall: Math.floor(560 / (22 * 0.6)), // S4 left column
+  skillCard: Math.floor(506 / (20 * 0.6)), // S4 card: 580 wide − 72 padding − 2 border
+  engineLine: Math.floor(826 / (26 * 0.6)), // S5 terminal: 900 wide − 72 padding − 2 border
+};
+
+const termLen = (l: TermLine) => TERM_PREFIX[l.kind].length + l.text.length;
 
 const typedEnd = (l: TermLine, cps: number) => l.at + Math.ceil((l.text.length * FPS) / cps);
 
@@ -39,16 +51,7 @@ describe('script', () => {
   });
 
   it('hook prompt finishes typing well before enter, and fades out inside the scene', () => {
-    // Width and height from a JPEG's SOF marker, so the test needs no image library.
-const jpegSize = (file: string) => {
-  const b = readFileSync(file);
-  for (let i = 2; i < b.length; i += 2 + b.readUInt16BE(i + 2)) {
-    if (b[i + 1] >= 0xc0 && b[i + 1] <= 0xc3) return {w: b.readUInt16BE(i + 7), h: b.readUInt16BE(i + 5)};
-  }
-  throw new Error(`no SOF marker in ${file}`);
-};
-
-const typedEnd = HOOK.typeAt + Math.ceil((HOOK.prompt.length * FPS) / HOOK.cps);
+    const typedEnd = HOOK.typeAt + Math.ceil((HOOK.prompt.length * FPS) / HOOK.cps);
     expect(typedEnd + 10).toBeLessThanOrEqual(HOOK.enterAt);
     expect(HOOK.fadeAt + 15).toBeLessThanOrEqual(SCENES.hook);
   });
@@ -113,5 +116,13 @@ const typedEnd = HOOK.typeAt + Math.ceil((HOOK.prompt.length * FPS) / HOOK.cps);
     const before = jpegSize(`${publicDir}shots/${ORIGINAL_SHOT}`);
     const after = jpegSize(`${publicDir}shots/${SHOTS[0].file}`);
     expect(before.w / before.h).toBeCloseTo(after.w / after.h, 2);
+  });
+
+  it('monospace lines fit inside their boxes', () => {
+    for (const l of [...AGENT.before, ...AGENT.after]) expect(termLen(l), l.text).toBeLessThanOrEqual(MAX_CHARS.agentLine);
+    for (const l of AGENT.css) expect(l.length, l).toBeLessThanOrEqual(MAX_CHARS.agentCss);
+    for (const l of SKILLS.lines) expect(termLen(l), l.text).toBeLessThanOrEqual(MAX_CHARS.skillCall);
+    for (const l of SKILLS.card) expect(l.length, l).toBeLessThanOrEqual(MAX_CHARS.skillCard);
+    for (const l of ENGINES.lines) expect(termLen(l), l.text).toBeLessThanOrEqual(MAX_CHARS.engineLine);
   });
 });
