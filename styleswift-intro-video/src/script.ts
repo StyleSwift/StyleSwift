@@ -73,10 +73,22 @@ const RESTYLE_CUES: Cue[] = RESTYLE.shots.flatMap((s, i): Cue[] => [
   {sfx: 'pop', scene: 'restyle', beat: s.beat, frames: 30},
 ]);
 
+// Swatches are colors sampled from the Wes Anderson screenshot itself.
+export const HOW = {
+  headline: {beat: 0, text: 'Just describe it.\nIt does the rest.'},
+  shot: RESTYLE.shots[RESTYLE.shots.length - 1],
+  stepBeats: [4, 8, 12] as readonly number[],
+  swatches: ['#F9F0E9', '#D4BC7C', '#A8744F', '#344165'] as readonly string[],
+  fontSample: 'Aa',
+  badge: 'Easy to read ✓',
+};
+const HOW_CUES: Cue[] = HOW.stepBeats.map((b, i): Cue => ({sfx: i < 2 ? 'check' : 'done', scene: 'how', beat: b, frames: 60}));
+
 export const HEADLINES: readonly (Line & {scene: SceneName})[] = [
   {scene: 'restyle', ...RESTYLE.headline},
   {scene: 'restyle', ...RESTYLE.sub},
+  {scene: 'how', ...HOW.headline},
 ];
 
-export const CUES: readonly Cue[] = [...HOOK_CUES, ...RESTYLE_CUES];
+export const CUES: readonly Cue[] = [...HOOK_CUES, ...RESTYLE_CUES, ...HOW_CUES];
 export const cueFrame = (c: Cue) => sceneStart(c.scene) + at(c.scene, c.beat);

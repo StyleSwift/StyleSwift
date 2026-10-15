@@ -2,7 +2,7 @@ import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {describe, expect, it} from 'vitest';
 import audio from './audio.json';
-import {CUES, FPS, HEADLINES, HOOK, MUSIC, MUSIC_TRIM_BEFORE, ORIGINAL_SHOT, RESTYLE, SCENE_BEATS, SCENE_ORDER, TOTAL_FRAMES, at, beat, cueFrame, sceneLength, sceneStart} from './script';
+import {CUES, FPS, HEADLINES, HOOK, HOW, MUSIC, MUSIC_TRIM_BEFORE, ORIGINAL_SHOT, RESTYLE, SCENE_BEATS, SCENE_ORDER, TOTAL_FRAMES, at, beat, cueFrame, sceneLength, sceneStart} from './script';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 
@@ -96,5 +96,16 @@ describe('restyle', () => {
     expect(cues.filter((c) => c.sfx === 'sparkle').map((c) => c.beat)).toEqual([0]);
     expect(cues.filter((c) => c.sfx === 'whoosh')).toHaveLength(RESTYLE.shots.length - 1);
     expect(cues.filter((c) => c.sfx === 'pop')).toHaveLength(RESTYLE.shots.length);
+  });
+});
+
+describe('how', () => {
+  it('explains the look the montage ended on', () => {
+    expect(HOW.shot).toBe(RESTYLE.shots[RESTYLE.shots.length - 1]);
+  });
+
+  it('lights one step per bar and chimes for each', () => {
+    expect(HOW.stepBeats).toEqual([4, 8, 12]);
+    expect(CUES.filter((c) => c.scene === 'how').map((c) => c.sfx)).toEqual(['check', 'check', 'done']);
   });
 });
