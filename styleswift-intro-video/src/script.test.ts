@@ -2,7 +2,7 @@ import {describe, expect, it} from 'vitest';
 import {FPS, TOTAL_FRAMES} from './script';
 import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {AGENT, HEADLINES, HOOK, ORIGINAL_SHOT, RESTYLE, SCENES, SHOTS, SKILLS, type SceneName, type TermLine} from './script';
+import {AGENT, END, ENGINES, HEADLINES, HOOK, ORIGINAL_SHOT, RESTYLE, SCENES, SHOTS, SKILLS, type SceneName, type TermLine} from './script';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 
@@ -73,5 +73,21 @@ describe('script', () => {
     const beats = [SKILLS.promptAt, SKILLS.lines[0].at, SKILLS.cardAt, SKILLS.listAt, SKILLS.ioAt];
     expect([...beats].sort((a, b) => a - b)).toEqual(beats);
     expect(SKILLS.ioAt + 30).toBeLessThanOrEqual(SCENES.skills);
+  });
+
+  it('bridge install output finishes before the engine menu opens', () => {
+    checkTerminal(ENGINES.lines, ENGINES.cps, ENGINES.menuAt);
+  });
+
+  it('each engine pick is visible for at least a second', () => {
+    const picks = ENGINES.picks.map((p) => p + ENGINES.menuAt);
+    const ends = [...picks.slice(1), SCENES.engines];
+    picks.forEach((p, i) => expect(ends[i] - p, ENGINES.options[i]).toBeGreaterThanOrEqual(FPS));
+    expect(ENGINES.picks).toHaveLength(ENGINES.options.length);
+  });
+
+  it('end card footer stays long enough to read', () => {
+    const words = END.footer.split(/\s+/).length;
+    expect(SCENES.end - END.footerAt).toBeGreaterThanOrEqual(Math.ceil((words / WORDS_PER_SECOND) * FPS) + FADE_IN);
   });
 });

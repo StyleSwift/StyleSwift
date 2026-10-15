@@ -40,6 +40,8 @@ export const HEADLINES: {[K in SceneName]?: readonly Headline[]} = {
     {text: 'Checks its own work.', at: 175},
   ],
   skills: [{text: 'Save a look. Reuse it anywhere.', at: 20}],
+  engines: [{text: 'No API key? Bring your own Claude Code or Codex.', at: 100}],
+  end: [{text: 'Restyle any website with one sentence.', at: 35}],
 };
 
 // The first shot wipes in over the original page; the rest hard-cut, faster each time (1.2s → 0.6s).
@@ -110,4 +112,27 @@ export const SKILLS = {
   list: ['The Matrix', 'Old Newspaper', 'Bauhaus', 'E-ink Reader', 'Wes Anderson'] as readonly string[],
   ioAt: 160,
   io: ['Export .md', 'Import .md'] as readonly string[],
+};
+
+// Menu labels and placeholder come from extension/_locales/en/messages.json.
+export const ENGINES = {
+  cps: 30,
+  lines: [
+    {at: 10, kind: 'cmd', text: 'npx -y styleswift-bridge@latest install'},
+    {at: 60, kind: 'check', text: 'bridge installed'},
+    {at: 76, kind: 'check', text: 'Claude Code found'},
+    {at: 92, kind: 'check', text: 'Codex found'},
+  ] as readonly TermLine[],
+  placeholder: 'Enter style description',
+  menuAt: 120,
+  menuTitle: 'Choose AI engine',
+  options: ['Built-in', 'Claude Code', 'Codex'] as readonly string[],
+  picks: [0, 35, 70] as readonly number[],
+};
+
+export const END = {
+  name: 'StyleSwift',
+  nameAt: 15,
+  footer: 'Free on the Chrome Web Store · Open source on GitHub',
+  footerAt: 55,
 };
