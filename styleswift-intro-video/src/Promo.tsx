@@ -2,6 +2,7 @@ import {AbsoluteFill, Series} from 'remotion';
 import {Grain} from './components/Grain';
 import {S1Hook} from './scenes/S1Hook';
 import {S2Restyle} from './scenes/S2Restyle';
+import {S3Agent} from './scenes/S3Agent';
 import {SCENES} from './script';
 import {C} from './theme';
 
@@ -13,6 +14,9 @@ export const Promo = () => (
       </Series.Sequence>
       <Series.Sequence durationInFrames={SCENES.restyle}>
         <S2Restyle />
+      </Series.Sequence>
+      <Series.Sequence durationInFrames={SCENES.agent}>
+        <S3Agent />
       </Series.Sequence>
     </Series>
     <Grain />

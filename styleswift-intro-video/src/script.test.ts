@@ -2,9 +2,22 @@ import {describe, expect, it} from 'vitest';
 import {FPS, TOTAL_FRAMES} from './script';
 import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {HEADLINES, HOOK, ORIGINAL_SHOT, RESTYLE, SCENES, SHOTS, type SceneName} from './script';
+import {AGENT, HEADLINES, HOOK, ORIGINAL_SHOT, RESTYLE, SCENES, SHOTS, type SceneName, type TermLine} from './script';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
+
+const typedEnd = (l: TermLine, cps: number) => l.at + Math.ceil((l.text.length * FPS) / cps);
+
+// Each typed line must finish before the next line appears, and lines must be strictly ordered
+// (their `at` doubles as the React key).
+const checkTerminal = (lines: readonly TermLine[], cps: number, sceneLen: number) => {
+  lines.forEach((l, i) => {
+    const next = lines[i + 1]?.at ?? sceneLen;
+    const end = l.kind === 'cmd' || l.kind === 'call' ? typedEnd(l, cps) : l.at;
+    expect(l.at, l.text).toBeLessThan(next);
+    expect(end, l.text).toBeLessThanOrEqual(next);
+  });
+};
 
 describe('script', () => {
   it('runs exactly 45 seconds', () => {
@@ -44,5 +57,14 @@ describe('script', () => {
 
   it('the opening wipe finishes before the first hard cut', () => {
     expect(RESTYLE.wipeAt + RESTYLE.wipeLen).toBeLessThanOrEqual(RESTYLE.wipeAt + RESTYLE.starts[1]);
+  });
+
+  it('agent terminal lines finish typing before the next line appears', () => {
+    checkTerminal([...AGENT.before, ...AGENT.after], AGENT.cps, SCENES.agent);
+  });
+
+  it('css scroll and screenshot scan finish before the lines that follow them', () => {
+    expect(AGENT.cssAt + AGENT.cssLen).toBeLessThanOrEqual(AGENT.after[0].at);
+    expect(AGENT.scanAt + AGENT.scanLen).toBeLessThanOrEqual(AGENT.after[1].at);
   });
 });
