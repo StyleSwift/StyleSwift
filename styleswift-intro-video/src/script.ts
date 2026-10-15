@@ -8,12 +8,12 @@ export const FPS = 30;
 export const WIDTH = 1920;
 export const HEIGHT = 1080;
 export const BPM = 130;
-export const TOTAL_BEATS = 96; // 24 bars ≈ 44.3 s at 130 BPM
+export const TOTAL_BEATS = 100; // 25 bars ≈ 46.2 s at 130 BPM
 
-// Mixkit "Cherry on Top": its 130 BPM grid starts at 0.3971 s. Track beat 127 (59.01 s) opens the film, so its
-// final downbeat (track beat 215, 99.63 s) lands on film beat 88, the call to action; the track tails off after.
-// The track is evenly loud, so the hook ducks it and the drop on film beat 8 brings it to full level.
-export const MUSIC = {firstBeatSec: 0.3971, startBeat: 127, trackSec: 105.5, dropBeat: 8, lastHitBeat: 88, fadeFrames: 15};
+// Mixkit "Cherry on Top": its 130 BPM grid starts at 0.3971 s. Track beat 123 (57.17 s) opens the film, so its
+// final downbeat (track beat 215, 99.63 s) lands on film beat 92, the call to action; the track tails off after.
+// The track is evenly loud, so the hook ducks it and the drop on film beat 12 brings it to full level.
+export const MUSIC = {firstBeatSec: 0.3971, startBeat: 123, trackSec: 105.5, dropBeat: 12, lastHitBeat: 92, fadeFrames: 15};
 export const MUSIC_TRIM_BEFORE = Math.round((MUSIC.firstBeatSec + (MUSIC.startBeat * 60) / BPM) * FPS);
 
 export type AudioKey = keyof typeof audio;
@@ -23,7 +23,7 @@ export const audioFile = (key: AudioKey) => `${key}-${audio[key].id}.mp3`;
 export const beat = (b: number) => beatFrame(b, FPS, BPM);
 export const TOTAL_FRAMES = beat(TOTAL_BEATS);
 
-export const SCENE_BEATS = {hook: 0, restyle: 8, how: 40, save: 56, mosaic: 72, end: 84} as const;
+export const SCENE_BEATS = {hook: 0, restyle: 12, how: 44, save: 60, mosaic: 76, end: 88} as const;
 export type SceneName = keyof typeof SCENE_BEATS;
 export const SCENE_ORDER: readonly SceneName[] = ['hook', 'restyle', 'how', 'save', 'mosaic', 'end'];
 
@@ -48,8 +48,11 @@ export const PLACEHOLDER = 'Describe a look…';
 // The side panel's steps, in plain words (no tool names).
 export const PANEL_STEPS: readonly string[] = ['Reads the page', 'Picks colors & fonts', "Checks it's easy to read"];
 
-export const HOOK = {url: GITHUB, prompt: 'make it Y2K', cursorBeat: 2, typeBeat: 3, typeCps: 9, clickBeat: 7};
+// The cursor clicks the pinned toolbar icon, the side panel slides open, then the prompt is typed and sent.
+export const HOOK = {url: GITHUB, prompt: 'make it Y2K', iconBeat: 1.5, openBeat: 3, openFrames: 12, cursorBeat: 5, typeBeat: 6.5, typeCps: 9, clickBeat: 10};
 const HOOK_CUES: Cue[] = [
+  {sfx: 'click', scene: 'hook', beat: HOOK.openBeat, frames: 30},
+  {sfx: 'pop', scene: 'hook', beat: HOOK.openBeat + 0.5, frames: 30},
   {sfx: 'typing', scene: 'hook', beat: HOOK.typeBeat, frames: Math.ceil((HOOK.prompt.length * FPS) / HOOK.typeCps)},
   {sfx: 'click', scene: 'hook', beat: HOOK.clickBeat, frames: 30},
 ];

@@ -7,10 +7,11 @@ import {BPM, CUES, END, FPS, HEADLINES, HOOK, HOW, MOSAIC, MUSIC, MUSIC_TRIM_BEF
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 
 describe('timeline', () => {
-  it('runs 96 beats and stays within the 45-second slot', () => {
+  it('runs 100 beats, about 46 seconds', () => {
+    expect(TOTAL_BEATS).toBe(100);
     expect(TOTAL_FRAMES).toBe(beat(TOTAL_BEATS));
-    expect(TOTAL_FRAMES / FPS).toBeGreaterThan(40);
-    expect(TOTAL_FRAMES / FPS).toBeLessThanOrEqual(45);
+    expect(TOTAL_FRAMES / FPS).toBeGreaterThan(44);
+    expect(TOTAL_FRAMES / FPS).toBeLessThanOrEqual(46.5);
   });
 
   it('scenes tile the film in order with no gaps', () => {
@@ -61,14 +62,20 @@ describe('sound', () => {
 });
 
 describe('hook', () => {
+  it('opens the panel from the toolbar icon before typing, in that order', () => {
+    const order = [HOOK.iconBeat, HOOK.openBeat, HOOK.cursorBeat, HOOK.typeBeat, HOOK.clickBeat, SCENE_BEATS.restyle];
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(at('hook', HOOK.openBeat) + HOOK.openFrames).toBeLessThanOrEqual(at('hook', HOOK.typeBeat));
+  });
+
   it('types the prompt fully before the click', () => {
     const typingEnd = at('hook', HOOK.typeBeat) + Math.ceil((HOOK.prompt.length * FPS) / HOOK.typeCps);
     expect(typingEnd + 5).toBeLessThanOrEqual(at('hook', HOOK.clickBeat));
     expect(HOOK.clickBeat).toBeLessThan(SCENE_BEATS.restyle - SCENE_BEATS.hook);
   });
 
-  it('plays typing and click sounds', () => {
-    expect(CUES.filter((c) => c.scene === 'hook').map((c) => c.sfx)).toEqual(['typing', 'click']);
+  it('clicks the icon, pops the panel open, types and clicks send', () => {
+    expect(CUES.filter((c) => c.scene === 'hook').map((c) => c.sfx)).toEqual(['click', 'pop', 'typing', 'click']);
   });
 });
 

@@ -1,11 +1,13 @@
 import type {CSSProperties, ReactNode} from 'react';
+import {Img, staticFile} from 'remotion';
 import {C, FONT} from '../theme';
 
 export const BAR = 48; // title bar height, including its 2px rule
+export const ICON = 32; // the pinned StyleSwift toolbar button, at the right end of the bar
 
-type Props = {url: string; width: number; height: number; children: ReactNode; style?: CSSProperties};
+type Props = {url: string; width: number; height: number; children: ReactNode; iconPressed?: boolean; style?: CSSProperties};
 
-export const Window = ({url, width, height, children, style}: Props) => (
+export const Window = ({url, width, height, children, iconPressed = false, style}: Props) => (
   <div
     style={{position: 'absolute', width, height, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 26, background: C.white, boxShadow: `0 40px 80px -20px rgba(60,20,120,.35), 0 0 0 2px ${C.ink}`, ...style}}
   >
@@ -16,6 +18,11 @@ export const Window = ({url, width, height, children, style}: Props) => (
         ))}
       </div>
       <div style={{fontFamily: FONT.ui, fontSize: 16, color: C.inkSoft}}>{url}</div>
+      <div
+        style={{marginLeft: 'auto', width: ICON, height: ICON, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9, background: iconPressed ? C.panelLine : 'transparent', transform: `scale(${iconPressed ? 0.86 : 1})`}}
+      >
+        <Img src={staticFile('logo.png')} style={{width: 22, height: 22}} />
+      </div>
     </div>
     <div style={{flex: 1, minHeight: 0, display: 'flex'}}>{children}</div>
   </div>

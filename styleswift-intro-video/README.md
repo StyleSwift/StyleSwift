@@ -1,6 +1,6 @@
 # StyleSwift 宣传片
 
-约 44 秒（96 拍），1920×1080，30fps，带背景音乐和音效。用 [Remotion](https://www.remotion.dev/) 制作。设计文档见 `docs/superpowers/specs/2026-10-15-promo-video-v2-design.md`。
+约 46 秒（100 拍），1920×1080，30fps，带背景音乐和音效。用 [Remotion](https://www.remotion.dev/) 制作。设计文档见 `docs/superpowers/specs/2026-10-15-promo-video-v2-design.md`。
 
 ## 命令
 
@@ -18,17 +18,17 @@ npm run render        # 输出 out/styleswift-promo.mp4
 
 | 键名 | 来源 | 用途 |
 |---|---|---|
-| music | Mixkit Stock Music #983 “Cherry on Top”（Michael Ramir C.），130 BPM，从原曲第 59.01 秒开始 | 背景音乐 |
-| click | Mixkit SFX #1113 Mouse click close | 点发送 |
+| music | Mixkit Stock Music #983 “Cherry on Top”（Michael Ramir C.），130 BPM，从原曲第 57.17 秒开始 | 背景音乐 |
+| click | Mixkit SFX #1113 Mouse click close | 点工具栏图标、点发送 |
 | typing | Mixkit SFX #1396 Soft typing on a digital keyboard | 输入指令 |
 | sparkle | Mixkit SFX #2350 Magic sparkle whoosh | 第一次变身 |
 | whoosh | Mixkit SFX #1490 Fast whoosh transition | 之后每次变身 |
-| pop | Mixkit SFX #3005 Explainer video pops whoosh light pop | 贴纸、卡片、拼贴格 |
+| pop | Mixkit SFX #3005 Explainer video pops whoosh light pop | 侧栏滑出、贴纸、卡片、拼贴格、结尾 CTA |
 | check | Mixkit SFX #2867 Confirmation tone | 步骤打勾 |
 | done | Mixkit SFX #951 Positive notification | 三步完成 |
 | shine | Mixkit SFX #2633 Sweeping sparkle presentation intro | 结尾 logo |
 
-想换音效，就改 `src/audio.json` 里对应的 `id`、`volume` 和 `lead`，然后运行 `npm run fetch-audio`（文件名带 id，换了 id 会自动下载新文件）。`lead` 是音效从开头到最响那一刻的帧数，音效会提前这么多帧开始播放，让最响的部分落在画面动作上；换音效后要重新测。目前的混音峰值是 -1.9 dBFS，调大音量后要重新测一次，不要超过 -1 dBFS。
+想换音效，就改 `src/audio.json` 里对应的 `id`、`volume` 和 `lead`，然后运行 `npm run fetch-audio`（文件名带 id，换了 id 会自动下载新文件）。`lead` 是音效从开头到最响那一刻的帧数，音效会提前这么多帧开始播放，让最响的部分落在画面动作上；换音效后要重新测。目前的混音峰值是 -1.8 dBFS，调大音量后要重新测一次，不要超过 -1 dBFS。
 
 **授权**：音乐使用 [Mixkit Stock Music Free License](https://mixkit.co/license/#musicFree)，可以商用，可以用于社交媒体和网络广告，不要求署名，不能用于 CD/DVD、游戏或电视广播。音效使用 [Mixkit Sound Effects Free License](https://mixkit.co/license/#sfxFree)。两者都不允许单独再分发，也不允许连同源文件一起分发，所以 `public/audio/` 不进 git。
 
