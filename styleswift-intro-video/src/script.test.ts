@@ -2,7 +2,7 @@ import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {describe, expect, it} from 'vitest';
 import audio from './audio.json';
-import {CUES, FPS, HOOK, MUSIC, MUSIC_TRIM_BEFORE, ORIGINAL_SHOT, SCENE_BEATS, SCENE_ORDER, TOTAL_FRAMES, at, beat, cueFrame, sceneLength, sceneStart} from './script';
+import {CUES, FPS, HEADLINES, HOOK, MUSIC, MUSIC_TRIM_BEFORE, ORIGINAL_SHOT, RESTYLE, SCENE_BEATS, SCENE_ORDER, TOTAL_FRAMES, at, beat, cueFrame, sceneLength, sceneStart} from './script';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 
@@ -60,6 +60,41 @@ describe('hook', () => {
 
 describe('assets', () => {
   it('every referenced image exists in public/', () => {
-    for (const f of ['logo.png', `shots/${ORIGINAL_SHOT}`]) expect(existsSync(publicDir + f), f).toBe(true);
+    const files = ['logo.png', `shots/${ORIGINAL_SHOT}`, ...RESTYLE.shots.map((s) => `shots/${s.file}`)];
+    for (const f of files) expect(existsSync(publicDir + f), f).toBe(true);
+  });
+});
+
+const WORDS_PER_SECOND = 3;
+const POP_IN = 15;
+
+describe('copy', () => {
+  it('every headline stays on screen long enough to read', () => {
+    for (const h of HEADLINES) {
+      const words = h.text.split(/\s+/).length;
+      const onScreen = sceneLength(h.scene) - at(h.scene, h.beat);
+      expect(onScreen, h.text).toBeGreaterThanOrEqual(Math.ceil((words / WORDS_PER_SECOND) * FPS) + POP_IN);
+    }
+  });
+});
+
+describe('restyle', () => {
+  it('opens on the prompt typed in the hook', () => {
+    expect(RESTYLE.shots[0].prompt).toBe(HOOK.prompt);
+    expect(RESTYLE.shots[0].beat).toBe(0);
+  });
+
+  it('finishes each seam sweep before the next shot and keeps shots in order', () => {
+    RESTYLE.shots.forEach((s, i) => {
+      const next = RESTYLE.shots[i + 1]?.beat ?? SCENE_BEATS.how - SCENE_BEATS.restyle;
+      expect(at('restyle', s.beat) + RESTYLE.sweepFrames, s.file).toBeLessThanOrEqual(at('restyle', next));
+    });
+  });
+
+  it('plays a sparkle on the drop, then a whoosh per shot, with a pop for every sticker', () => {
+    const cues = CUES.filter((c) => c.scene === 'restyle');
+    expect(cues.filter((c) => c.sfx === 'sparkle').map((c) => c.beat)).toEqual([0]);
+    expect(cues.filter((c) => c.sfx === 'whoosh')).toHaveLength(RESTYLE.shots.length - 1);
+    expect(cues.filter((c) => c.sfx === 'pop')).toHaveLength(RESTYLE.shots.length);
   });
 });

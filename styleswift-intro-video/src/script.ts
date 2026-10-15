@@ -48,5 +48,35 @@ const HOOK_CUES: Cue[] = [
   {sfx: 'click', scene: 'hook', beat: HOOK.clickBeat, frames: 30},
 ];
 
-export const CUES: readonly Cue[] = [...HOOK_CUES];
+export type Shot = {beat: number; file: string; prompt: string; url: string; sticker: {x: number; y: number; rotate: number; color: StickerColor}};
+
+// Each shot: an iridescent seam sweeps the page into the new look and the prompt lands as a sticker.
+export const RESTYLE = {
+  sweepFrames: 12,
+  moveBeat: 2,
+  punchBeats: [4, 8, 12, 16, 20, 24, 28] as readonly number[],
+  headline: {beat: 2, text: 'Any website.\nAny vibe.'},
+  sub: {beat: 4, text: 'Type a feeling. Watch the page\nchange to match.'},
+  shots: [
+    {beat: 0, file: 'github-y2k.jpg', prompt: HOOK.prompt, url: GITHUB, sticker: {x: 1210, y: 900, rotate: 5, color: 'magenta'}},
+    {beat: 8, file: 'github-matrix.jpg', prompt: 'the Matrix', url: GITHUB, sticker: {x: 140, y: 640, rotate: -6, color: 'sun'}},
+    {beat: 12, file: 'github-xp.jpg', prompt: 'Windows XP', url: GITHUB, sticker: {x: 1500, y: 110, rotate: 4, color: 'cyan'}},
+    {beat: 16, file: 'linuxdo-newspaper.jpg', prompt: 'old newspaper', url: 'linux.do', sticker: {x: 470, y: 790, rotate: 4, color: 'white'}},
+    {beat: 20, file: 'linuxdo-bauhaus.jpg', prompt: 'Bauhaus, please', url: 'linux.do', sticker: {x: 180, y: 920, rotate: -3, color: 'cyan'}},
+    {beat: 22, file: 'linuxdo-cozy.jpg', prompt: 'cozy café vibes', url: 'linux.do', sticker: {x: 780, y: 960, rotate: -5, color: 'sun'}},
+    {beat: 24, file: 'douban-eink.jpg', prompt: 'e-ink reader', url: 'book.douban.com', sticker: {x: 1540, y: 960, rotate: -4, color: 'white'}},
+    {beat: 26, file: 'bilibili-wes.jpg', prompt: 'Wes Anderson', url: 'www.bilibili.com', sticker: {x: 560, y: 650, rotate: 6, color: 'magenta'}},
+  ] as readonly Shot[],
+};
+const RESTYLE_CUES: Cue[] = RESTYLE.shots.flatMap((s, i): Cue[] => [
+  {sfx: i === 0 ? 'sparkle' : 'whoosh', scene: 'restyle', beat: s.beat, frames: i === 0 ? 90 : 40},
+  {sfx: 'pop', scene: 'restyle', beat: s.beat, frames: 30},
+]);
+
+export const HEADLINES: readonly (Line & {scene: SceneName})[] = [
+  {scene: 'restyle', ...RESTYLE.headline},
+  {scene: 'restyle', ...RESTYLE.sub},
+];
+
+export const CUES: readonly Cue[] = [...HOOK_CUES, ...RESTYLE_CUES];
 export const cueFrame = (c: Cue) => sceneStart(c.scene) + at(c.scene, c.beat);
