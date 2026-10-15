@@ -2,7 +2,7 @@ import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {describe, expect, it} from 'vitest';
 import audio from './audio.json';
-import {CUES, FPS, HEADLINES, HOOK, HOW, MUSIC, MUSIC_TRIM_BEFORE, ORIGINAL_SHOT, RESTYLE, SAVE, SCENE_BEATS, SCENE_ORDER, TOTAL_FRAMES, at, beat, cueFrame, sceneLength, sceneStart} from './script';
+import {CUES, END, FPS, HEADLINES, HOOK, HOW, MOSAIC, MUSIC, MUSIC_TRIM_BEFORE, ORIGINAL_SHOT, RESTYLE, SAVE, SCENE_BEATS, SCENE_ORDER, TOTAL_FRAMES, at, beat, cueFrame, sceneLength, sceneStart} from './script';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 
@@ -119,5 +119,22 @@ describe('save', () => {
     const pops = CUES.filter((c) => c.scene === 'save' && c.sfx === 'pop');
     expect(pops).toHaveLength(1 + SAVE.others.length);
     expect(Math.max(...SAVE.fanBeats)).toBeLessThan(SAVE.headline.beat);
+  });
+});
+
+describe('finale', () => {
+  it('pops one tile per shot and a sound on each whole beat', () => {
+    expect(MOSAIC.tileBeats).toHaveLength(RESTYLE.shots.length);
+    expect(CUES.filter((c) => c.scene === 'mosaic').map((c) => c.beat)).toEqual([0, 1, 2, 3]);
+  });
+
+  it('puts the call to action on the last hit of the music', () => {
+    expect(SCENE_BEATS.end + END.cta.beat).toBe(MUSIC.lastHitBeat);
+    expect(CUES.filter((c) => c.scene === 'end').map((c) => c.sfx)).toEqual(['shine']);
+  });
+
+  it('mentions the local engines only in the end-card note', () => {
+    expect(END.note.text).toMatch(/Claude Code/);
+    expect(HEADLINES.filter((h) => /Claude Code|Codex/.test(h.text))).toEqual([{scene: 'end', ...END.note}]);
   });
 });

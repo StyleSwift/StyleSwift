@@ -100,12 +100,34 @@ export const SAVE = {
 };
 const SAVE_CUES: Cue[] = [SAVE.savedBeat, ...SAVE.fanBeats].map((b): Cue => ({sfx: 'pop', scene: 'save', beat: b, frames: 30}));
 
+export const MOSAIC = {
+  tileBeats: [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5] as readonly number[],
+  punchBeats: [0, 4, 8] as readonly number[],
+  headline: {beat: 4, text: 'Make the web\nfeel like yours.'},
+};
+const MOSAIC_CUES: Cue[] = MOSAIC.tileBeats.filter(Number.isInteger).map((b): Cue => ({sfx: 'pop', scene: 'mosaic', beat: b, frames: 30}));
+
+export const END = {
+  logoBeat: 0,
+  sweepFrames: 16,
+  name: {beat: 1, text: 'StyleSwift'},
+  tagline: {beat: 2, text: 'Restyle any website with one sentence.'},
+  cta: {beat: 4, text: 'Free on the Chrome Web Store'},
+  note: {beat: 4.5, text: 'Works with Claude Code, Codex and more.'},
+};
+const END_CUES: Cue[] = [{sfx: 'shine', scene: 'end', beat: END.logoBeat, frames: 60}];
+
 export const HEADLINES: readonly (Line & {scene: SceneName})[] = [
   {scene: 'restyle', ...RESTYLE.headline},
   {scene: 'restyle', ...RESTYLE.sub},
   {scene: 'how', ...HOW.headline},
   {scene: 'save', ...SAVE.headline},
+  {scene: 'mosaic', ...MOSAIC.headline},
+  {scene: 'end', ...END.name},
+  {scene: 'end', ...END.tagline},
+  {scene: 'end', ...END.cta},
+  {scene: 'end', ...END.note},
 ];
 
-export const CUES: readonly Cue[] = [...HOOK_CUES, ...RESTYLE_CUES, ...HOW_CUES, ...SAVE_CUES];
+export const CUES: readonly Cue[] = [...HOOK_CUES, ...RESTYLE_CUES, ...HOW_CUES, ...SAVE_CUES, ...MOSAIC_CUES, ...END_CUES];
 export const cueFrame = (c: Cue) => sceneStart(c.scene) + at(c.scene, c.beat);
