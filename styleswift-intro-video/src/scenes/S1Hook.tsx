@@ -3,14 +3,13 @@ import {Cursor} from '../components/Cursor';
 import {Shot} from '../components/Shot';
 import {SidePanel} from '../components/SidePanel';
 import {Window} from '../components/Window';
-import {HERO} from '../layout';
+import {HERO, SEND} from '../layout';
 import {speedBlur, typedText} from '../lib/timing';
 import {HOOK, ORIGINAL_SHOT, at, domainOf} from '../script';
 import {SETTLE} from '../theme';
 
 const FLY = 700; // px the window rises from
 const CURSOR_FROM = {x: 1980, y: 1120};
-const SEND = {x: 1655, y: 886}; // cursor position with its tip on the panel's send button
 
 export const S1Hook = () => {
   const frame = useCurrentFrame();

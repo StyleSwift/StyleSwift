@@ -2,13 +2,15 @@ import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {describe, expect, it} from 'vitest';
 import audio from './audio.json';
-import {CUES, END, FPS, HEADLINES, HOOK, HOW, MOSAIC, MUSIC, MUSIC_TRIM_BEFORE, ORIGINAL_SHOT, RESTYLE, SAVE, SCENE_BEATS, SCENE_ORDER, TOTAL_FRAMES, at, beat, cueFrame, sceneLength, sceneStart} from './script';
+import {BPM, CUES, END, FPS, HEADLINES, HOOK, HOW, MOSAIC, MUSIC, MUSIC_TRIM_BEFORE, ORIGINAL_SHOT, RESTYLE, SAVE, SCENE_BEATS, SCENE_ORDER, TOTAL_BEATS, TOTAL_FRAMES, at, audioFile, beat, cueFrame, sceneLength, sceneStart, soundStart} from './script';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 
 describe('timeline', () => {
-  it('runs 96 beats, exactly 45 seconds', () => {
-    expect(TOTAL_FRAMES).toBe(1350);
+  it('runs 96 beats and stays within the 45-second slot', () => {
+    expect(TOTAL_FRAMES).toBe(beat(TOTAL_BEATS));
+    expect(TOTAL_FRAMES / FPS).toBeGreaterThan(40);
+    expect(TOTAL_FRAMES / FPS).toBeLessThanOrEqual(45);
   });
 
   it('scenes tile the film in order with no gaps', () => {
@@ -16,8 +18,9 @@ describe('timeline', () => {
     expect(SCENE_ORDER.reduce((sum, s) => sum + sceneLength(s), 0)).toBe(TOTAL_FRAMES);
   });
 
-  it('starts the music on the planned track beat and lands the drop on the second scene', () => {
-    expect(MUSIC_TRIM_BEFORE).toBe(2375);
+  it('starts the music on a track beat, keeps the whole film inside the track and lands the drop on the second scene', () => {
+    expect(MUSIC_TRIM_BEFORE).toBe(Math.round((MUSIC.firstBeatSec + (MUSIC.startBeat * 60) / BPM) * FPS));
+    expect(MUSIC_TRIM_BEFORE + TOTAL_FRAMES).toBeLessThanOrEqual(MUSIC.trackSec * FPS);
     expect(SCENE_BEATS.restyle).toBe(MUSIC.dropBeat);
   });
 
@@ -31,14 +34,25 @@ describe('timeline', () => {
 describe('sound', () => {
   it('every cue plays inside the film', () => {
     for (const c of CUES) {
-      expect(cueFrame(c), `${c.sfx}@${c.scene}`).toBeGreaterThanOrEqual(0);
-      expect(cueFrame(c) + c.frames, `${c.sfx}@${c.scene}`).toBeLessThanOrEqual(TOTAL_FRAMES);
+      expect(soundStart(c), `${c.sfx}@${c.scene}`).toBeGreaterThanOrEqual(0);
+      expect(soundStart(c) + c.frames, `${c.sfx}@${c.scene}`).toBeLessThanOrEqual(TOTAL_FRAMES);
     }
+  });
+
+  it('starts each sound early by its lead so its loudest moment lands on the visual', () => {
+    for (const c of CUES) {
+      expect(soundStart(c), `${c.sfx}@${c.scene}`).toBe(cueFrame(c) - audio[c.sfx].lead);
+      expect(c.frames, `${c.sfx} is cut before it peaks`).toBeGreaterThan(audio[c.sfx].lead);
+    }
+  });
+
+  it('names each downloaded file after its Mixkit id, so swapping an id fetches the new file', () => {
+    expect(audioFile('music')).toBe(`music-${audio.music.id}.mp3`);
   });
 
   it('every cue has a sound file with a sane volume', () => {
     for (const [key, item] of Object.entries(audio)) {
-      expect(item.file, key).toMatch(/\.mp3$/);
+      expect(Number.isInteger(item.id), key).toBe(true);
       expect(item.volume, key).toBeGreaterThan(0);
       expect(item.volume, key).toBeLessThanOrEqual(1);
     }
@@ -79,6 +93,12 @@ describe('copy', () => {
 });
 
 describe('restyle', () => {
+  it('pops the panel steps in one by one after the drop instead of all at once', () => {
+    expect(RESTYLE.stepFrames).toHaveLength(3);
+    RESTYLE.stepFrames.forEach((f, i) => expect(f).toBeGreaterThan(i === 0 ? 0 : RESTYLE.stepFrames[i - 1]));
+    expect(RESTYLE.stepFrames[2]).toBeLessThan(at('restyle', RESTYLE.shots[1].beat));
+  });
+
   it('opens on the prompt typed in the hook', () => {
     expect(RESTYLE.shots[0].prompt).toBe(HOOK.prompt);
     expect(RESTYLE.shots[0].beat).toBe(0);
@@ -128,9 +148,9 @@ describe('finale', () => {
     expect(CUES.filter((c) => c.scene === 'mosaic').map((c) => c.beat)).toEqual([0, 1, 2, 3]);
   });
 
-  it('puts the call to action on the last hit of the music', () => {
+  it('puts the call to action on the last hit of the music, with its own pop', () => {
     expect(SCENE_BEATS.end + END.cta.beat).toBe(MUSIC.lastHitBeat);
-    expect(CUES.filter((c) => c.scene === 'end').map((c) => c.sfx)).toEqual(['shine']);
+    expect(CUES.filter((c) => c.scene === 'end').map((c) => [c.sfx, c.beat])).toEqual([['shine', END.logoBeat], ['pop', END.cta.beat]]);
   });
 
   it('mentions the local engines only in the end-card note', () => {

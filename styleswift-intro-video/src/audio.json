@@ -1,11 +1,11 @@
 {
-  "music": {"kind": "music", "id": 1183, "file": "karma.mp3", "volume": 0.75, "title": "Karma (Michael Ramir C.)"},
-  "click": {"kind": "sfx", "id": 1113, "file": "click.mp3", "volume": 0.7, "title": "Mouse click close"},
-  "typing": {"kind": "sfx", "id": 1396, "file": "typing.mp3", "volume": 0.5, "title": "Soft typing on a digital keyboard"},
-  "sparkle": {"kind": "sfx", "id": 2350, "file": "sparkle.mp3", "volume": 0.7, "title": "Magic sparkle whoosh"},
-  "whoosh": {"kind": "sfx", "id": 1490, "file": "whoosh.mp3", "volume": 0.45, "title": "Fast whoosh transition"},
-  "pop": {"kind": "sfx", "id": 3005, "file": "pop.mp3", "volume": 0.5, "title": "Explainer video pops whoosh light pop"},
-  "check": {"kind": "sfx", "id": 2867, "file": "check.mp3", "volume": 0.6, "title": "Confirmation tone"},
-  "done": {"kind": "sfx", "id": 951, "file": "done.mp3", "volume": 0.6, "title": "Positive notification"},
-  "shine": {"kind": "sfx", "id": 2633, "file": "shine.mp3", "volume": 0.7, "title": "Sweeping sparkle presentation intro"}
+  "music": {"kind": "music", "id": 983, "volume": 0.85, "lead": 0, "title": "Cherry on Top (Michael Ramir C.)"},
+  "click": {"kind": "sfx", "id": 1113, "volume": 0.7, "lead": 4, "title": "Mouse click close"},
+  "typing": {"kind": "sfx", "id": 1396, "volume": 0.5, "lead": 0, "title": "Soft typing on a digital keyboard"},
+  "sparkle": {"kind": "sfx", "id": 2350, "volume": 0.7, "lead": 13, "title": "Magic sparkle whoosh"},
+  "whoosh": {"kind": "sfx", "id": 1490, "volume": 0.45, "lead": 21, "title": "Fast whoosh transition"},
+  "pop": {"kind": "sfx", "id": 3005, "volume": 0.5, "lead": 1, "title": "Explainer video pops whoosh light pop"},
+  "check": {"kind": "sfx", "id": 2867, "volume": 0.6, "lead": 7, "title": "Confirmation tone"},
+  "done": {"kind": "sfx", "id": 951, "volume": 0.6, "lead": 6, "title": "Positive notification"},
+  "shine": {"kind": "sfx", "id": 2633, "volume": 0.7, "lead": 27, "title": "Sweeping sparkle presentation intro"}
 }

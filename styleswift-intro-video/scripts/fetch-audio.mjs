@@ -2,7 +2,7 @@
 // The files are not committed: Mixkit's licenses forbid redistributing them on their own or with source files.
 // curl does the download so HTTPS_PROXY is honoured.
 import {execFileSync} from 'node:child_process';
-import {existsSync, mkdirSync, readFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync, renameSync, rmSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -16,8 +16,12 @@ const sourceUrl = ({kind, id}) =>
 
 mkdirSync(`${root}public/audio`, {recursive: true});
 for (const [key, item] of Object.entries(manifest)) {
-  const dest = `${root}public/audio/${item.file}`;
+  const dest = `${root}public/audio/${key}-${item.id}.mp3`; // same naming as audioFile() in src/script.ts
   if (ifMissing && existsSync(dest)) continue;
-  execFileSync('curl', ['-fsSL', '--retry', '2', '-o', dest, sourceUrl(item)], {stdio: 'inherit'});
-  console.log(`${key}: ${item.title} -> public/audio/${item.file}`);
+  // Download beside the target and rename only on success, so an interrupted run never leaves a truncated file.
+  const part = `${dest}.part`;
+  rmSync(part, {force: true});
+  execFileSync('curl', ['-fsSL', '--retry', '2', '-o', part, sourceUrl(item)], {stdio: 'inherit'});
+  renameSync(part, dest);
+  console.log(`${key}: ${item.title} -> public/audio/${key}-${item.id}.mp3`);
 }

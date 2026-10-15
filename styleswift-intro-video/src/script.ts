@@ -1,18 +1,24 @@
 // Every on-screen word and every timing lives here, so copy and pacing edits never touch scene code.
-// Timings are in beats of the soundtrack (128 BPM); scene data uses beats relative to the scene's first beat.
+// Timings are in beats of the soundtrack (BPM below); scene data uses beats relative to the scene's first beat.
 
+import audio from './audio.json';
 import {beatFrame} from './lib/timing';
 
 export const FPS = 30;
 export const WIDTH = 1920;
 export const HEIGHT = 1080;
-export const BPM = 128;
-export const TOTAL_BEATS = 96; // 24 bars = 45 s
+export const BPM = 130;
+export const TOTAL_BEATS = 96; // 24 bars ≈ 44.3 s at 130 BPM
 
-// Mixkit "Karma": its 128 BPM grid starts at 0.4145 s. Track beat 168 (79.16 s) opens the film, the full
-// drums land on track beat 176 (film beat 8) and the last hit is track beat 256 (film beat 88).
-export const MUSIC = {firstBeatSec: 0.4145, startBeat: 168, dropBeat: 8, lastHitBeat: 88, fadeFrames: 15};
+// Mixkit "Cherry on Top": its 130 BPM grid starts at 0.3971 s. Track beat 127 (59.01 s) opens the film, so its
+// final downbeat (track beat 215, 99.63 s) lands on film beat 88, the call to action; the track tails off after.
+// The track is evenly loud, so the hook ducks it and the drop on film beat 8 brings it to full level.
+export const MUSIC = {firstBeatSec: 0.3971, startBeat: 127, trackSec: 105.5, dropBeat: 8, lastHitBeat: 88, fadeFrames: 15};
 export const MUSIC_TRIM_BEFORE = Math.round((MUSIC.firstBeatSec + (MUSIC.startBeat * 60) / BPM) * FPS);
+
+export type AudioKey = keyof typeof audio;
+// The Mixkit id is part of the file name, so changing an id in audio.json fetches the new file.
+export const audioFile = (key: AudioKey) => `${key}-${audio[key].id}.mp3`;
 
 export const beat = (b: number) => beatFrame(b, FPS, BPM);
 export const TOTAL_FRAMES = beat(TOTAL_BEATS);
@@ -54,6 +60,7 @@ export type Shot = {beat: number; file: string; prompt: string; url: string; sti
 export const RESTYLE = {
   sweepFrames: 12,
   moveBeat: 2,
+  stepFrames: [2, 5, 8] as readonly number[], // panel steps pop in after the drop
   punchBeats: [4, 8, 12, 16, 20, 24, 28] as readonly number[],
   headline: {beat: 2, text: 'Any website.\nAny vibe.'},
   sub: {beat: 4, text: 'Type a feeling. Watch the page\nchange to match.'},
@@ -115,7 +122,10 @@ export const END = {
   cta: {beat: 4, text: 'Free on the Chrome Web Store'},
   note: {beat: 4.5, text: 'Works with Claude Code, Codex and more.'},
 };
-const END_CUES: Cue[] = [{sfx: 'shine', scene: 'end', beat: END.logoBeat, frames: 60}];
+const END_CUES: Cue[] = [
+  {sfx: 'shine', scene: 'end', beat: END.logoBeat, frames: 60},
+  {sfx: 'pop', scene: 'end', beat: END.cta.beat, frames: 30},
+];
 
 export const HEADLINES: readonly (Line & {scene: SceneName})[] = [
   {scene: 'restyle', ...RESTYLE.headline},
@@ -131,3 +141,5 @@ export const HEADLINES: readonly (Line & {scene: SceneName})[] = [
 
 export const CUES: readonly Cue[] = [...HOOK_CUES, ...RESTYLE_CUES, ...HOW_CUES, ...SAVE_CUES, ...MOSAIC_CUES, ...END_CUES];
 export const cueFrame = (c: Cue) => sceneStart(c.scene) + at(c.scene, c.beat);
+// Sounds start early by their lead (frames to their loudest moment), so the peak lands on the visual.
+export const soundStart = (c: Cue) => cueFrame(c) - audio[c.sfx].lead;

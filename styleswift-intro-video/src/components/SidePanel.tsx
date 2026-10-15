@@ -2,9 +2,6 @@ import {Img, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion
 import {PANEL_STEPS, PLACEHOLDER} from '../script';
 import {C, FONT, POP} from '../theme';
 
-// Pass as `stepsAt` to show every step already finished.
-export const STEPS_DONE: readonly number[] = [-100, -100, -100];
-
 type Props = {domain: string; prompt?: string; typed?: string; stepsAt?: readonly number[]; width?: number};
 
 // The product's light side panel, redrawn. `stepsAt[i]` is the frame step i pops in; omit to hide the steps.

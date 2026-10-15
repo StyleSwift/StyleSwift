@@ -1,10 +1,11 @@
 import {AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {Headline} from '../components/Headline';
 import {Sticker} from '../components/Sticker';
-import {END, at} from '../script';
-import {C, FONT, IRIDESCENT, POP} from '../theme';
+import {END, WIDTH, at} from '../script';
+import {C, FONT, IRIDESCENT_CORE, POP} from '../theme';
 
 const LOGO = 200;
+const logo = staticFile('logo.png');
 const clamp = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'} as const;
 
 export const S6End = () => {
@@ -16,10 +17,13 @@ export const S6End = () => {
   const centered = {position: 'absolute', left: 0, right: 0, textAlign: 'center'} as const;
   return (
     <AbsoluteFill>
-      <div style={{position: 'absolute', left: (1920 - LOGO) / 2, top: 150, width: LOGO, height: LOGO, overflow: 'hidden', transform: `scale(${pop})`}}>
-        <Img src={staticFile('logo.png')} style={{width: LOGO, height: LOGO}} />
+      <div style={{position: 'absolute', left: (WIDTH - LOGO) / 2, top: 150, width: LOGO, height: LOGO, transform: `scale(${pop})`}}>
+        <Img src={logo} style={{width: LOGO, height: LOGO}} />
         {frame - logoAt < END.sweepFrames && (
-          <div style={{position: 'absolute', top: -20, bottom: -20, left: sweep, width: 50, background: IRIDESCENT, filter: 'blur(8px)', opacity: 0.9, mixBlendMode: 'screen', transform: 'skewX(-12deg)'}} />
+          // Masked by the logo's own alpha, so the shine crosses the butterfly instead of a box around it.
+          <div style={{position: 'absolute', inset: 0, overflow: 'hidden', WebkitMaskImage: `url(${logo})`, maskImage: `url(${logo})`, WebkitMaskSize: '100% 100%', maskSize: '100% 100%'}}>
+            <div style={{position: 'absolute', top: -20, bottom: -20, left: sweep, width: 50, background: IRIDESCENT_CORE, filter: 'blur(6px)', opacity: 0.95, transform: 'skewX(-12deg)'}} />
+          </div>
         )}
       </div>
       <Headline text={END.name.text} at={at('end', END.name.beat)} size={150} style={{...centered, top: 390}} />
