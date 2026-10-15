@@ -2,7 +2,10 @@
   "name": "styleswift-intro-video",
   "private": true,
   "scripts": {
+    "fetch-audio": "node scripts/fetch-audio.mjs",
+    "predev": "node scripts/fetch-audio.mjs --if-missing",
     "dev": "remotion studio src/index.ts",
+    "prerender": "node scripts/fetch-audio.mjs --if-missing",
     "render": "remotion render src/index.ts Promo out/styleswift-promo.mp4 --jpeg-quality=95 --color-space=bt709",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
@@ -10,6 +13,7 @@
   "dependencies": {
     "@remotion/cli": "4.0.535",
     "@remotion/google-fonts": "4.0.535",
+    "@remotion/media": "4.0.535",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "remotion": "4.0.535"

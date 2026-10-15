@@ -1,18 +1,10 @@
 // Pure frame math, free of Remotion imports so vitest can run it in Node.
 
+export const beatFrame = (beat: number, fps: number, bpm: number): number => Math.round((beat * 60 * fps) / bpm);
+
 export const typedText = (text: string, frame: number, fps: number, cps: number): string => {
   if (frame <= 0) return '';
   return text.slice(0, Math.floor((frame * cps) / fps));
-};
-
-// Start frame of each shot; the gap between shots shrinks linearly from firstGap to lastGap.
-export const cutStarts = (count: number, firstGap: number, lastGap: number): number[] => {
-  const starts = [0];
-  for (let i = 0; i < count - 1; i++) {
-    const t = count > 2 ? i / (count - 2) : 0;
-    starts.push(starts[i] + Math.round(firstGap + (lastGap - firstGap) * t));
-  }
-  return starts;
 };
 
 export const activeIndex = (starts: readonly number[], frame: number): number => {
@@ -22,3 +14,12 @@ export const activeIndex = (starts: readonly number[], frame: number): number =>
   });
   return idx;
 };
+
+// Triangle pulse: 0 → 1 over `rise` frames, back to 0 by `fall`. Used for on-beat punches.
+export const bump = (frame: number, rise = 3, fall = 8): number => {
+  if (frame <= 0 || frame >= fall) return 0;
+  return frame <= rise ? frame / rise : 1 - (frame - rise) / (fall - rise);
+};
+
+// Blur radius for an element that moved `delta` px since the last frame: reads as motion blur at no render cost.
+export const speedBlur = (delta: number, pxPerUnit = 12, max = 14): number => Math.min(max, Math.abs(delta) / pxPerUnit);
