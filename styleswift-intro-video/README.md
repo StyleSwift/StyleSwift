@@ -12,7 +12,13 @@ npm test              # 校验时长、节拍、可读时间、素材
 npm run render        # 输出 out/styleswift-promo.mp4
 ```
 
+`npm run render` 先按 2 倍分辨率（3840×2160）渲染出 `out/promo-2x.mp4`，再用 Lanczos 缩回 1080p。窗口在片中缩小又倾斜，直接按 1080p 渲染时网页文字会出锯齿，看起来像被压缩过；超采样后边缘干净得多。不要直接用 `npx remotion render` 出成片。
+
 文案、节奏和音效触发点都在 `src/script.ts`，时间单位是拍（130 BPM，每拍约 13.85 帧）。换背景音乐时只需改 `BPM` 和 `MUSIC`（曲子的第一拍位置、从第几拍开始截），所有切点和音效会自动落在新拍子上。改完跑一次 `npm test`。大标题是比例字体，测试量不到宽度，改了标题要渲染一帧看看，例如 `npx remotion still src/index.ts Promo out/check.png --frame=300`。
+
+## 网页效果图
+
+网页截图放在 `public/shots/`（只用真实截图），片中的顺序、贴纸指令和网址在 `src/script.ts` 的 `RESTYLE.shots`。文件名去掉扩展名就是它的侧栏截图键名，要和 `scripts/panel-runs.json` 里的 `key` 一致。同一种风格只换图，直接覆盖同名文件；换成新风格，要改 `RESTYLE.shots`（用到的话还有 `SAVE`）和 `panel-runs.json`，再按下面的方法重截侧栏。最后一张同时用在讲解场景：讲解先显示它的原图 `HOW.original`，在 Apply Styles 完成时扫成效果图。原图要在同一个页面上点侧栏顶部的 👁 关掉样式后截取，不要刷新，推荐内容才和效果图一致。换掉最后一张，要同时换原图，重新取 `HOW.swatches` 的颜色，并按原图版面调整 `src/scenes/S3How.tsx` 里 `FOUND` 虚线框的位置。"保存"场景（`SAVE`）展示同一种风格用在不同网站上：效果图按 `网站-风格` 命名（如 `x-paper.png`），测试会检查这几张风格相同、网站各不相同。开场原始页 `github-original.png` 要和第一张效果图用同样的尺寸、同样的登录状态截取，变身前后才对得上。
 
 ## 侧栏截图
 

@@ -2,10 +2,14 @@ import {AbsoluteFill, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {Headline} from '../components/Headline';
 import {Shot} from '../components/Shot';
 import {bump} from '../lib/timing';
-import {MOSAIC, RESTYLE, at} from '../script';
+import {MOSAIC, RESTYLE, WIDTH, at} from '../script';
 import {C, POP} from '../theme';
 
-const TILE = {width: 400, height: 250, gap: 28, left: 118, top: 300};
+// Two rows of 16:10 tiles, as many columns as the shots need, centred a little below the middle.
+const COLS = Math.ceil(RESTYLE.shots.length / 2);
+const GAP = 24;
+const TILE_W = Math.floor((WIDTH - 2 * 112 - (COLS - 1) * GAP) / COLS);
+const TILE = {width: TILE_W, height: TILE_W * 0.625, gap: GAP, left: (WIDTH - COLS * TILE_W - (COLS - 1) * GAP) / 2, top: 564 - TILE_W * 0.625 - GAP / 2};
 
 export const S5Mosaic = () => {
   const frame = useCurrentFrame();
@@ -22,7 +26,7 @@ export const S5Mosaic = () => {
           return (
             <div
               key={s.file}
-              style={{position: 'absolute', left: TILE.left + (k % 4) * (TILE.width + TILE.gap), top: TILE.top + Math.floor(k / 4) * (TILE.height + TILE.gap), width: TILE.width, height: TILE.height, overflow: 'hidden', borderRadius: 18, border: `2.5px solid ${C.ink}`, boxShadow: `4px 5px 0 ${C.ink}`, transform: `scale(${spring({frame: frame - start, fps, config: POP})})`}}
+              style={{position: 'absolute', left: TILE.left + (k % COLS) * (TILE.width + TILE.gap), top: TILE.top + Math.floor(k / COLS) * (TILE.height + TILE.gap), width: TILE.width, height: TILE.height, overflow: 'hidden', borderRadius: 18, border: `2.5px solid ${C.ink}`, boxShadow: `4px 5px 0 ${C.ink}`, transform: `scale(${spring({frame: frame - start, fps, config: POP})})`}}
             >
               <Shot file={s.file} />
             </div>

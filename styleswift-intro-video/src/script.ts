@@ -43,7 +43,7 @@ export type SfxKey = 'click' | 'typing' | 'sparkle' | 'whoosh' | 'pop' | 'check'
 export type Cue = {sfx: SfxKey; scene: SceneName; beat: number; frames: number};
 
 const GITHUB = 'github.com/StyleSwift/StyleSwift';
-export const ORIGINAL_SHOT = 'github-original.jpg';
+export const ORIGINAL_SHOT = 'github-original.png';
 // The side panel is shown as real screenshots, captured by scripts/capture-panel.cjs from the real extension
 // (panel-runs.json lists the runs). Files are named <run key>-<state>.png, and a run key is its shot file name.
 export const panelFile = (key: string, state: string) => `${key}-${state}.png`;
@@ -69,30 +69,34 @@ export const RESTYLE = {
   headline: {beat: 2, text: 'Any website.\nAny vibe.'},
   sub: {beat: 4, text: 'Type a feeling. Watch the page\nchange to match.'},
   shots: [
-    {beat: 0, file: 'github-y2k.jpg', prompt: HOOK.prompt, url: GITHUB, sticker: {x: 1210, y: 900, rotate: 5, color: 'magenta'}},
-    {beat: 8, file: 'github-matrix.jpg', prompt: 'the Matrix', url: GITHUB, sticker: {x: 140, y: 640, rotate: -6, color: 'sun'}},
-    {beat: 12, file: 'github-xp.jpg', prompt: 'Windows XP', url: GITHUB, sticker: {x: 1500, y: 110, rotate: 4, color: 'cyan'}},
-    {beat: 16, file: 'linuxdo-newspaper.jpg', prompt: 'old newspaper', url: 'linux.do', sticker: {x: 470, y: 790, rotate: 4, color: 'white'}},
+    {beat: 0, file: 'github-y2k.png', prompt: HOOK.prompt, url: GITHUB, sticker: {x: 1210, y: 900, rotate: 5, color: 'magenta'}},
+    {beat: 8, file: 'github-matrix.png', prompt: 'the Matrix', url: GITHUB, sticker: {x: 140, y: 640, rotate: -6, color: 'sun'}},
+    {beat: 12, file: 'github-xp.png', prompt: 'Windows XP', url: GITHUB, sticker: {x: 1500, y: 110, rotate: 4, color: 'cyan'}},
+    {beat: 14, file: 'github-cyberpunk.png', prompt: 'Cyberpunk 2077', url: GITHUB, sticker: {x: 1000, y: 96, rotate: -4, color: 'sun'}},
+    {beat: 16, file: 'github-eink.png', prompt: 'ink on paper', url: GITHUB, sticker: {x: 1440, y: 780, rotate: 3, color: 'white'}},
+    {beat: 18, file: 'linuxdo-paper.jpg', prompt: 'old newspaper', url: 'linux.do', sticker: {x: 470, y: 790, rotate: 4, color: 'white'}},
     {beat: 20, file: 'linuxdo-bauhaus.jpg', prompt: 'Bauhaus, please', url: 'linux.do', sticker: {x: 180, y: 920, rotate: -3, color: 'cyan'}},
     {beat: 22, file: 'linuxdo-cozy.jpg', prompt: 'cozy café vibes', url: 'linux.do', sticker: {x: 780, y: 960, rotate: -5, color: 'sun'}},
     {beat: 24, file: 'douban-eink.jpg', prompt: 'e-ink reader', url: 'book.douban.com', sticker: {x: 1540, y: 960, rotate: -4, color: 'white'}},
-    {beat: 26, file: 'bilibili-wes.jpg', prompt: 'Wes Anderson', url: 'www.bilibili.com', sticker: {x: 560, y: 650, rotate: 6, color: 'magenta'}},
+    {beat: 26, file: 'bilibili-paper.png', prompt: 'vintage gazette', url: 'www.bilibili.com', sticker: {x: 560, y: 650, rotate: 6, color: 'magenta'}},
   ] as readonly Shot[],
 };
-export const shotKey = (s: Shot) => s.file.replace(/\.jpg$/, '');
+export const shotKey = (s: {file: string}) => s.file.replace(/\.(jpg|png)$/, '');
 const RESTYLE_CUES: Cue[] = RESTYLE.shots.flatMap((s, i): Cue[] => [
   {sfx: i === 0 ? 'sparkle' : 'whoosh', scene: 'restyle', beat: s.beat, frames: i === 0 ? 90 : 40},
   {sfx: 'pop', scene: 'restyle', beat: s.beat, frames: 30},
 ]);
 
-// Swatches are colors sampled from the Wes Anderson screenshot itself.
+// Swatches are colors sampled from the gazette screenshot itself.
 export const HOW = {
   headline: {beat: 0, text: 'Just describe it.\nIt does the rest.'},
   shot: RESTYLE.shots[RESTYLE.shots.length - 1],
+  // The same page with the look switched off (same window, same feed); the seam turns it into the look on Apply Styles.
+  original: 'bilibili-original.png',
   // The real tool cards View Page Structure, Search Page Elements and Apply Styles finish on these beats, then the reply.
   stepBeats: [4, 8, 12] as readonly number[],
   doneBeat: 14,
-  swatches: ['#F9F0E9', '#D4BC7C', '#A8744F', '#344165'] as readonly string[],
+  swatches: ['#F4F0E7', '#B6B1A7', '#802520', '#1A1A18'] as readonly string[],
   fontSample: 'Aa',
 };
 const HOW_CUES: Cue[] = [
@@ -106,18 +110,19 @@ export const SAVE = {
   swayBeats: [4, 8, 12] as readonly number[],
   headline: {beat: 4, text: 'Save a look.\nUse it anywhere.'},
   savedLabel: 'Saved',
-  saved: {file: 'bilibili-wes.jpg', name: 'Wes Anderson'},
+  saved: {file: 'bilibili-paper.png', name: 'Vintage Gazette'},
+  // The same saved look on other websites, named by site.
   others: [
-    {file: 'github-y2k.jpg', name: 'Y2K'},
-    {file: 'linuxdo-bauhaus.jpg', name: 'Bauhaus'},
-    {file: 'linuxdo-cozy.jpg', name: 'Cozy'},
-    {file: 'github-matrix.jpg', name: 'The Matrix'},
+    {file: 'deepseek-paper.png', name: 'deepseek.com'},
+    {file: 'github-paper.png', name: 'github.com'},
+    {file: 'x-paper.png', name: 'x.com'},
+    {file: 'linuxdo-paper.jpg', name: 'linux.do'},
   ] as readonly {file: string; name: string}[],
 };
 const SAVE_CUES: Cue[] = [SAVE.savedBeat, ...SAVE.fanBeats].map((b): Cue => ({sfx: 'pop', scene: 'save', beat: b, frames: 30}));
 
 export const MOSAIC = {
-  tileBeats: [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5] as readonly number[],
+  tileBeats: RESTYLE.shots.map((_, k) => k / 4), // one tile per sixteenth note
   punchBeats: [0, 4, 8] as readonly number[],
   headline: {beat: 4, text: 'Make the web\nfeel like yours.'},
 };

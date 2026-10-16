@@ -113,40 +113,42 @@ v1 是 Claude Code 式的暖色终端风格，画面里有终端、代码和工�
 
 - 第 0 拍（片中第 12 拍）：炫彩光带从左到右扫过网页，用 12 帧把原始页变成 Y2K（闪光嗖声）；贴纸「make it Y2K」弹出；S1 留在发送按钮上的鼠标在 8 帧内淡出；侧栏依次切换真实截图：已发送 → 三个工具卡片逐个完成（第 2、5、8 帧）→ 回复出现（第 11 帧），不会一下子跳到完成状态
 - 第 2 拍：大标题「Any website. Any vibe.」在左侧逐词弹入；窗口缩小并移到右侧，变成样帧 B 的构图
-- 后续 7 次换风格，每次都是光带扫过、贴纸弹出、侧栏气泡同步更换（嗖声 + 啵声）：
+- 后续 9 次换风格，每次都是光带扫过、贴纸弹出、侧栏气泡同步更换（嗖声 + 啵声）：
 
 | 拍 | 指令贴纸 | 截图 |
 |---|---|---|
-| 8 | the Matrix | `github-matrix.jpg` |
-| 12 | Windows XP | `github-xp.jpg` |
-| 16 | old newspaper | `linuxdo-newspaper.jpg` |
+| 8 | the Matrix | `github-matrix.png` |
+| 12 | Windows XP | `github-xp.png` |
+| 14 | Cyberpunk 2077 | `github-cyberpunk.png` |
+| 16 | ink on paper | `github-eink.png` |
+| 18 | old newspaper | `linuxdo-paper.jpg` |
 | 20 | Bauhaus, please | `linuxdo-bauhaus.jpg` |
 | 22 | cozy café vibes | `linuxdo-cozy.jpg` |
 | 24 | e-ink reader | `douban-eink.jpg` |
-| 26 | Wes Anderson | `bilibili-wes.jpg` |
+| 26 | vintage gazette | `bilibili-paper.png` |
 
-- 节奏从每小节一次加快到每两拍一次。之前的贴纸不消失，越积越多，在窗口周围散成一圈
+- 节奏从每小节一次加快到每两拍一次（第 12 拍起）。之前的贴纸不消失，越积越多，在窗口周围散成一圈
 - 每个小节的第一拍，窗口轻微放大一下
 
 ### S3 它是怎么做到的
 
-- 第 0 拍：右侧滑入放大的真实侧栏截图（Bilibili 上「Wes Anderson」那次运行，1.35 倍，只露出对话部分，底部渐隐）；左上标题「Just describe it. It does the rest.」逐词弹入；左下是缩小的网页窗口（停在 S2 最后的韦斯·安德森风格）
+- 第 0 拍：右侧滑入放大的真实侧栏截图（Bilibili 上「vintage gazette」那次运行，1.35 倍，只露出对话部分，底部渐隐）；左上标题「Just describe it. It does the rest.」逐词弹入；左下是缩小的网页窗口，先显示B站原图（同一页面关掉样式后截的 `bilibili-original.png`，推荐视频和效果图一致），因为这时插件还没动手
 - 第 4 拍：真实卡片「View Page Structure」完成（提示音），一个放大镜沿 Z 字路线扫过左下的小窗口
-- 第 8 拍：真实卡片「Search Page Elements」完成（提示音），小窗口上弹出三个粉色虚线框，标出找到的页面区域
-- 第 12 拍：真实卡片「Apply Styles」完成（提示音），4 个色块（从截图里取的颜色）和一个「Aa」字体块从页面里飞出，排成一列
-- 第 14 拍：侧栏出现回复「Done! Pastel pinks, centered symmetry and a vintage serif touch.」（完成提示音）
+- 第 8 拍：真实卡片「Search Page Elements」完成（提示音），原图上弹出三个粉色虚线框，标出找到的页面区域（顶部横幅、轮播大图、视频卡片）
+- 第 12 拍：真实卡片「Apply Styles」完成（提示音），炫彩光带扫过小窗口，原图变成复古报纸风格；同时 4 个色块（从效果图里取的颜色）和一个「Aa」字体块从页面里飞出，排成一列
+- 第 14 拍：侧栏出现回复「Done! Cream newsprint, a serif masthead and sepia-toned photos.」（完成提示音）
 - 原先的大白话步骤和「Easy to read ✓」徽章去掉了：真实界面里没有这几个字，可读性检查这次运行也没有展示
 
 ### S4 保存风格
 
-- 第 0 拍：当前页面（韦斯·安德森风格）缩成一张收藏卡，卡上有截图、风格名和「Saved」标记
-- 第 2 拍：卡片飞到画面中央，和另外 4 张卡（Y2K、Bauhaus、Cozy、The Matrix）一起扇形展开，每张卡一声啵
+- 第 0 拍：当前页面（复古报纸风格，卡名「Vintage Gazette」）缩成一张收藏卡，卡上有截图、风格名和「Saved」标记
+- 第 2 拍：卡片飞到画面中央，另外 4 张卡扇形展开，每张卡一声啵：同一种复古报纸风格用在 deepseek.com、github.com、x.com、linux.do 上，卡上标的是网站名，表达「存下来的风格可以用到任何网站」。越靠中间的卡越在上层；名字最长的放最外侧，右侧卡片的网站名靠右放，避免被中间的卡挡住
 - 第 4 拍：标题「Save a look. Use it anywhere.」逐词弹入
 - 之后：卡组随每个小节的第一拍轻轻摇摆
 
 ### S5 拼贴高潮
 
-- 第 0–3.5 拍：8 张风格截图每半拍弹出一张，拼成 4×2 的墙；整拍上的 4 张各配一声啵
+- 第 0–2.25 拍：10 张风格截图每 1/4 拍弹出一张，拼成 5×2 的墙（列数按截图张数算）；整拍上的 3 张各配一声啵
 - 第 4 拍：标题「Make the web feel like yours.」压在墙前，带白色描边的贴纸式底衬（原定第 8 拍只剩 56 帧，读不完，所以提前）
 
 ### S6 结尾卡

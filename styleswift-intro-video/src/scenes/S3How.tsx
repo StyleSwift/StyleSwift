@@ -1,10 +1,10 @@
-import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
+import {AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {Headline} from '../components/Headline';
-import {Shot} from '../components/Shot';
+import {SeamReveal} from '../components/SeamReveal';
 import {PanelShot} from '../components/PanelShot';
 import {BAR, Window} from '../components/Window';
 import {activeIndex, speedBlur} from '../lib/timing';
-import {HOW, at, panelFile, shotKey} from '../script';
+import {HOW, RESTYLE, at, panelFile, shotKey} from '../script';
 import {C, FONT, POP, SETTLE} from '../theme';
 
 const clamp = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'} as const;
@@ -13,11 +13,11 @@ const PAGE = {left: SMALL.left, top: SMALL.top + BAR, width: SMALL.width, height
 // The real panel screenshot at 1.35×, cropped to the conversation (the input bar sits below the fold).
 const PANEL = {left: 1210, top: 140, width: 540, height: 760};
 const PANEL_STATES = ['sent', 'step1', 'step2', 'step3', 'done'];
-// Regions Search Page Elements turns up on the page, as fractions of its size.
+// Regions Search Page Elements turns up on the original page (banner, carousel, video grid), as fractions of its size.
 const FOUND = [
-  {x: 0.02, y: 0.02, w: 0.96, h: 0.13},
-  {x: 0.08, y: 0.3, w: 0.38, h: 0.42},
-  {x: 0.5, y: 0.3, w: 0.44, h: 0.42},
+  {x: 0.02, y: 0.02, w: 0.96, h: 0.15},
+  {x: 0.085, y: 0.3, w: 0.325, h: 0.42},
+  {x: 0.415, y: 0.3, w: 0.49, h: 0.5},
 ];
 // Magnifier route over the page, as fractions of its size: a Z.
 const ROUTE = [
@@ -97,13 +97,12 @@ export const S3How = () => {
   const {fps} = useVideoConfig();
   const slide = (f: number) => (1 - spring({frame: f, fps, config: SETTLE, durationInFrames: 20})) * 900;
   const panelIn = spring({frame: frame - 4, fps, config: SETTLE, durationInFrames: 20});
+  const reveal = interpolate(frame - at('how', HOW.stepBeats[2]), [0, RESTYLE.sweepFrames], [0, 1], {...clamp, easing: Easing.inOut(Easing.cubic)});
   return (
     <AbsoluteFill>
       <Headline text={HOW.headline.text} at={at('how', HOW.headline.beat)} size={104} style={{position: 'absolute', left: 110, top: 110}} />
       <Window url={HOW.shot.url} width={SMALL.width} height={SMALL.height} style={{left: SMALL.left, top: SMALL.top, transform: `translateX(${-slide(frame)}px)`, filter: `blur(${speedBlur(slide(frame - 1) - slide(frame))}px)`}}>
-        <div style={{position: 'relative', flex: 1}}>
-          <Shot file={HOW.shot.file} />
-        </div>
+        <SeamReveal from={HOW.original} to={HOW.shot.file} progress={reveal} width={PAGE.width} height={PAGE.height} />
       </Window>
       <PanelShot
         file={panelFile(shotKey(HOW.shot), PANEL_STATES[activeIndex([0, ...HOW.stepBeats, HOW.doneBeat].map((b) => at('how', b)), frame)])}

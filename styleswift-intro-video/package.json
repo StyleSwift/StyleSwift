@@ -6,7 +6,7 @@
     "predev": "node scripts/fetch-audio.mjs --if-missing",
     "dev": "remotion studio src/index.ts",
     "prerender": "node scripts/fetch-audio.mjs --if-missing",
-    "render": "remotion render src/index.ts Promo out/styleswift-promo.mp4 --jpeg-quality=95 --color-space=bt709",
+    "render": "remotion render src/index.ts Promo out/promo-2x.mp4 --scale=2 --crf=10 --jpeg-quality=100 --color-space=bt709 && remotion ffmpeg -v error -y -i out/promo-2x.mp4 -vf scale=1920:1080:flags=lanczos -c:v libx264 -crf 17 -preset slow -pix_fmt yuv420p -colorspace bt709 -color_primaries bt709 -color_trc bt709 -c:a copy -movflags +faststart out/styleswift-promo.mp4",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

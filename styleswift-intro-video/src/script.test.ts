@@ -131,6 +131,12 @@ describe('how', () => {
     expect(HOW.shot).toBe(RESTYLE.shots[RESTYLE.shots.length - 1]);
   });
 
+  it('starts on the real original page and reveals the look when Apply Styles finishes, before the reply', () => {
+    expect(existsSync(`${publicDir}shots/${HOW.original}`), HOW.original).toBe(true);
+    expect(HOW.original.split('-')[0]).toBe(HOW.shot.file.split('-')[0]);
+    expect(at('how', HOW.stepBeats[2]) + RESTYLE.sweepFrames).toBeLessThanOrEqual(at('how', HOW.doneBeat));
+  });
+
   it('lights one real tool card per bar, then the reply, chiming for each', () => {
     expect(HOW.stepBeats).toEqual([4, 8, 12]);
     expect(HOW.doneBeat).toBeGreaterThan(12);
@@ -143,6 +149,14 @@ describe('save', () => {
     expect(SAVE.saved.file).toBe(RESTYLE.shots[RESTYLE.shots.length - 1].file);
   });
 
+  it('shows the saved look applied to other websites', () => {
+    // Shot files are named <site>-<look>.<ext>.
+    const [site, look] = shotKey(SAVE.saved).split('-');
+    const sites = SAVE.others.map((c) => shotKey(c).split('-')[0]);
+    for (const c of SAVE.others) expect(shotKey(c).split('-')[1], c.file).toBe(look);
+    expect(new Set([site, ...sites]).size).toBe(1 + SAVE.others.length);
+  });
+
   it('pops every card in with a sound, before the headline', () => {
     const pops = CUES.filter((c) => c.scene === 'save' && c.sfx === 'pop');
     expect(pops).toHaveLength(1 + SAVE.others.length);
@@ -151,9 +165,10 @@ describe('save', () => {
 });
 
 describe('finale', () => {
-  it('pops one tile per shot and a sound on each whole beat', () => {
+  it('pops one tile per shot and a sound on each whole beat, all before the headline', () => {
     expect(MOSAIC.tileBeats).toHaveLength(RESTYLE.shots.length);
-    expect(CUES.filter((c) => c.scene === 'mosaic').map((c) => c.beat)).toEqual([0, 1, 2, 3]);
+    expect(Math.max(...MOSAIC.tileBeats)).toBeLessThan(MOSAIC.headline.beat);
+    expect(CUES.filter((c) => c.scene === 'mosaic').map((c) => c.beat)).toEqual([0, 1, 2]);
   });
 
   it('puts the call to action on the last hit of the music, with its own pop', () => {
